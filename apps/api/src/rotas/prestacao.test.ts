@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
@@ -13,6 +13,7 @@ import {
   MSG_DATA_PASSADA,
   MSG_ENCERRADO,
   MSG_G8,
+  MSG_LIGACAO_ANTES,
   MSG_MESMA_PESSOA,
   MSG_OUTRA_ADVOGADA,
   MSG_SEM_DEFERIDO,
@@ -20,11 +21,14 @@ import {
   MSG_SEM_IDA,
   MODELO_IDA_AO_BANCO,
   O_QUE_LEVAR,
+  TEXTO_PADRAO_IDA_AO_BANCO,
   TITULO_AVISO,
   TITULO_CONFIRMAR,
   TITULO_REMARCAR,
+  garantirModeloDaIdaAoBanco,
   recebimentosConfirmados,
 } from './prestacao.ts'
+import { NUNCA_PEDIMOS_A_SENHA } from '../../../web/src/regras/mensagens.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -200,6 +204,57 @@ describe('GGVP-158 P3.3 · o percentual vem do contrato e não muda na prestaç�
   })
 })
 
+describe('GGVP-158 P6.3 · a prestação segue o combinado do contrato, editável antes do OK, com a fonte de cada valor', () => {
+  const ACORDO = { entrada: 500, parcelas: { quantidade: 4, valor: 300 } }
+  async function comAcordo() {
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    await banco.insert(contratoRecepcao).values({ casoId, pessoaId: c.pessoaId, dados: { contrato: { processoId: casoId, etapa: 'copia', acordo: ACORDO }, processo: { id: casoId } } })
+    await deferir()
+  }
+
+  it('abre com a entrada e as parcelas do contrato; sem o combinado, nulo, sem zero inventado', async () => {
+    await deferir()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().acordo).toBeNull()
+    await banco.delete(prestacaoContas)
+    await banco.delete(tarefa)
+    await banco.delete(resultadoInss)
+    await banco.delete(documento)
+    await comAcordo()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().acordo).toEqual({ entrada: '500.00', parcelas: { quantidade: 4, valor: '300.00' } })
+  })
+
+  it('o OK com o combinado do contrato: as fontes são o contrato, a carta e o sistema; o repasse fecha em centavos', async () => {
+    await comAcordo()
+    const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, formaPagamento: 'boleto', entrada: '500,00', parcelas: { quantidade: '4', valor: '300,00' }, parteNaCaixa: '1.000,00' })
+    expect(r.json()).toMatchObject({ ok: true, versao: 1, honorarios: '3703.70', repasse: '8641.97' })
+    const [v] = (await chamar('julia', 'GET', '/prestacao')).json().versoes
+    expect([v.entrada, v.parcelas, v.parteNaCaixa, v.formaPagamento]).toEqual(['500.00', { quantidade: 4, valor: '300.00' }, '1000.00', 'boleto'])
+    expect(v.fontes).toEqual({ valorRecebido: 'carta', percentual: 'contrato', honorarios: 'sistema', repasse: 'sistema', entrada: 'contrato', parcelas: 'contrato', parteNaCaixa: 'conferencia' })
+  })
+
+  it('o ajuste antes do OK fica com a fonte de quem conferiu, e o histórico guarda o calculado e o que valeu', async () => {
+    await comAcordo()
+    const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, honorarios: '3.000,00', entrada: '500,00', parcelas: { quantidade: '3', valor: '300,00' } })
+    expect(r.json()).toMatchObject({ ok: true, honorarios: '3000.00', repasse: '9345.67' })
+    const [v] = (await chamar('gabi', 'GET', '/prestacao')).json().versoes
+    expect([v.honorarios, v.repasse, v.fontes.honorarios, v.fontes.entrada, v.fontes.parcelas, v.fontes.parteNaCaixa]).toEqual(['3000.00', '9345.67', 'conferencia', 'contrato', 'conferencia', null])
+    const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'prestacao_concluida'))
+    expect(ev.detalhe).toMatchObject({ versao: 1, honorariosCalculados: '3703.70', honorarios: '3000.00' })
+  })
+
+  it('a forma antiga e a Caixa acima dos honorários são recusadas, e nada é gravado', async () => {
+    await comAcordo()
+    for (const [corpo, erro] of [
+      [{ ...PRESTACAO, formaPagamento: 'dinheiro' }, 'Escolha a forma de pagamento da lista'],
+      [{ ...PRESTACAO, parteNaCaixa: '5.000,00' }, 'A parte paga na Caixa vai até o valor dos honorários.'],
+    ] as const) {
+      const r = await chamar('gabi', 'POST', '/prestacao', corpo)
+      expect([r.statusCode, r.json().erro]).toEqual([400, erro])
+    }
+    expect(await banco.select().from(prestacaoContas)).toEqual([])
+  })
+})
+
 describe('GGVP-44 · ida ao banco', () => {
   it('CA10 e GGVP-98 CA6 · só depois do recebimento; os quatro campos obrigatórios; quem acompanha é do Atendimento e recebe "Levar ao banco"', async () => {
     await deferir()
@@ -223,11 +278,11 @@ describe('GGVP-44 · ida ao banco', () => {
     await chamar('julia', 'POST', '/banco', AGENDA())
     const r = (await chamar('julia', 'GET', '/banco')).json()
     expect(r.mensagem).toBe('Olá, Vera Lúcia! Ida ao banco em 15/10/2026 às 10:00, Caixa, agência Centro. ana, do escritório, vai com você.')
-    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })).statusCode).toBe(201)
     const [m] = await banco.select().from(mensagem)
-    expect([m.canal, m.conteudo, m.enviadaPor, m.enviadaEm !== null]).toEqual(['whatsapp', r.mensagem, ids.julia, true])
+    expect([m.canal, m.conteudo, m.enviadaPor, m.enviadaEm !== null]).toEqual(['telefone', r.mensagem, ids.julia, true])
     expect(await abertas()).toEqual(['atendimento · Levar ao banco'])
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     const acervo = await banco.select().from(processoAcervo)
     expect(acervo.map((a) => [a.casoId, a.desfecho, a.fonte, a.desfechoConferidoPor])).toEqual([[casoId, 'deferido', 'portal', null]])
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'baixa_registrada'))).length).toBe(2)
@@ -237,7 +292,7 @@ describe('GGVP-44 · ida ao banco', () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
     await banco.update(prestacaoContas).set({ okAdvogadaEm: null, okAdvogadaPor: null })
-    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).json().erro).toBe(MSG_G8)
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })).json().erro).toBe(MSG_G8)
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(b.detalhe).toMatchObject({ portao: 'G8', passo: 'D3b.03', perfil: 'financeiro' })
   })
@@ -247,7 +302,7 @@ describe('GGVP-44 · ida ao banco', () => {
     const [rai] = await banco.select().from(usuario).where(eq(usuario.nome, 'raí'))
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '20/10/2026', hora: '14:30', acompanhanteId: rai.id })
     const ags = await banco.select().from(agendamento)
     expect(ags.map((a) => a.situacao).sort()).toEqual(['cancelado', 'marcado'])
@@ -263,7 +318,7 @@ describe('GGVP-44 · ida ao banco', () => {
     await chamar('julia', 'POST', '/banco', AGENDA())
     expect((await chamar('julia', 'POST', '/banco/confirmacao')).json().erro).toBe(MSG_ANTES_DO_AVISO)
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
     // GGVP-78: o "Receber e lançar" não é dinheiro na mão; o painel Financeiro e os Resultados contam a confirmação.
     expect((await recebimentosConfirmados(banco)).size).toBe(0)
@@ -281,9 +336,9 @@ describe('GGVP-44 · ida ao banco', () => {
   it('GGVP-98 CA9 · caso encerrado não reabre: agendar e avisar de novo devolvem 409, e nenhuma tarefa nasce', async () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     await chamar('julia', 'POST', '/banco/confirmacao')
-    for (const [resto, corpo] of [['/banco', AGENDA()], ['/banco/envio', { canal: 'whatsapp' }]] as const) {
+    for (const [resto, corpo] of [['/banco', AGENDA()], ['/banco/envio', { canal: 'telefone' }]] as const) {
       const r = await chamar('julia', 'POST', resto, corpo)
       expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
     }
@@ -296,7 +351,7 @@ describe('GGVP-44 · ida ao banco', () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
     await banco.update(resultadoInss).set({ resultado: 'indeferido' })
-    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_SEM_DESFECHO])
     expect([await banco.select().from(processoAcervo), await banco.select().from(mensagem)]).toEqual([[], []])
   })
@@ -328,16 +383,16 @@ describe('GGVP-98 · quarta revisão de 08/10', () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
     expect((await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, valorRecebido: '12.000,00' })).statusCode).toBe(201)
-    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ANTES_DO_RECEBIMENTO])
     await receber()
-    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })).statusCode).toBe(201)
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })).statusCode).toBe(201)
   })
 
   it('CA9 · caso encerrado não aceita versão nova da prestação, e nenhuma tarefa nasce', async () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     await chamar('julia', 'POST', '/banco/confirmacao')
     const r = await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect([r.statusCode, r.json().erro]).toEqual([409, MSG_ENCERRADO])
@@ -361,7 +416,7 @@ describe('GGVP-98 · o Atendimento leva o cliente ao banco (P3 do roteiro de 09/
   async function ateLevar() {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
   }
 
   it('quem leva vê cliente, data, hora, local e o que levar, sem nenhum valor; a tarefa abre a tela do passo', async () => {
@@ -411,11 +466,78 @@ describe('GGVP-98 · o Atendimento leva o cliente ao banco (P3 do roteiro de 09/
     const cedo = await chamar('julia', 'POST', '/banco/confirmacao')
     expect([cedo.statusCode, cedo.json().erro]).toEqual([409, MSG_ANTES_DO_AVISO])
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(false)
-    await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
     expect(await abertas()).toEqual(['atendimento · Levar ao banco'])
     expect((await chamar('julia', 'GET', '/banco')).json().podeConfirmar).toBe(true)
     // Remarcar de novo devolve o título do aviso: o motivo antigo já foi atendido.
     await chamar('julia', 'POST', '/banco', { ...AGENDA(), data: '22/10/2026' })
     expect(await abertas()).toEqual(['atendimento · Levar ao banco', `financeiro · ${TITULO_AVISO}`])
+  })
+})
+
+describe('GGVP-158 P6.4 · a ligação avisa; o WhatsApp é só o complemento, e sai de verdade', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('o WhatsApp antes da ligação recusa; sem o Chatwoot, não sai: 409 com o motivo, a tentativa fica no histórico e fora dos avisos', async () => {
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    const antes = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([antes.statusCode, antes.json().erro]).toEqual([409, MSG_LIGACAO_ANTES])
+    expect((await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })).statusCode).toBe(201)
+    const naoSaiu = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect(naoSaiu.statusCode).toBe(409)
+    expect(naoSaiu.json().erro).toMatch(/^A confirmação não saiu pelo Chatwoot: .+ A ligação já avisou o cliente\.$/)
+    const linhas = await banco.select().from(mensagem)
+    expect(linhas.map((m) => [m.canal, m.status]).sort()).toEqual([['telefone', null], ['whatsapp', 'falhou']])
+    expect((await chamar('julia', 'GET', '/banco')).json().avisos.map((a: { canal: string }) => a.canal)).toEqual(['telefone'])
+    const [tentativa] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'mensagem_enviada'))
+    expect(tentativa.detalhe).toMatchObject({ modelo: MODELO_IDA_AO_BANCO, status: 'falhou' })
+  })
+
+  it('com o Chatwoot, sai pela conversa aberta do cliente, com o texto aprovado e o aviso da senha; o id fica guardado', async () => {
+    const API = 'https://chatwoot.teste/api/v1/accounts/7'
+    const posts: { caminho: string; corpo: unknown }[] = []
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      const caminho = url.replace(API, '')
+      if (init.method === 'POST') posts.push({ caminho, corpo: JSON.parse(String(init.body)) })
+      const rotas: Record<string, unknown> = {
+        'GET /contacts/search?q=87654321': { payload: [{ id: 31, name: 'Vera Lúcia', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 'f', inbox: { id: 9, name: 'GGV PREV' } }] }] },
+        'GET /contacts/31/conversations': { payload: [{ id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 }] },
+        'GET /conversations/502/messages': { payload: [] },
+        'POST /conversations/502/messages': { id: 77, status: 'sent' },
+      }
+      const r = rotas[`${init.method ?? 'GET'} ${caminho}`]
+      return r === undefined ? new Response(null, { status: 404 }) : Response.json(r)
+    })
+    await banco.update(pessoa).set({ telefone: '11987654321' })
+    await app.close()
+    const ambiente = { CHATWOOT_URL: 'https://chatwoot.teste', CHATWOOT_CONTA: '7', CHATWOOT_CAIXA: '9', CHATWOOT_TOKEN: 'token-de-teste', AMBIENTE: 'homologacao', CHATWOOT_PERMITIDOS: '(11) 98765-4321' }
+    for (const [nome, valor] of Object.entries(ambiente)) vi.stubEnv(nome, valor)
+    app = criarServidor({ banco, agora: () => AGORA })
+    vi.unstubAllEnvs()
+
+    await ateOAviso()
+    await chamar('julia', 'POST', '/banco', AGENDA())
+    await chamar('julia', 'POST', '/banco/envio', { canal: 'telefone' })
+    const texto = (await chamar('julia', 'GET', '/banco')).json().mensagem
+    const r = await chamar('julia', 'POST', '/banco/envio', { canal: 'whatsapp' })
+    expect([r.statusCode, r.json()]).toEqual([201, { ok: true, status: 'enviada' }])
+    expect(posts).toEqual([{ caminho: '/conversations/502/messages', corpo: { content: `${texto} ${NUNCA_PEDIMOS_A_SENHA}`, message_type: 'outgoing', private: false } }])
+    const [m] = await banco.select().from(mensagem).where(eq(mensagem.canal, 'whatsapp'))
+    const [modeloDoBanco] = await banco.select().from(modelo)
+    expect([m.status, m.chatwootMensagemId, m.conversaChatwoot, m.modelo, m.modeloId, m.enviadaPor]).toEqual(['enviada', 77, 502, null, modeloDoBanco.id, ids.julia])
+    expect((await chamar('julia', 'GET', '/banco')).json().avisos.map((a: { canal: string }) => a.canal).sort()).toEqual(['telefone', 'whatsapp'])
+  })
+
+  it('o modelo ao subir: o banco sem ele ganha o padrão; o que a Sênior mudou fica', async () => {
+    await banco.delete(modelo)
+    expect(await garantirModeloDaIdaAoBanco(banco, AGORA)).toBe(true)
+    const [m] = await banco.select().from(modelo)
+    expect([m.tipo, m.nome, m.conteudo, m.versao]).toEqual(['mensagem', MODELO_IDA_AO_BANCO, TEXTO_PADRAO_IDA_AO_BANCO, 1])
+    await banco.update(modelo).set({ ativo: false })
+    expect(await garantirModeloDaIdaAoBanco(banco, AGORA)).toBe(false)
+    expect((await banco.select().from(modelo)).length).toBe(1)
   })
 })

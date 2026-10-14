@@ -13,6 +13,7 @@ Decisão registrada não se reverte por commit. Reverte por outro ADR que cite o
 | [016](ADR-016-kit-de-agentes-no-chat.md) | Kit de agentes da OpenAI em TypeScript no chat (GGVP-142): leitura sozinha, ação com aprovação da pessoa (o cartão), rastreamento desligado, registro em `chamada_ia`; as travas seguem como código |
 | [017](ADR-017-scanner-pelo-drive.md) | O papel do scanner entra pelo Drive (GGVP-158): a cada minuto, o portal lê a lista de mudanças e traz o arquivo novo da pasta de um cliente; o n8n não muda; não roda com o Drive só leitura |
 | [018](ADR-018-alarme-ao-suporte.md) | O alarme da vigília ao suporte técnico (GGVP-158): mensagem no canal da equipe por webhook e chamado no Jira, cada um com as suas variáveis; sem elas, o portal e o log |
+| [019](ADR-019-entrada-do-chatwoot.md) | A mensagem do WhatsApp entra no portal (GGVP-158): o webhook do Chatwoot numa rota pública com um segredo no endereço, fora do log; a conversa do WhatsApp, o lead novo, a entrega e a leitura |
 
 ## Decisões com pendências
 

@@ -299,6 +299,120 @@ Decisões do Mateus em 13/10: o alarme da vigília vai ao canal da equipe e abre
     - Ele grava o documento `comprovante_recurso` do caso, fecha a `D3b.04r` e registra `recurso_protocolado`.
     - Sem a tarefa aberta: 409 "Este caso não tem recurso esperando o protocolo."
 
+### Parte 6 · Desfecho, dinheiro e conversa (decisões do Mateus, 13/10)
+
+Só servidor, com teste junto, num pedido em cima do #75. O #31 segue no pedido dele. Uma migração, a 0033 (a 0032 é a do recurso, que veio da main com o #73). Sem matriz nova: a Sênior confere pela `ficha.voltar_versao`, que já é só dela.
+
+Decisões do Mateus em 13/10:
+- a entrada e as parcelas vêm do contrato da Recepção;
+- quem confere o que a IA aponta na conversa é a Sênior, como no cartão (Lucas, GGVP-84);
+- a pendência de quem não tem caso vira tarefa da pessoa;
+- plano aprovado, código em seguida.
+
+O que o Lucas já tinha definido (GGVP-92, 06 e 07/10):
+- a prestação segue a entrada e as parcelas escritas no contrato e abre editável;
+- Pix ou boleto do escritório no nome do cliente, e uma parte na Caixa quando o escritório vai junto;
+- transferência e dinheiro não são formas padrão.
+
+O OK segue com a advogada, por decisão do Pedro.
+
+54. **O pedido #31** (P6.1).
+    - Fica no pedido dele, fora da sequência das partes. A main entra na branch por merge, sem rebase e sem force-push.
+    - O `GET /api/casos/:id/desfecho` devolve o texto da decisão só com `dado_saude.ver_detalhe`; sem ela, `texto: null`. É o P1 do Pedro no #31. O teste usa uma sentença inventada que cita um laudo.
+    - Sai do rascunho para o Pedro revisar e mesclar.
+55. **O combinado no contrato** (P6.2).
+    - `AcordoDoContrato`, em `packages/contratos`:
+      - `entrada`, decimal de 0 em diante;
+      - `parcelas`: `quantidade`, inteiro de 1 a 60, e `valor`, decimal maior que 0, ou nulas.
+    - `EnvioDoContrato` ganha `acordo`, opcional. Ele vai para `contrato.acordo`, dentro do contrato da Recepção (`contrato_recepcao.dados`): sem migração.
+    - O histórico da ficha ganha "Registrou no contrato: entrada de R$ … e N parcelas de R$ …".
+    - ponytail: parcelas iguais. Lista com valores diferentes, se o escritório pedir.
+56. **A prestação de contas** (P6.3).
+    - A regra pura `calcularPrestacao` ganha os honorários ajustados:
+      - sem eles, vale o percentual, arredondado para baixo;
+      - com eles, vale o valor de quem conferiu, até o valor recebido.
+
+      O repasse é sempre o recebido menos os honorários, em centavos.
+    - `SalvarPrestacao` ganha `honorarios`, `entrada`, `parcelas` e `parteNaCaixa`, opcionais, pela `campos`. A parte na Caixa vai até os honorários.
+    - `FORMAS_DE_PAGAMENTO` fica `pix` e `boleto` ("Boleto do escritório, no nome do cliente"). O rótulo das antigas fica, para ler as versões velhas.
+    - A migração 0033 dá à `prestacao_contas`: `entrada`, `parcelas_quantidade`, `parcela_valor`, `parte_na_caixa` e `fontes` (jsonb).
+    - As fontes são do servidor:
+      - o percentual é do contrato, quando o contrato tem;
+      - os honorários são do sistema quando batem com o cálculo, e de quem conferiu quando não;
+      - a entrada e as parcelas são do contrato quando batem com ele;
+      - o valor recebido é da carta, que a advogada confere;
+      - o repasse é do sistema.
+    - O histórico da versão guarda o calculado e o ajustado (CA11).
+    - O `GET` traz `acordo`, o do contrato (nulo sem ele), e cada versão com os valores novos e as fontes. Os campos novos entram nulos por padrão: o teste de tela do Pedro monta a prestação à mão.
+57. **A ida ao banco** (P6.4).
+    - `CANAIS_DE_AVISO` fica `telefone` e `whatsapp`.
+    - `telefone` é a ligação: o registro de hoje, com o acervo e a baixa.
+    - `whatsapp` pede a ligação registrada (`cliente_avisado_em`) e sai pelo correio do cliente, com o texto aprovado, que não muda. O que não saiu volta 409, com o motivo, e a tentativa fica no histórico do cliente, fora dos avisos.
+    - O correio ganha `enviarAprovado`: o texto sai pela mesma saída do Chatwoot do envio (`sair`), pela conversa aberta do cliente, e a linha de `mensagem` guarda o `modeloId` do modelo aprovado.
+    - O modelo não entra em `MODELOS_DE_MENSAGEM` (mudança da execução, 13/10): o seletor da tela do correio e o correio de mentira dos testes de tela listam o catálogo inteiro, e os dois são do Pedro.
+    - Ao subir com banco de verdade, `garantirModeloDaIdaAoBanco` (em `principal.ts`, junto dos feriados) põe o modelo só quando não há nenhum com esse nome. O texto é o da semente, sem "(modelo de exemplo)".
+58. **O id do Chatwoot** (P6.5).
+    - `chatwoot.enviar` devolve o id da mensagem, e o correio grava em `mensagem.chatwoot_mensagem_id` (migração 0033, com índice).
+    - O status só anda para a frente: enviada, entregue, lida. "Falhou" vale a qualquer hora.
+    - O aviso de mudança do Chatwoot (`message_updated`) não traz o status: o corpo é o `webhook_data` da mensagem, conferido no código do Chatwoot em 13/10. O portal pergunta o status (`statusDaMensagem`, na última página da conversa), só das mensagens que ele mandou.
+59. **A rota de entrada do Chatwoot** (P6.5; ADR-019).
+    - `POST /api/chatwoot/entrada/:segredo`, com `config.semTrava` (a trava é o segredo) e `logLevel: 'silent'`, para o endereço não ir ao log.
+    - O segredo é conferido em tempo constante (`timingSafeEqual` sobre o SHA-256). Sem `CHATWOOT_WEBHOOK_SEGREDO`, ou com outro segredo: 404.
+    - O corpo passa por um esquema Zod com só o que o portal usa.
+    - São ignoradas:
+      - a conta e a caixa diferentes de `CHATWOOT_CONTA` e `CHATWOOT_CAIXA`;
+      - a nota privada e a mensagem de atividade;
+      - fora da produção, o telefone fora de `CHATWOOT_PERMITIDOS`, a mesma trava do envio.
+    - O ignorado responde 200, para o Chatwoot não repetir.
+    - A trava de sessão de toda rota `/api` libera só esta, além de entrar (`LIVRES`, em `sessao/rotas.ts`).
+    - O telefone vem da conversa (`conversation.meta.sender.phone_number`), na mensagem que chega e na resposta do escritório. O celular sem o nono dígito volta com ele, para a lista de teste e a ficha.
+    - ponytail: o anexo sem texto entra como "[anexo: veja no Chatwoot]". O áudio transcrito, pelo mesmo motor da conversa, fica para depois.
+60. **A conversa do WhatsApp** (P6.5).
+    - Uma por pessoa: canal `whatsapp` (o `atendimento` já aceita), modo `escrito`, papel `atendimento`, conduzida por "WhatsApp (Chatwoot)", sem `quemId`.
+    - Cada mensagem vira um trecho da gravação: do cliente (a que chega) ou do escritório (a resposta pelo Chatwoot).
+    - A pessoa é a do telefone, com e sem o nono dígito, como no envio. Com mais de uma: a do nome do contato; depois, o cliente antes do lead; depois, a mais nova.
+    - Sem ninguém, nasce o lead: `pessoa` e ficha com o nome do contato, quando passa no `validarNome`, ou "Contato do WhatsApp". O histórico diz "Criou a ficha pelo WhatsApp (lead)".
+    - O caso é o mais recente da ficha, como na conversa aberta no card.
+    - A conversa junta as mensagens até 30 minutos sem mensagem nova. Depois, a seguinte abre outra.
+    - No contrato, `Conversa.canal` passa a `CanalDaConversa` (com o WhatsApp); `NovaConversa` segue com ligação e presencial: quem abre a do WhatsApp é o servidor.
+    - Nas regras das telas, `CanalDoRegistro` ganha `whatsapp`, com o rótulo em `CANAIS_DO_REGISTRO`, mas não enumerável: o formulário de registro do Pedro lista as chaves e segue só com ligação e presencial.
+    - A resposta do escritório a um número sem ficha não cria lead. A senha mandada por mensagem sai do texto (G9).
+    - ponytail: uma mensagem de cada vez no servidor inteiro, para duas que chegam juntas não abrirem duas conversas; por pessoa, se o volume pedir.
+61. **A conversa do WhatsApp fecha e a IA lê** (P6.5, P6.6).
+    - Com a IA, a rodada do preparo (a cada 5 minutos) fecha a conversa parada há 30 minutos, e a IA analisa, como na transcrição.
+    - Sem a IA, a mensagem seguinte fecha a anterior, com o aviso de que a IA não leu.
+    - Ao fechar, nasce a tarefa do Atendimento: responder a pendência da conversa (decisão 63).
+62. **Só o que foi dito** (P6.6).
+    - A regra pura `apareceNaFala(campo, valor, fala)` fica nas regras da conversa, que o servidor já usa:
+      - o texto: sem acento, sem caixa e com os espaços juntos, contido na fala;
+      - o telefone, o CPF, o CEP e o NB: os números do valor, em sequência, nos números da fala;
+      - a data: dd/mm/aaaa, d/m/aa ou "d de <mês> de aaaa".
+    - O fato novo e o documento citado ficam fora da regra: o valor deles é o resumo da fala, que vai junto.
+    - `lerComIa` tira o que não aparece antes de montar a análise. A regra roda em tempo linear.
+63. **A Sênior confere** (P6.6).
+    - A primeira conferência continua com quem conduziu: responde "Surgiu pendência?". Na conversa do WhatsApp, qualquer pessoa do Atendimento.
+    - Decisão sobre o que a IA apontou só com `ficha.voltar_versao`, que é só da Sênior. Sem ela: 403 "Quem confirma, corrige ou desfaz o que a IA apontou é a Sênior."
+    - Com item apontado, a primeira conferência abre a tarefa da Sênior, "Conferir o que a IA apontou na conversa" (`D5.04`). Ela fecha quando nenhum item espera.
+    - A Sênior que conduziu responde a pendência e decide de uma vez.
+    - A tela de hoje manda as decisões na primeira conferência e passa a receber 403 fora da Sênior: o Playwright da conversa muda, e o Pedro é avisado.
+64. **A pendência vira tarefa** (P6.7).
+    - A migração 0033 deixa `tarefa.caso_id` sem obrigação, cria `tarefa.pessoa_id` e o CHECK "caso ou pessoa", e `tarefa.atendimento_id`, a conversa da tarefa da conversa.
+    - Na conferência, a pendência cria a linha `D5.05`: a pessoa, o caso quando há, a conversa, o responsável, o prazo e o perfil dele.
+    - "Cumprida" fecha a linha, e o prazo novo muda a linha. As duas acham a linha pela conversa.
+    - As pendências abertas que já existem ganham a linha na própria migração.
+    - `/api/conversas/tarefas` lê as linhas `D5.04` e `D5.05`. O "Registrar conversa" (`D5.01`) lê só as conversas de quem está no login, pelo `quemId`, no SQL. A resposta para a tela não muda.
+    - `/api/tarefas` não repete as linhas `D5`: elas seguem na Central pelo caminho da conversa.
+    - O tipo da tarefa passa a ter `casoId` nulo. Os usos são conferidos pelo typecheck.
+65. **A verificação fica na conversa** (P6.8).
+    - `POST /api/conversas/:id/verificacao` (`conversa.registrar`, de quem conduziu ou da Sênior), com `{ como }`.
+    - Na ligação e no WhatsApp, só `video`: 400 "Na ligação e no WhatsApp, o cliente se verifica por chamada de vídeo."
+    - Grava `verificacao: { como, por, em }` na conversa, e o histórico da ficha ganha a linha. A conversa devolve a verificação.
+    - Na conferência, vale a da conversa presencial, a registrada ou a que vem no pedido, com a mesma regra do canal. O `contratoNovo` continua vindo de quem confere.
+    - A recusa já fica no histórico (portão `verificacao`).
+66. **ADR-019 e a variável** (P6.5).
+    - O ADR registra a entrada do Chatwoot pelo webhook com segredo.
+    - `CHATWOOT_WEBHOOK_SEGREDO` entra na lista das variáveis e na doc da homologação. O `.env.example` é do Mateus.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.
@@ -311,6 +425,15 @@ Parte 5, só nos contratos do servidor (as telas são do Pedro):
 | O tamanho do tribunal | `validarInteiro` e `normalizarInteiro` |
 | O ano da carga dos feriados | `validarInteiro` e `normalizarInteiro` |
 | A data do protocolo do recurso | `validarData` |
+
+Parte 6, só nos contratos do servidor:
+
+| Campo | Função da `campos` |
+|---|---|
+| A entrada, o valor da parcela, os honorários ajustados e a parte na Caixa | `validarDecimal` e `normalizarDecimal` |
+| A quantidade de parcelas | `validarInteiro` e `normalizarInteiro` |
+| O telefone que chega pelo Chatwoot | `normalizarTelefone` e `validarTelefone` |
+| O nome do contato do WhatsApp | `validarNome` e `normalizarNome` |
 
 ## Risks / Trade-offs
 
@@ -340,3 +463,12 @@ Parte 5, só nos contratos do servidor (as telas são do Pedro):
 - **Jurimetria no texto:** a regra casa o formato que o portal mostra. Um número escrito de outro jeito passa, e a revisão da advogada segue valendo.
 - **Alarme no Jira:** o tipo "Tarefa" e o projeto vêm do Jira do escritório. Se o Jira recusar, o canal e o portal ainda avisam, e a recusa fica no log.
 - **A espera de fora:** a perícia sem resultado chama todo dia útil até o resultado ser registrado. Quem não marca "Olhei" fica com a linha no topo o dia todo, que é o lembrete pedido.
+- **Parte 6 sem as telas:**
+  - a conferência da conversa por quem conduziu passa a recusar as decisões, até o Pedro mudar a tela;
+  - a prestação, a ida ao banco e a verificação ganham campos que a tela ainda não manda. Sem eles, segue como hoje.
+- **O segredo no endereço:** o portal não registra o endereço no log, mas o proxy da hospedagem pode registrar. Se vazar, troca-se a variável e o webhook no Chatwoot.
+- **O formato do Chatwoot:** o esquema aceita só o que o portal usa. O que vier diferente é ignorado, com uma linha no log sem conteúdo.
+- **Lead pelo WhatsApp:** toda mensagem de número novo cria um lead. Na homologação, só os telefones de teste.
+- **Telefone dividido:** mãe e filha no mesmo número vão para a do nome do contato. Sem nome que bata, para a mais nova.
+- **Honorários ajustados:** quem confere pode mudar os honorários. O histórico guarda o calculado e o ajustado, e o percentual continua travado.
+- **Tarefa sem caso:** a Central geral (`/api/tarefas`) segue só com tarefas de caso, e a da pessoa aparece pela Central da conversa. A parte 7 junta as duas.

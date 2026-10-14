@@ -7,6 +7,8 @@ import { z } from 'zod'
 const Texto = (max: number) => z.string().trim().max(max)
 
 export const CanalDoRegistro = z.enum(['ligacao', 'presencial'])
+/** GGVP-158 P6.5: o canal da conversa. A do WhatsApp só o servidor abre, com a mensagem que chega pelo Chatwoot. */
+export const CanalDaConversa = z.enum(['ligacao', 'presencial', 'whatsapp'])
 export const ComQuem = z.enum(['cliente', 'familiar', 'medico'])
 export const ModoDoRegistro = z.enum(['tempo-real', 'arquivo', 'escrito'])
 
@@ -37,6 +39,9 @@ export const ComoVerificou = z.enum(['video', 'presencial'])
 /** A verificação, com a alteração em contrato novo. Parcial: o servidor diz o que falta (GGVP-111 CA1). */
 export const VerificacaoInformada = z.object({ como: ComoVerificou.optional(), contratoNovo: z.boolean().optional() })
 export type VerificacaoInformada = z.infer<typeof VerificacaoInformada>
+/** POST /api/conversas/:id/verificacao (GGVP-158 P6.8): como quem conduziu verificou o cliente. */
+export const VerificacaoNaConversa = z.object({ como: ComoVerificou })
+export type VerificacaoNaConversa = z.infer<typeof VerificacaoNaConversa>
 
 export const DecisaoDaMudanca = z.object({
   id: Texto(80),
@@ -117,7 +122,7 @@ export const Conversa = z.object({
   id: z.string(),
   fichaId: z.string(),
   processoId: z.string().optional(),
-  canal: CanalDoRegistro,
+  canal: CanalDaConversa,
   comQuem: ComQuem,
   modo: ModoDoRegistro,
   quem: z.string(),
@@ -132,5 +137,7 @@ export const Conversa = z.object({
   decisoes: z.array(DecisaoDaMudanca).optional(),
   conferidaEm: z.string().optional(),
   pendencia: Pendencia.optional(),
+  /** GGVP-158 P6.8: a verificação do cliente registrada na conversa: como, quem e quando. */
+  verificacao: z.object({ como: ComoVerificou, por: z.string(), em: z.string() }).optional(),
 })
 export type Conversa = z.infer<typeof Conversa>

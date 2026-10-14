@@ -214,6 +214,41 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   }
 
   /**
+   * Sai pelo Chatwoot de verdade, com a trava da homologação; sem ele, nada sai (GGVP-158). A conversa 0 pede ao Chatwoot a
+   * conversa aberta do cliente, ou uma nova. Devolve a conversa, o status, o motivo de não sair e o id no Chatwoot.
+   */
+  async function sair(ficha: Ficha, texto: string, conversa: number, cliente: Pick<MensagemPronta, 'contato' | 'consulta'>) {
+    let destino = conversa
+    let status: MensagemAoCliente['status'] = 'falhou'
+    let erro: string | undefined
+    let chatwootId: number | null = null
+    if (chatwoot) {
+      // O Chatwoot de verdade: a falha dele volta como aviso e o envio fica registrado, sem reenviar sozinho (CA5).
+      const telefone = normalizarTelefone(ficha.telefone ?? '')
+      try {
+        if (!telefone) throw new Error(MSG_SEM_TELEFONE)
+        // A trava da homologação: fora da lista de teste, o Chatwoot não é chamado.
+        if (!chatwoot.permite(telefone)) throw new Error(MSG_FORA_DA_LISTA)
+        // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
+        if (cliente.consulta) throw new Error(MSG_CHATWOOT_FORA)
+        destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
+        const saiu = await chatwoot.enviar(destino, texto)
+        ;({ status, erro } = saiu)
+        chatwootId = saiu.id ?? null
+      } catch (e) {
+        status = 'falhou'
+        erro = e instanceof Error ? e.message : 'o Chatwoot falhou'
+      }
+    } else if (cliente.contato && entregaDeMentira) {
+      status = 'entregue'
+    } else {
+      // GGVP-158: sem o Chatwoot, nada sai. O simulado dá o contato e a conversa à tela, mas não finge a entrega.
+      erro = cliente.contato ? MSG_SIMULADO : simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
+    }
+    return { destino, status, erro, chatwootId }
+  }
+
+  /**
    * Sai pela conversa do cliente no Chatwoot (CA6), com o texto revisado (CA1). Confere de novo a trava do modelo (G8, CA8)
    * e o que o texto não pode ter (G9, G11, G20); a recusa do portão fica no histórico. A falha do canal volta para a tela e
    * fica no histórico (CA5); a mesma mensagem já enviada na mesma conversa não sai de novo.
@@ -242,30 +277,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       .where(and(eq(mensagem.pessoaId, ficha.id), eq(mensagem.conversaChatwoot, conversa), eq(mensagem.conteudo, texto), ne(mensagem.status, 'falhou')))
     const quem = await nomeDe(pedido)
     if (repetida) return { mensagem: paraTela(repetida, quem) }
-    let destino = conversa
-    let status: MensagemAoCliente['status'] = 'falhou'
-    let erro: string | undefined
-    if (chatwoot) {
-      // O Chatwoot de verdade: a falha dele volta como aviso e o envio fica registrado, sem reenviar sozinho (CA5).
-      const telefone = normalizarTelefone(ficha.telefone ?? '')
-      try {
-        if (!telefone) throw new Error(MSG_SEM_TELEFONE)
-        // A trava da homologação: fora da lista de teste, o Chatwoot não é chamado.
-        if (!chatwoot.permite(telefone)) throw new Error(MSG_FORA_DA_LISTA)
-        // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
-        if (pronta.consulta) throw new Error(MSG_CHATWOOT_FORA)
-        destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
-        ;({ status, erro } = await chatwoot.enviar(destino, texto))
-      } catch (e) {
-        status = 'falhou'
-        erro = e instanceof Error ? e.message : 'o Chatwoot falhou'
-      }
-    } else if (pronta.contato && entregaDeMentira) {
-      status = 'entregue'
-    } else {
-      // GGVP-158: sem o Chatwoot, nada sai. O simulado dá o contato e a conversa à tela, mas não finge a entrega.
-      erro = pronta.contato ? MSG_SIMULADO : simulado ? MSG_SEM_CONTATO : MSG_CHATWOOT_DESLIGADO
-    }
+    const { destino, status, erro, chatwootId } = await sair(ficha, texto, conversa, pronta)
     const [linha] = await banco
       .insert(mensagem)
       .values({
@@ -277,6 +289,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
         conversaChatwoot: destino,
         status,
         erro: erro ?? null,
+        chatwootMensagemId: chatwootId,
         enviadaPor: pedido.usuario!.id,
         enviadaEm: agora(),
       })
@@ -297,8 +310,52 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     return { mensagem: paraTela(linha, quem) }
   }
 
-  return { preparar, enviar, doCliente }
+  /**
+   * GGVP-158 P6.4: o texto aprovado de um modelo de outra tela (a confirmação da ida ao banco, do Financeiro), sem mudar uma
+   * letra. Sai pela conversa aberta do cliente na caixa do escritório, ou por uma nova, com as mesmas travas e portões do
+   * envio. Fica no histórico do cliente e na tela de quem enviou; a lista do correio é só a dos modelos do catálogo.
+   */
+  async function enviarAprovado(pedido: FastifyRequest, ficha: Ficha, a: { casoId: string; modeloId: string; nome: string; texto: string }) {
+    const texto = comAvisoDaSenha(a.texto)
+    const problema = problemasDaMensagem(texto).bloqueia[0]
+    if (problema) {
+      const portao = /\((G\d+)\)/.exec(problema)?.[1] ?? 'G20'
+      await historico(pedido.usuario!.id, 'portao_bloqueado', pedido, `pessoa:${ficha.id}`, { portao, passo: 'D3b.03', perfil: pedido.perfilAtivo })
+      return { status: 'falhou' as const, erro: problema }
+    }
+    const cliente = await noChatwoot(ficha)
+    const aberta = cliente.conversas.find((c) => c.situacao === 'aberta')?.id ?? 0
+    const { destino, status, erro, chatwootId } = await sair(ficha, texto, aberta, cliente)
+    const quem = await nomeDe(pedido)
+    const [linha] = await banco
+      .insert(mensagem)
+      .values({
+        pessoaId: ficha.id,
+        casoId: a.casoId,
+        canal: 'whatsapp',
+        modeloId: a.modeloId,
+        conteudo: texto,
+        conversaChatwoot: destino,
+        status,
+        erro: erro ?? null,
+        chatwootMensagemId: chatwootId,
+        aprovadaPor: pedido.usuario!.id,
+        enviadaPor: pedido.usuario!.id,
+        enviadaEm: agora(),
+      })
+      .returning({ id: mensagem.id })
+    ficha.contatos.push({ data: hoje(), canal: `Chatwoot · ${horaEmBrasilia(agora())} · ${STATUS_FALADO[status]}`, texto })
+    ficha.historico.push(
+      evento(erro ? `A mensagem «${a.nome}» não saiu pelo Chatwoot: ${erro}. Nada foi reenviado sozinho.` : `Enviou pelo Chatwoot a mensagem «${a.nome}» (${STATUS_FALADO[status]})`, quem),
+    )
+    await guardar(ficha)
+    await historico(pedido.usuario!.id, 'mensagem_enviada', pedido, `pessoa:${ficha.id}`, { mensagem: linha.id, modelo: a.nome, status })
+    return { status, erro }
+  }
+
+  return { preparar, enviar, doCliente, enviarAprovado }
 }
+export type Correio = ReturnType<typeof criarCorreio>
 
 export function registrarRotasMensagens(app: FastifyInstance, { banco, agora = () => new Date(), ambiente = process.env }: Opcoes) {
   const { fichas } = criarFichario(banco, agora)

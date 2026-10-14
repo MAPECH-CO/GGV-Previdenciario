@@ -1,8 +1,10 @@
 // Fluxo: onde o caso está no BPMN, as tarefas de cada raia e as decisões de pessoa (GGVP-105, 78, 94, 109).
-import { boolean, date, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, date, integer, jsonb, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
-import { caso } from './casos.ts'
+import { atendimento, caso } from './casos.ts'
 import { criadoEm, emLista, id, momento } from './comum.ts'
+import { pessoa } from './pessoas.ts'
 
 export const DIAGRAMAS = ['D1', 'D2', 'D3', 'D3a', 'D3b', 'D4', 'DP'] as const
 export const SITUACOES_ETAPA = ['aberta', 'aguardando_externo', 'concluida', 'cancelada'] as const
@@ -38,9 +40,11 @@ export const tarefa = pgTable(
   'tarefa',
   {
     id: id(),
-    casoId: uuid('caso_id')
-      .notNull()
-      .references(() => caso.id),
+    /** Nulo só na tarefa da pessoa, como a pendência da conversa com o lead (GGVP-158 P6.7): aí vale `pessoaId`. */
+    casoId: uuid('caso_id').references(() => caso.id),
+    pessoaId: uuid('pessoa_id').references(() => pessoa.id),
+    /** A conversa da tarefa da conversa (D5.04 e D5.05): a Central lê a pendência e o cliente por ela (GGVP-158 P6.7). */
+    atendimentoId: uuid('atendimento_id').references(() => atendimento.id),
     etapaId: uuid('etapa_id').references(() => etapa.id),
     passo: text('passo'),
     titulo: text('titulo').notNull(),
@@ -60,7 +64,7 @@ export const tarefa = pgTable(
     concluidaEm: momento('concluida_em'),
     concluidaPor: uuid('concluida_por').references(() => usuario.id),
   },
-  (t) => [emLista('tarefa_situacao', t.situacao, SITUACOES_TAREFA)],
+  (t) => [emLista('tarefa_situacao', t.situacao, SITUACOES_TAREFA), check('tarefa_caso_ou_pessoa', sql`${t.casoId} is not null or ${t.pessoaId} is not null`)],
 ).enableRLS()
 
 /**

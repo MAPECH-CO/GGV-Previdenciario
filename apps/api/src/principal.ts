@@ -14,6 +14,7 @@ import { olharOScanner } from './fluxo/scanner.ts'
 import { apagarSenhasVencidas } from './fluxo/cofre.ts'
 import { carregarFeriadosSeVazio } from './fluxo/feriados-ao-subir.ts'
 import { garantirPadroesDoProtocolo } from './fluxo/protocolo-ao-subir.ts'
+import { garantirModeloDaIdaAoBanco } from './rotas/prestacao.ts'
 
 const { banco } = await abrirBanco()
 // P17: com banco de verdade, os feriados da lei de 2026 e 2027 entram na primeira subida (tabela vazia). No banco de
@@ -21,6 +22,8 @@ const { banco } = await abrirBanco()
 if (process.env.DATABASE_URL) await carregarFeriadosSeVazio(banco, new Date())
 // GGVP-158 P5.8: o tribunal e a assinatura padrão, só os que faltarem.
 if (process.env.DATABASE_URL) await garantirPadroesDoProtocolo(banco, new Date())
+// GGVP-158 P6.4: o modelo da confirmação da ida ao banco, só se faltar.
+if (process.env.DATABASE_URL) await garantirModeloDaIdaAoBanco(banco, new Date())
 
 const app = criarServidor({
   logger: true,

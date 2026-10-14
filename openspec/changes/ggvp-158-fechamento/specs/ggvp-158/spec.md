@@ -774,3 +774,175 @@ O processo segue na vigília.
 - **Dado** um caso sem a tarefa do recurso
 - **Quando** a Sênior registra o protocolo
 - **Então** o portal recusa com "Este caso não tem recurso esperando o protocolo."
+
+### Requirement: P6.1 · O texto da decisão de mérito só para quem vê dado de saúde
+A confirmação do desfecho de mérito (o pedido #31, da GGVP-90) SHALL entrar na main com a revisão do Pedro, atualizada com a main. O `GET /api/casos/:id/desfecho` MUST devolver o texto da publicação da decisão só a quem tem `dado_saude.ver_detalhe`. Os outros perfis que veem o caso recebem o desfecho sem o texto. A separação é pelo perfil, no servidor, sem filtro por palavra.
+
+#### Scenario: P6.1 · A advogada lê a decisão
+- **Dado** a sentença que cita o laudo do perito
+- **Quando** a advogada abre o desfecho do caso
+- **Então** vê o texto da decisão
+
+#### Scenario: P6.1 · O Atendimento não lê a decisão
+- **Dado** a mesma sentença
+- **Quando** o Atendimento ou a Documentação abrem o desfecho
+- **Então** veem o desfecho sem o texto da decisão
+
+### Requirement: P6.2 · A entrada e as parcelas ficam no contrato
+Ao gerar o kit do contrato ("Preparar contrato"), quem conduz SHALL poder registrar o que foi combinado com o cliente:
+- o valor da entrada;
+- as parcelas: quantas e o valor de cada uma.
+
+O servidor MUST conferir os valores pela biblioteca `campos`, guardar o combinado no contrato do caso e registrar no histórico da ficha. Sem o combinado, o contrato fica como hoje; gerar de novo sem ele mantém o que já estava.
+
+#### Scenario: P6.2 · O combinado fica no contrato
+- **Dado** o contrato para preparar
+- **Quando** a Recepção gera o kit com a entrada de R$ 500,00 e 4 parcelas de R$ 300,00
+- **Então** o contrato guarda o combinado, e o histórico da ficha diz qual foi
+
+#### Scenario: P6.2 · Valor errado
+- **Quando** o valor da parcela vem como "abc"
+- **Então** o portal recusa com "Informe o valor de cada parcela, como 1.234,56", e o kit não é gerado
+
+### Requirement: P6.3 · A prestação de contas segue o contrato
+A prestação de contas SHALL abrir com a entrada e as parcelas do contrato, editáveis antes do OK. Nela:
+- o percentual de honorários é o do contrato e não muda (como hoje);
+- os honorários saem do percentual, e quem confere pode ajustá-los antes do OK;
+- o repasse é sempre o valor recebido menos os honorários, em centavos, calculado no código;
+- a forma de pagamento é Pix ou boleto do escritório no nome do cliente, e uma parte pode ser paga na Caixa, quando o escritório vai junto, até o valor dos honorários;
+- não há custas.
+
+Cada valor MUST guardar a fonte: o contrato, o cálculo do sistema, quem conferiu ou a carta de concessão. Transferência e dinheiro deixam de ser aceitos; as versões antigas com eles continuam legíveis.
+
+#### Scenario: P6.3 · A prestação abre com o contrato
+- **Dado** o contrato com a entrada e as parcelas
+- **Quando** a advogada abre a prestação
+- **Então** vê a entrada e as parcelas, com a fonte "contrato"
+
+#### Scenario: P6.3 · Ajuste antes do OK
+- **Dado** a prestação aberta
+- **Quando** a advogada ajusta os honorários e as parcelas e dá o OK
+- **Então** a versão guarda os valores com a fonte "quem conferiu", o histórico guarda o calculado e o ajustado, e o repasse fecha em centavos
+
+#### Scenario: P6.3 · Contrato sem o combinado
+- **Dado** um contrato sem a entrada e as parcelas
+- **Quando** a advogada abre a prestação
+- **Então** os dois vêm vazios, sem zero inventado, e ela preenche
+
+#### Scenario: P6.3 · A parte na Caixa
+- **Quando** a parte paga na Caixa passa dos honorários
+- **Então** o portal recusa com "A parte paga na Caixa vai até o valor dos honorários."
+
+### Requirement: P6.4 · A ida ao banco: a ligação registra, e o WhatsApp sai de verdade
+O aviso da ida ao banco SHALL ser a ligação do Financeiro, registrada no portal depois do OK e do recebimento, como hoje. A mensagem pelo WhatsApp SHALL ser só o complemento:
+- depois da ligação registrada;
+- com o texto do modelo aprovado "Confirmação da ida ao banco", sem mudar uma letra;
+- enviada de verdade pelo Chatwoot. A que não sai MUST ser recusada com o motivo e ficar no histórico do cliente.
+
+E-mail e SMS saem da lista, porque o portal não envia por eles. Ao subir com banco de verdade, o modelo "Confirmação da ida ao banco" SHALL entrar se faltar; a Sênior ajusta o texto na Configuração.
+
+#### Scenario: P6.4 · A ligação
+- **Dado** o OK da advogada e o recebimento
+- **Quando** o Financeiro registra a ligação
+- **Então** o aviso fica registrado, e o caso entra no acervo, como hoje
+
+#### Scenario: P6.4 · O WhatsApp antes da ligação
+- **Quando** o Financeiro manda o complemento sem a ligação registrada
+- **Então** o portal recusa com "Ligue para o cliente antes: a mensagem é só o complemento da ligação."
+
+#### Scenario: P6.4 · O WhatsApp que não saiu
+- **Dado** a ligação registrada e o Chatwoot que não entregou
+- **Quando** o Financeiro manda o complemento
+- **Então** o portal recusa com o motivo, e a tentativa fica no histórico do cliente
+
+#### Scenario: P6.4 · O modelo ao subir
+- **Dado** um banco sem o modelo "Confirmação da ida ao banco"
+- **Quando** o servidor sobe
+- **Então** o modelo nasce; o que a Sênior mudou nunca é refeito
+
+### Requirement: P6.5 · A mensagem do WhatsApp entra no portal
+O Chatwoot SHALL avisar o portal de cada mensagem por uma rota pública, com um segredo no endereço (`CHATWOOT_WEBHOOK_SEGREDO`). A rota MUST:
+- responder 404 sem o segredo certo, ou sem a variável;
+- não registrar o endereço no log;
+- aceitar só a conta e a caixa do escritório;
+- fora da produção, aceitar só os telefones de teste, como no envio.
+
+A mensagem do cliente SHALL entrar na conversa do WhatsApp da pessoa do telefone, cliente ou lead, ligada ao caso mais recente. Sem pessoa com o telefone, o lead SHALL nascer com o nome do contato. A conversa junta as mensagens até 30 minutos sem mensagem nova, e a seguinte abre outra. A resposta do escritório pelo Chatwoot entra na mesma conversa. A entrega e a leitura de uma mensagem que o portal mandou SHALL atualizar o status dela.
+
+#### Scenario: P6.5 · Cliente conhecida
+- **Dado** a cliente com o telefone (11) 98888-7777
+- **Quando** chega pelo WhatsApp "Mudei de endereço"
+- **Então** a mensagem entra na conversa do WhatsApp dela, ligada ao caso
+
+#### Scenario: P6.5 · Telefone novo
+- **Dado** nenhuma pessoa com o telefone
+- **Quando** chega a primeira mensagem
+- **Então** o lead nasce com o nome do contato, e a mensagem entra na conversa dele
+
+#### Scenario: P6.5 · Segredo errado
+- **Quando** alguém chama a rota com outro segredo
+- **Então** o portal responde 404 e não grava nada
+
+#### Scenario: P6.5 · Entregue e lida
+- **Dado** a orientação da perícia que saiu pelo portal
+- **Quando** o Chatwoot avisa que ela foi lida
+- **Então** a mensagem passa a "lida"
+
+### Requirement: P6.6 · A IA da conversa só aponta o que foi dito, e a Sênior confere
+Na análise da conversa, a IA SHALL apontar só o valor que aparece na fala de onde veio:
+- o texto, sem acento nem caixa;
+- os números do telefone, do CPF, do CEP e do NB;
+- a data, em números ou com o mês escrito.
+
+O que não aparece MUST ficar de fora, conferido no código. O fato novo e o documento citado seguem como hoje, com a fala junto.
+
+Quem conduziu a conversa SHALL registrar e responder a pendência. Confirmar, corrigir ou desfazer o que a IA apontou SHALL ser da Sênior, numa tarefa dela. Na conversa do WhatsApp, quem responde a pendência é o Atendimento.
+
+#### Scenario: P6.6 · O valor que não foi dito
+- **Dado** a fala "moro na Rua das Flores"
+- **Quando** a IA aponta o endereço "Rua das Palmeiras"
+- **Então** o item fica de fora da conferência
+
+#### Scenario: P6.6 · Quem conduziu não confirma
+- **Dado** a conversa da atendente, com dois itens apontados
+- **Quando** a atendente confirma um item
+- **Então** o portal recusa com "Quem confirma, corrige ou desfaz o que a IA apontou é a Sênior."
+
+#### Scenario: P6.6 · A Sênior confere
+- **Dado** a pendência respondida pela atendente
+- **Quando** a Sênior confirma um item e desfaz o outro
+- **Então** só o confirmado entra na ficha, e a tarefa dela fecha
+
+### Requirement: P6.7 · A pendência da conversa é uma tarefa
+A pendência que nasce na conferência SHALL virar uma linha da tabela de tarefas, com a pessoa, o responsável e o prazo, e o caso quando há. A pendência de quem ainda não tem caso SHALL ser tarefa da pessoa, sem caso. Dar por cumprida MUST fechar a linha, e o prazo novo da Sênior muda a linha. A Central SHALL ler as linhas, sem ler todas as conversas.
+
+#### Scenario: P6.7 · O lead sem caso
+- **Dado** a conversa com um lead, sem caso
+- **Quando** a atendente responde que surgiu pendência para a Documentação
+- **Então** nasce a tarefa da pessoa, sem caso, e ela aparece na Central da responsável
+
+#### Scenario: P6.7 · Cumprida
+- **Quando** a responsável dá a pendência por cumprida
+- **Então** a tarefa fecha e sai da Central
+
+#### Scenario: P6.7 · Prazo novo
+- **Dado** a pendência atrasada
+- **Quando** a Sênior dá um prazo novo
+- **Então** a tarefa passa a ter o prazo novo
+
+### Requirement: P6.8 · Telefone, e-mail e dado bancário só com o cliente verificado, também na ligação
+Na ligação e no WhatsApp, a verificação do cliente SHALL ser por chamada de vídeo; "no escritório" só vale na conversa presencial. Quem conduziu SHALL registrar a verificação na conversa (como, quem e quando), e a conversa SHALL devolvê-la. A conferência MUST usar a verificação registrada. A recusa fica no histórico, como hoje.
+
+#### Scenario: P6.8 · Ligação com vídeo
+- **Dado** a ligação em que a atendente verificou o cliente por chamada de vídeo
+- **Quando** a Sênior confirma o telefone novo, em contrato novo
+- **Então** o telefone muda, e a verificação fica na conversa
+
+#### Scenario: P6.8 · Ligação com "no escritório"
+- **Quando** a atendente registra, numa ligação, a verificação "no escritório"
+- **Então** o portal recusa com "Na ligação e no WhatsApp, o cliente se verifica por chamada de vídeo."
+
+#### Scenario: P6.8 · Sem verificação
+- **Dado** a ligação sem verificação
+- **Quando** a Sênior confirma o e-mail novo
+- **Então** o portal recusa, e a recusa fica no histórico

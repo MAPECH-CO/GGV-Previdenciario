@@ -456,3 +456,131 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
   - API 927 de 928 na suíte inteira (3 pulados), em 101 arquivos. A única falha foi a das variáveis, que rodou antes de o Mateus pôr os cinco nomes; depois, sozinha, 4/4;
   - Playwright 260/260;
   - `openspec validate --all --strict`, 16/16.
+
+## GGVP-158 · Parte 6 · Desfecho, dinheiro e conversa (13/10)
+
+Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-parte-6`, em cima do #75; o #31 segue no pedido dele. Migração 0033 (a 0032 é a do recurso, que veio da main). Na ordem contrato → teste → servidor.
+
+- [ ] 6.1 O pedido #31 (P6.1, decisão 54): juntar a main na branch dele (merge, sem rebase), o texto da decisão só com `dado_saude.ver_detalhe`, e sair do rascunho para o Pedro.
+  - Verifica com `rotas/desfecho.test.ts`:
+    - a advogada lê o texto;
+    - o Atendimento e a Documentação recebem o desfecho sem o texto.
+- [x] 6.2 A migração 0033 (decisões 56, 58 e 64): as colunas da prestação, `mensagem.chatwoot_mensagem_id`, `tarefa.caso_id` sem obrigação, `tarefa.pessoa_id` com o CHECK, `tarefa.atendimento_id`, e as pendências abertas viram linha.
+  - Verifica com `banco/migracoes.test.ts` e com teste da migração:
+    - a tarefa sem caso e sem pessoa é recusada;
+    - a pendência aberta ganha a linha, ligada à conversa.
+
+  Verificado em 13/10: `banco/migracoes.test.ts` 15/15 (2 novos). A última instrução da migração leva as pendências abertas para a tabela e roda de novo sem repetir. Depois, ela ganhou `tarefa.atendimento_id` (a conversa da tarefa), no lugar do id da tarefa guardado na conversa. Com a main da parte 5 (o #73 trouxe a 0032 do recurso), ela virou a 0033.
+- [x] 6.3 A tarefa com `casoId` nulo (decisão 64): os usos conferidos pelo typecheck, e a Central geral sem a linha sem caso. Verifica com o typecheck e as suítes que leem a Central.
+
+  Verificado em 13/10: o typecheck da API pegou 4 usos (Central e Financeiro), corrigidos; `rotas/inss.test.ts` e `rotas/financeiro.test.ts`, 17/17. A Central geral lê o caso pela junção e deixa de fora as linhas `D5`.
+- [x] 6.4 O combinado no contrato (P6.2, decisão 55): `AcordoDoContrato` e `EnvioDoContrato.acordo`; a geração guarda e escreve no histórico.
+  - Verifica com o teste do contrato e com `rotas/recepcao-contrato.test.ts`:
+    - o combinado fica no contrato;
+    - o valor errado recusa sem gerar;
+    - gerar de novo sem ele mantém.
+
+  Verificado em 13/10: contratos `prestacao.test.ts` (o combinado) e `rotas/recepcao-contrato.test.ts` 28/28 (1 novo): o combinado fica no contrato e no histórico, a versão 2 mantém, e o valor errado recusa sem kit novo.
+- [x] 6.5 A regra da prestação (P6.3, decisão 56): `calcularPrestacao` com os honorários ajustados; `SalvarPrestacao` com a entrada, as parcelas e a parte na Caixa; Pix e boleto.
+  - Verifica com o teste do contrato:
+    - fecha em centavos, com e sem ajuste;
+    - honorários acima do recebido recusam;
+    - a parte na Caixa acima dos honorários recusa;
+    - "dinheiro" recusa.
+
+  Verificado em 13/10: contratos `prestacao.test.ts` e `calculo-prestacao.test.ts`, 15/15 (4 novos). A lista `FORMAS_DE_PAGAMENTO` fica com as quatro para ler as versões antigas e para não quebrar o teste de tela do Pedro, que conta as opções; a prestação nova aceita só `FORMAS_ACEITAS` (Pix e boleto).
+- [x] 6.6 A prestação no servidor (P6.3): o `GET` com o combinado e as fontes; o `POST` grava os valores novos e as fontes.
+  - Verifica com `rotas/prestacao.test.ts`:
+    - abre com o contrato;
+    - o ajuste fica com a fonte de quem conferiu, e o histórico com os dois valores;
+    - o contrato sem o combinado vem nulo.
+
+  Verificado em 13/10: `rotas/prestacao.test.ts` 29/29 (4 novos): abre com o combinado; as fontes do contrato, da carta e do sistema; o ajuste com a fonte de quem conferiu e o histórico com os dois valores; a forma antiga e a Caixa acima dos honorários recusam.
+- [x] 6.7 A ida ao banco (P6.4, decisão 57): telefone e WhatsApp; o WhatsApp só depois da ligação, pelo correio, com o texto aprovado.
+  - Verifica com `rotas/prestacao.test.ts` e `rotas/mensagens.test.ts`:
+    - a ligação registra como hoje;
+    - o WhatsApp antes da ligação recusa;
+    - o que não saiu recusa e fica no histórico;
+    - o que saiu fica na lista do cliente.
+
+  Verificado em 13/10: `rotas/prestacao.test.ts` 31/31 (2 novos; os de antes avisam pela ligação) e `rotas/mensagens.test.ts`. O WhatsApp antes da ligação recusa; sem o Chatwoot, 409 com o motivo, a tentativa no histórico e fora dos avisos; com ele, sai pela conversa aberta, com o texto aprovado e o aviso da senha.
+- [x] 6.8 O modelo ao subir (P6.4): `garantirModeloDaIdaAoBanco`. Verifica com teste: o banco novo ganha o modelo, e o mudado pela Sênior fica.
+
+  Verificado em 13/10, no teste de `rotas/prestacao.test.ts`: o banco sem o modelo ganha o padrão; o desligado pela Sênior fica, e nada entra.
+- [x] 6.9 O id do Chatwoot (P6.5, decisão 58): `enviar` devolve o id, e o correio grava. Verifica com `chatwoot.test.ts` e `rotas/mensagens.test.ts`.
+
+  Verificado em 13/10: `rotas/mensagens.test.ts` (o envio guarda o id 9001 do Chatwoot) e o complemento da ida ao banco (o id 77). O cliente do Chatwoot não tem teste próprio: o fetch de mentira das rotas cobre o `enviar`.
+- [x] 6.10 A rota de entrada (P6.5, decisão 59): o segredo, o log, a conta, a caixa e a trava da homologação.
+  - Verifica com `rotas/chatwoot-entrada.test.ts`:
+    - sem a variável e com outro segredo, 404;
+    - outra conta ou caixa, ignorada;
+    - fora da lista de teste, ignorada;
+    - o endereço não vai ao log.
+
+  Verificado em 13/10: `rotas/chatwoot-entrada.test.ts` (3 testes da rota): sem a variável e com outro segredo, 404; outra conta, outra caixa, nota privada, atividade, texto vazio e telefone fora da lista, 200 sem gravar nada; num servidor com o log ligado, o segredo não aparece. A trava de sessão de `/api` libera só esta rota, além de entrar: `sessao/rotas.test.ts` e `servidor.test.ts`, 36/36.
+- [x] 6.11 A mensagem vira conversa (P6.5, decisão 60): a pessoa pelo telefone, o lead novo, a conversa que junta as mensagens e a resposta do escritório.
+  - Verifica com `rotas/chatwoot-entrada.test.ts`:
+    - a cliente conhecida;
+    - o telefone novo vira lead;
+    - 30 minutos depois, outra conversa;
+    - mãe e filha no mesmo número.
+
+  Verificado em 13/10: `rotas/chatwoot-entrada.test.ts` (6 testes): a cliente conhecida, com o celular sem o nono dígito, e a resposta do escritório na mesma conversa; o aviso repetido não entra; a senha sai do texto; o lead novo com o nome do contato (e "Contato do WhatsApp" com emoji); a resposta a um número sem ficha não cria lead; mãe e filha no mesmo número.
+- [x] 6.12 A entrega e a leitura (P6.5): `message_updated` muda o status pelo id do Chatwoot, só para a frente. Verifica com `rotas/chatwoot-entrada.test.ts`.
+
+  Verificado em 13/10, em `rotas/chatwoot-entrada.test.ts`: o aviso de mudança não traz o status (conferido no código do Chatwoot), e o portal pergunta; entregue, depois lida, e não volta; a mensagem que o portal não mandou não pergunta nada.
+- [x] 6.13 A conversa do WhatsApp fecha e a IA lê (decisão 61).
+  - Verifica com teste, com a IA de mentira:
+    - a rodada fecha a conversa parada e analisa;
+    - sem IA, a mensagem seguinte fecha a anterior, com o aviso;
+    - nasce a tarefa do Atendimento.
+
+  Verificado em 13/10, em `rotas/chatwoot-entrada.test.ts`: com a IA de mentira, a rodada fecha a conversa parada e a IA aponta o endereço dito; o Atendimento responde a pendência, e a Sênior confirma, e a ficha muda; sem a IA, a mensagem 30 minutos depois fecha a anterior, com o motivo, e nasce a conferência do Atendimento.
+- [x] 6.14 ADR-019 e a variável (decisão 66): o documento, e `CHATWOOT_WEBHOOK_SEGREDO` na lista das variáveis e na doc da homologação.
+  - Verifica com `variaveis.test.ts`.
+  - O `.env.example` é do Mateus.
+
+  Verificado em 13/10: `variaveis.test.ts` 4/4, com o nome que o Mateus pôs no arquivo de exemplo e a linha da doc da homologação. O ADR-019 está em `docs/decisoes/`, na lista do README.
+- [x] 6.15 Só o que foi dito (P6.6, decisão 62): `apareceNaFala` e o filtro em `lerComIa`.
+  - Verifica com o teste da regra e com `rotas/transcricao-conversa.test.ts`:
+    - o endereço que não foi dito sai;
+    - o telefone e a data ditos de outro jeito passam;
+    - o fato novo segue.
+
+  Verificado em 13/10: `regras/conversa-fala.test.ts` 6/6 (novo, com o texto grande em tempo linear) e `rotas/transcricao-conversa.test.ts` 8/8: o contato de apoio que não aparece na fala sai; o telefone que não foi dito também, e o id dos itens segue a lista que ficou.
+- [x] 6.16 A Sênior confere (P6.6, decisão 63): a primeira conferência só com a pendência; as decisões só com `ficha.voltar_versao`; a tarefa `D5.04` da Sênior.
+  - Verifica com `rotas/conversa.test.ts`:
+    - a atendente que decide recebe 403;
+    - a Sênior decide, e a tarefa fecha;
+    - a conversa do WhatsApp, pelo Atendimento.
+
+  Verificado em 13/10: `rotas/conversa.test.ts` 12/12 e `rotas/transcricao-conversa.test.ts` 8/8. A atendente que decide recebe 403 (e a recusa fica no histórico, portão `conferencia_da_senior`); a Sênior decide os cinco itens, e a tarefa dela fecha. A conversa do WhatsApp, pelo Atendimento, fica no teste da tarefa 6.13.
+- [x] 6.17 O Playwright da conversa com a Sênior conferindo (decisão 63). Verifica com o Playwright da conversa.
+
+  Verificado em 13/10: Playwright 260/260, com o da conversa. Ele não precisou mudar: usa a conversa só escrita, sem item da IA, e quem conduziu confere sem decidir nada.
+- [x] 6.18 A pendência vira tarefa (P6.7, decisão 64): a linha na conferência, fechada na cumprida, com o prazo novo; a Central da conversa lê as linhas.
+  - Verifica com `rotas/conversa.test.ts`:
+    - o lead sem caso;
+    - cumprida e prazo novo;
+    - a Central sem ler todas as conversas.
+
+  Verificado em 13/10: `rotas/conversa.test.ts` (1 novo): a pendência do lead sem caso é tarefa da pessoa e aparece na Central da responsável, não na geral; o prazo novo e o "cumprida" mudam a linha. A Central da conversa lê as linhas da tarefa e, para o "Registrar conversa", só as conversas de quem está no login.
+- [x] 6.19 A verificação na conversa (P6.8, decisão 65): a rota, a regra do canal e o uso na conferência.
+  - Verifica com `rotas/conversa.test.ts`:
+    - a ligação com vídeo muda o telefone;
+    - "no escritório" na ligação recusa;
+    - sem verificação, recusa e fica no histórico.
+
+  Verificado em 13/10, no teste da conferência de `rotas/conversa.test.ts`: "no escritório" na ligação recusa, na rota e na conferência, e fica no histórico; com a chamada de vídeo registrada pela Ana, a Sênior muda o telefone em contrato novo, e a verificação fica na conversa.
+- [x] 6.20 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
+
+  Feito no pedido da parte 6 (#78), na seção "Para o Pedro ligar nas telas", rota por rota.
+- [x] 6.21 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10, com a main juntada (o #71 ao #74):
+  - typecheck dos quatro pacotes sem erro, e lint sem erro (os 3 avisos da tela já existiam);
+  - contratos 186/186 e `campos` 11/11;
+  - tela 1668/1668, em 198 arquivos. A primeira rodada achou a regra de abrir a conversa aceitando o WhatsApp (o `in` enxergava a entrada não enumerável); corrigida, com o teste do Pedro como estava;
+  - API 958 de 959 na suíte inteira (3 pulados), em 102 arquivos. A única falha foi a das variáveis, antes de o Mateus pôr o nome; depois, sozinha, 4/4, e as suítes da conversa e da entrada do Chatwoot de novo, 35/35;
+  - Playwright 260/260;
+  - `openspec validate --all --strict`, 16/16.

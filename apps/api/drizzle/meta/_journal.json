@@ -232,6 +232,13 @@
       "when": 1791924113961,
       "tag": "0032_resultado_do_recurso",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791931918364,
+      "tag": "0033_pendencia_prestacao_e_chatwoot",
+      "breakpoints": true
     }
   ]
 }

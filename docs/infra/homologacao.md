@@ -151,6 +151,7 @@ Nenhum valor vai para o repositório, o Jira ou o chat.
 | `CHATWOOT_CAIXA` | O número da caixa de entrada. |
 | `CHATWOOT_TOKEN` | O token de acesso de um agente da conta. |
 | `CHATWOOT_PERMITIDOS` | Fora de produção, os únicos telefones com que o Chatwoot fala, separados por vírgula. |
+| `CHATWOOT_WEBHOOK_SEGREDO` | O segredo do endereço que o webhook do Chatwoot chama, `/api/chatwoot/entrada/<segredo>` (ADR-019). Segredo: só no Coolify e no webhook do Chatwoot. Sem ela, a rota responde 404 e nada entra. |
 | `RELACIONAMENTO_SIMULADO` | Sem o Chatwoot, `nao` tira até o contato simulado da tela. `entrega` finge a entrega e é só dos testes de tela (`playwright.config.ts`): na homologação e na produção, nunca. |
 | `GOTENBERG_URL` | O conversor do kit do contrato para PDF. Sem ela, o kit sai em Word. |
 | `LEITURA_SIMULADA` | `sim` troca a leitura da IA pela leitura de exemplo, pelo nome do arquivo. É só dos testes de tela (`playwright.config.ts`): com `AMBIENTE` igual a `homologacao` ou `producao`, o servidor não sobe com ela. |

@@ -4,6 +4,7 @@
 import { validarData } from '@ggv/campos'
 import { z } from 'zod'
 import { EntradaCalculoCnis } from './calculo-cnis.ts'
+import { AcordoDoContrato } from './prestacao.ts'
 
 const Texto = (max: number) => z.string().trim().max(max)
 const Opcional = (max: number) => Texto(max).optional()
@@ -291,12 +292,16 @@ export type FechamentoDoCaso = z.infer<typeof FechamentoDoCaso>
 export const CondicoesDoKit = z.object({ representado: z.boolean(), moradia: z.boolean(), uniaoEstavel: z.boolean(), separacaoDeFato: z.boolean() })
 export type CondicoesDoKit = z.infer<typeof CondicoesDoKit>
 
-/** POST /api/processos/:id/contrato/gerar: a decisão, o que corrigir, as conferências e as correções (GGVP-69). */
+/**
+ * POST /api/processos/:id/contrato/gerar: a decisão, o que corrigir, as conferências e as correções (GGVP-69). GGVP-158
+ * P6.2: e o combinado com o cliente (a entrada e as parcelas), que fica no contrato; sem ele, fica o que já estava.
+ */
 export const EnvioDoContrato = z.object({
   aprovados: z.boolean(),
   oQueCorrigir: Opcional(500),
   conferencias: z.record(z.string().max(40), z.boolean()),
   correcoes: z.record(z.string().max(40), Texto(300)),
+  acordo: AcordoDoContrato.optional(),
 })
 export type EnvioDoContrato = z.infer<typeof EnvioDoContrato>
 

@@ -78,3 +78,22 @@ export const MensagemAoCliente = z.object({
   erro: z.string().optional(),
 })
 export type MensagemAoCliente = z.infer<typeof MensagemAoCliente>
+
+const ContatoNoAviso = z.object({ name: z.string().nullish(), phone_number: z.string().nullish() }).partial()
+/**
+ * GGVP-158 P6.5 (ADR-019): o que o portal lê do aviso do Chatwoot, o webhook da conta (`message_created`,
+ * `message_updated`). O telefone do contato vem na conversa (`meta.sender`), na mensagem que chega e na resposta do
+ * escritório. O aviso de mudança não traz o status: o portal pergunta. O resto do corpo é ignorado.
+ */
+export const EventoDoChatwoot = z.object({
+  event: z.string(),
+  id: z.number().int().optional(),
+  content: z.string().nullish(),
+  message_type: z.string().optional(),
+  private: z.boolean().optional(),
+  attachments: z.array(z.unknown()).optional(),
+  account: z.object({ id: z.number().int() }).optional(),
+  inbox: z.object({ id: z.number().int() }).optional(),
+  conversation: z.object({ id: z.number().int(), meta: z.object({ sender: ContatoNoAviso.optional() }).partial().optional() }).optional(),
+})
+export type EventoDoChatwoot = z.infer<typeof EventoDoChatwoot>

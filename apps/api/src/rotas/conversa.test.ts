@@ -2,16 +2,16 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, eventoAuditoria, gravacaoRecepcao, pericia, pessoa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, eventoAuditoria, gravacaoRecepcao, pericia, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_SEM_AUDIO, MSG_TRANSCRICAO_DESLIGADA } from '../fluxo/transcricao.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_SEM_AVISO_NA_CONVERSA, MSG_SEM_AVISO_NA_LIGACAO } from './conversa.ts'
+import { MSG_DECISAO_DA_SENIOR, MSG_SEM_AVISO_NA_CONVERSA, MSG_SEM_AVISO_NA_LIGACAO, MSG_VIDEO_NA_LIGACAO, TITULO_CONFERIR_IA, TITULO_PENDENCIA } from './conversa.ts'
 import { MSG_MANDE_O_ARQUIVO } from './recepcao-entrevista.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -231,25 +231,48 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(r.gravacao).toMatchObject({ transcricao: 'falhou', motivoDaFalha: MSG_SEM_AUDIO, trechos: [] })
   })
 
-  it('conferir: só quem conversou; nada sem a pendência respondida; telefone só com o cliente verificado; o fato novo, só o Jurídico confirma', async () => {
+  it('conferir: quem conversou responde a pendência; o que a IA apontou é da Sênior, numa tarefa dela; o telefone só com o cliente verificado por vídeo (GGVP-158 P6.6, P6.7, P6.8)', async () => {
     const { fichaId, id, transcrita } = await ligacaoTranscrita()
     const m = transcrita.conversa.analise.mudancas
     const url = `/api/conversas/${id}/conferencia`
     const confirmar = (...campos: string[]) => campos.map((c) => ({ id: idDo(m, c), decisao: 'confirmada' }))
-    const decisoes = [...confirmar('endereco', 'telefone', 'pericia', 'documento')]
+    const decisoes = confirmar('endereco', 'telefone', 'pericia', 'documento', 'fato')
     const pendencia = { surgiu: true, texto: transcrita.conversa.analise.pendencia, responsavel: 'jessica', prazo: '10/10/2026' }
 
-    expect((await chamar('gabi', 'POST', url, { decisoes, pendencia })).statusCode).toBe(403)
-    expect((await json('ana', 'POST', url, { decisoes })).erro).toBe('Responda "Surgiu pendência?".')
-    expect((await json('ana', 'POST', url, { decisoes: [...decisoes, ...confirmar('fato')], pendencia })).erro).toBe('A mudança de fato novo é de a advogada responsável ou a Sênior.')
-    expect((await json('ana', 'POST', url, { decisoes, pendencia: { ...pendencia, responsavel: 'ninguém' } })).erro).toBe('Escolha quem fica com a tarefa.')
-    // A ligação não é o cliente no escritório: o telefone só muda com a verificação e o contrato novo (GGVP-111).
-    expect((await json('ana', 'POST', url, { decisoes, pendencia })).erro).toMatch(/^Telefone, e-mail e dados bancários só mudam/)
-    expect(await eventos('portao_bloqueado')).toEqual([expect.objectContaining({ portao: 'verificacao', passo: 'D5.04', perfil: 'atendimento' })])
-
-    const r = await json('ana', 'POST', url, { decisoes, pendencia, verificacao: { como: 'video', contratoNovo: true } })
+    expect((await chamar('gabi', 'POST', url, { decisoes: [], pendencia })).statusCode).toBe(403)
+    expect((await json('ana', 'POST', url, { decisoes: [] })).erro).toBe('Responda "Surgiu pendência?".')
+    expect((await json('ana', 'POST', url, { decisoes: [], pendencia: { ...pendencia, responsavel: 'ninguém' } })).erro).toBe('Escolha quem fica com a tarefa.')
+    // Quem conduziu não decide o que a IA apontou.
+    const naoDecide = await chamar('ana', 'POST', url, { decisoes, pendencia })
+    expect([naoDecide.statusCode, naoDecide.json().erro]).toEqual([403, MSG_DECISAO_DA_SENIOR])
+    const r = await json('ana', 'POST', url, { decisoes: [], pendencia })
     expect(r.conversa).toMatchObject({ conferidaEm: relogio.toISOString(), pendencia: { responsavel: 'jessica', setor: 'Documentação · ADM', prazo: '2026-10-10' } })
     expect(r.conversa.pendencia.responsavelId).toBeUndefined()
+    expect(r.ficha.endereco ?? '').toBe('')
+
+    // A pendência é uma linha da tarefa, ligada à conversa, na Central da Jéssica; a Sênior tem a dela; a conversa sai da
+    // Central da Ana.
+    const linhas = await banco.select().from(tarefa).where(eq(tarefa.atendimentoId, id))
+    expect(linhas.map((t) => [t.passo, t.titulo, t.perfilDono, t.pessoaId === fichaId, t.prazo]).sort()).toEqual([
+      ['D5.04', TITULO_CONFERIR_IA, 'senior', true, null],
+      ['D5.05', TITULO_PENDENCIA, 'documentacao', true, '2026-10-10'],
+    ])
+    expect(await json('jessica', 'GET', '/api/conversas/tarefas')).toEqual([expect.objectContaining({ acao: 'Cumprir pendência', prazo: 'vence 10/10', href: `/conversas/${id}/conferir` })])
+    expect(await json('ana', 'GET', '/api/conversas/tarefas')).toEqual([])
+    expect(await json('helena', 'GET', '/api/conversas/tarefas')).toEqual([expect.objectContaining({ codigo: 'D5.04', acao: TITULO_CONFERIR_IA, href: `/conversas/${id}/conferir` })])
+
+    // A ligação não é o cliente no escritório: o telefone só muda com a chamada de vídeo e o contrato novo (GGVP-111, P6.8).
+    expect((await json('helena', 'POST', url, { decisoes, verificacao: { como: 'presencial', contratoNovo: true } })).erro).toMatch(/^Telefone, e-mail e dados bancários só mudam/)
+    expect((await json('ana', 'POST', `/api/conversas/${id}/verificacao`, { como: 'presencial' })).erro).toBe(MSG_VIDEO_NA_LIGACAO)
+    expect((await eventos('portao_bloqueado')).map((e) => [e.portao, e.perfil])).toEqual([
+      ['conferencia_da_senior', 'atendimento'],
+      ['verificacao', 'senior'],
+      ['verificacao', 'atendimento'],
+    ])
+    const verificada = await json('ana', 'POST', `/api/conversas/${id}/verificacao`, { como: 'video' })
+    expect(verificada.conversa.verificacao).toEqual({ como: 'video', por: 'ana', em: relogio.toISOString() })
+    const daSenior = await json('helena', 'POST', url, { decisoes, verificacao: { contratoNovo: true } })
+    expect(daSenior.conversa.decisoes).toHaveLength(5)
     // A ficha do cliente no servidor mudou: o documento da Recepção e a pessoa que o resto do portal lê.
     const ficha = await json('jessica', 'GET', `/api/fichas/${fichaId}`)
     expect(ficha).toMatchObject({ telefone: '11900000044', endereco: 'Rua Exemplo das Acácias, 45' })
@@ -257,35 +280,46 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(p).toMatchObject({ telefone: '11900000044', logradouro: 'Rua Exemplo das Acácias, 45' })
     expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).toEqual(
       expect.arrayContaining([
+        'Verificou o cliente na conversa: chamada de vídeo com o cliente',
         'Mudança de telefone de contato com o cliente verificado (chamada de vídeo com o cliente; em contrato novo)',
         'Atualizou na ficha, pela conversa, o telefone de contato: «(11) 98765-4321» → «(11) 90000-0044»',
         'Atualizou no processo, pela conversa, o data da perícia do INSS: «—» → «16/10/2026»',
       ]),
     )
-    expect(r.gravacao.marcas).toContain('ficha atualizada')
-    // A pendência vira tarefa na Central da Jéssica; a conversa sai da Central da Ana.
-    expect(await json('jessica', 'GET', '/api/conversas/tarefas')).toEqual([expect.objectContaining({ acao: 'Cumprir pendência', prazo: 'vence 10/10', href: `/conversas/${id}/conferir` })])
-    expect(await json('ana', 'GET', '/api/conversas/tarefas')).toEqual([])
-
-    // Depois, o Jurídico confere só o que é dele.
-    expect((await json('ana', 'POST', url, { decisoes: confirmar('fato') })).erro).toBe('A mudança de fato novo é de a advogada responsável ou a Sênior.')
-    const doJuridico = await json('gabi', 'POST', url, { decisoes: confirmar('fato') })
-    expect(doJuridico.conversa.decisoes).toHaveLength(5)
+    expect(daSenior.gravacao.marcas).toContain('ficha atualizada')
+    // Tudo decidido: a tarefa da Sênior fecha, com quem e quando.
+    expect(await json('helena', 'GET', '/api/conversas/tarefas')).toEqual([])
+    const [daIa] = await banco.select().from(tarefa).where(and(eq(tarefa.atendimentoId, id), eq(tarefa.passo, 'D5.04')))
+    expect([daIa.situacao, daIa.concluidaEm?.toISOString()]).toEqual(['concluida', relogio.toISOString()])
     expect(await eventos('conversa_conferida')).toEqual([
-      expect.objectContaining({ confirmadas: 4, campos: ['endereco', 'telefone', 'pericia', 'documento'], pendencia: true }),
-      expect.objectContaining({ confirmadas: 1, campos: ['fato'], pendencia: false }),
+      expect.objectContaining({ confirmadas: 0, campos: [], pendencia: true }),
+      expect.objectContaining({ confirmadas: 5, campos: ['endereco', 'telefone', 'pericia', 'documento', 'fato'], pendencia: false }),
     ])
     // As versões são as mesmas para quem vê o caso.
     expect(await json('ana', 'GET', `/api/fichas/${fichaId}/versoes`)).toEqual(await json('gabi', 'GET', `/api/fichas/${fichaId}/versoes`))
+  })
+
+  it('GGVP-158 P6.7 · a pendência da conversa com o lead, sem caso, é tarefa da pessoa e aparece na Central da responsável, não na geral', async () => {
+    const fichaId = (await json('ana', 'POST', '/api/fichas', { nome: 'Rosa Lima', idade: 70, pretende: 'Quer saber do BPC.', telefone: '11955554444', beneficioInteresse: 'loas-idoso', outraPessoa: false })).id as string
+    const aberta = await json('ana', 'POST', '/api/conversas', { fichaId, canal: 'ligacao', comQuem: 'cliente', modo: 'escrito', registro: 'Ligou para saber o que levar à entrevista.' })
+    const id = aberta.conversa.id as string
+    await json('ana', 'POST', `/api/conversas/${id}/conferencia`, { decisoes: [], pendencia: { surgiu: true, texto: 'Mandar a lista de documentos.', responsavel: 'jessica', prazo: '12/10/2026' } })
+    const linhas = await banco.select().from(tarefa).where(eq(tarefa.atendimentoId, id))
+    expect(linhas.map((t) => [t.casoId, t.pessoaId, t.passo, t.perfilDono])).toEqual([[null, fichaId, 'D5.05', 'documentacao']])
+    expect(await json('jessica', 'GET', '/api/conversas/tarefas')).toEqual([
+      expect.objectContaining({ cliente: { id: fichaId, nome: 'Rosa Lima' }, acao: 'Cumprir pendência', prazo: 'vence 12/10' }),
+    ])
+    const geral = (await json('jessica', 'GET', '/api/tarefas')) as { passo: string | null }[]
+    expect(geral.filter((t) => t.passo?.startsWith('D5'))).toEqual([])
   })
 
   it('a perícia já marcada não muda pela conversa: muda pela remarcação', async () => {
     const { id, processoId, transcrita } = await ligacaoTranscrita()
     await banco.insert(pericia).values({ casoId: processoId, tipo: 'medica', agendadaPara: new Date('2026-10-02T11:00:00Z') })
     const m = transcrita.conversa.analise.mudancas
-    const r = await json('ana', 'POST', `/api/conversas/${id}/conferencia`, {
-      decisoes: ['endereco', 'telefone', 'pericia', 'documento'].map((c) => ({ id: idDo(m, c), decisao: c === 'telefone' ? 'desfeita' : 'confirmada' })),
-      pendencia: { surgiu: false },
+    await json('ana', 'POST', `/api/conversas/${id}/conferencia`, { decisoes: [], pendencia: { surgiu: false } })
+    const r = await json('helena', 'POST', `/api/conversas/${id}/conferencia`, {
+      decisoes: ['endereco', 'telefone', 'pericia', 'documento', 'fato'].map((c) => ({ id: idDo(m, c), decisao: c === 'telefone' ? 'desfeita' : 'confirmada' })),
     })
     expect(r.erro).toBe('A data da perícia já marcada muda pela remarcação, na tela da perícia: desfaça este item aqui e remarque lá.')
   })
@@ -293,10 +327,15 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
   it('versões: só a Sênior volta, a volta vira versão nova e muda a ficha; a pendência, só o responsável ou a Sênior', async () => {
     const { fichaId, id, transcrita } = await ligacaoTranscrita()
     const m = transcrita.conversa.analise.mudancas
+    // GGVP-158: a Ana verificou o cliente por vídeo e responde a pendência; a Sênior decide o que a IA apontou.
+    await json('ana', 'POST', `/api/conversas/${id}/verificacao`, { como: 'video' })
     await json('ana', 'POST', `/api/conversas/${id}/conferencia`, {
-      decisoes: [{ id: idDo(m, 'telefone'), decisao: 'corrigida', valor: '(11) 90000-0055' }, ...['endereco', 'pericia', 'documento'].map((c) => ({ id: idDo(m, c), decisao: 'desfeita' }))],
+      decisoes: [],
       pendencia: { surgiu: true, texto: 'Ligar de volta para confirmar o número.', responsavel: 'ana', prazo: '09/10/2026' },
-      verificacao: { como: 'presencial', contratoNovo: true },
+    })
+    await json('helena', 'POST', `/api/conversas/${id}/conferencia`, {
+      decisoes: [{ id: idDo(m, 'telefone'), decisao: 'corrigida', valor: '(11) 90000-0055' }, ...['endereco', 'pericia', 'documento', 'fato'].map((c) => ({ id: idDo(m, c), decisao: 'desfeita' }))],
+      verificacao: { contratoNovo: true },
     })
     const telefone = (await json('ana', 'GET', `/api/fichas/${fichaId}/versoes`)).filter((v: { campo: string }) => v.campo === 'telefone')
     expect(telefone.map((v: { valor: string; origem: string }) => [v.valor, v.origem])).toEqual([
@@ -320,8 +359,12 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect((await chamar('ana', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '20/10/2026' })).statusCode).toBe(403)
     expect((await json('helena', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '01/10/2026' })).erro).toBe('Prazo de hoje em diante (dd/mm/aaaa).')
     expect((await json('helena', 'POST', `/api/conversas/${id}/pendencia/prazo`, { prazo: '20/10/2026' })).conversa.pendencia.prazo).toBe('2026-10-20')
+    // GGVP-158 P6.7: o prazo novo e o "cumprida" mudam a linha da tarefa.
+    const daPendencia = () => banco.select().from(tarefa).where(and(eq(tarefa.atendimentoId, id), eq(tarefa.passo, 'D5.05')))
+    expect((await daPendencia())[0].prazo).toBe('2026-10-20')
     const cumprida = await json('ana', 'POST', `/api/conversas/${id}/pendencia/cumprida`)
     expect(cumprida.conversa.pendencia).toMatchObject({ cumpridaPor: 'ana' })
+    expect((await daPendencia()).map((t) => [t.situacao, t.concluidaEm?.toISOString()])).toEqual([['concluida', relogio.toISOString()]])
     expect(await json('ana', 'GET', '/api/conversas/tarefas')).toEqual([])
     expect((await chamar('ana', 'POST', `/api/conversas/${id}/pendencia/cumprida`)).statusCode).toBe(404)
   })

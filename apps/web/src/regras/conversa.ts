@@ -7,7 +7,7 @@ import { semAcento } from './busca.ts'
 import { DIAS_ENTRE_COBRANCAS } from './cobranca.ts'
 
 /** O canal da decisão "Canal da conversa" do Miro. WhatsApp e vídeo saem (Lucas, 06/10). */
-export type CanalDoRegistro = 'ligacao' | 'presencial'
+export type CanalDoRegistro = 'ligacao' | 'presencial' | 'whatsapp'
 /** "Com quem falou" (Figma 2144:2). */
 export type ComQuem = 'cliente' | 'familiar' | 'medico'
 /** Gravar agora, anexar a ligação já feita ou só escrever (GGVP-76, CA4 e CA9). */
@@ -23,10 +23,13 @@ export type Dito =
   | { onde: 'ficha'; campo: CampoDaFicha; valor: string; saude?: undefined }
   | { onde: 'processo'; campo: CampoDoProcesso; valor: string; saude?: true }
 
-export const CANAIS_DO_REGISTRO: Record<CanalDoRegistro, { rotulo: string; passo: string }> = {
+export const CANAIS_DO_REGISTRO = {
   ligacao: { rotulo: 'Ligação', passo: 'Telefone — subir a gravação da ligação' },
   presencial: { rotulo: 'Presencial', passo: 'Presencial — conversar e gravar' },
-}
+} as Record<CanalDoRegistro, { rotulo: string; passo: string }>
+// GGVP-158 P6.5: a conversa do WhatsApp volta, mas só pelo servidor, com a mensagem que chega pelo Chatwoot; ninguém a
+// escolhe ao registrar. Ela tem rótulo nas telas e fica fora da lista do formulário (não enumerável).
+Object.defineProperty(CANAIS_DO_REGISTRO, 'whatsapp', { value: { rotulo: 'WhatsApp', passo: 'WhatsApp — a mensagem que chegou pelo Chatwoot' }, enumerable: false })
 
 export const COM_QUEM: Record<ComQuem, string> = { cliente: 'Cliente', familiar: 'Familiar ou contato de apoio', medico: 'Médico ou clínica' }
 
@@ -56,7 +59,8 @@ export type PedidoDeConversa = { canal?: CanalDoRegistro; comQuem?: ComQuem; mod
 /** O que falta para abrir a conversa (CA3, CA4). A tela mostra; o servidor de exemplo confere de novo. */
 export function motivoParaNaoAbrir(p: PedidoDeConversa, papel: PapelNaConversa | null, processos: string[]): string | null {
   if (!papel) return 'A conversa com o cliente é do Atendimento e do Jurídico.'
-  if (!p.canal || !(p.canal in CANAIS_DO_REGISTRO)) return 'Escolha o canal: ligação ou presencial.'
+  // GGVP-158 P6.5: só os canais da lista (as chaves enumeráveis); o WhatsApp tem rótulo, mas só o servidor abre.
+  if (!p.canal || !Object.keys(CANAIS_DO_REGISTRO).includes(p.canal)) return 'Escolha o canal: ligação ou presencial.'
   if (!p.comQuem || !(p.comQuem in COM_QUEM)) return 'Marque com quem você falou.'
   if (!p.modo || !(p.modo in MODOS_DO_REGISTRO)) return 'Escolha a gravação.'
   if (p.processoId !== undefined && !processos.includes(p.processoId)) return 'Processo não encontrado.'
@@ -153,6 +157,35 @@ export function erroDoValor(campo: Mudanca['campo'], valor: string): string | un
   if (campo === 'pericia') return validarData(valor) ? undefined : 'Data no formato dd/mm/aaaa.'
   const t = valor.trim().length
   return t >= TAMANHO_DO_VALOR.minimo && t <= TAMANHO_DO_VALOR.maximo ? undefined : `De ${TAMANHO_DO_VALOR.minimo} a ${TAMANHO_DO_VALOR.maximo} letras.`
+}
+
+const MESES = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+const palavrasDe = (texto: string) => semAcento(texto).split(/[^a-z0-9]+/).filter(Boolean)
+
+/**
+ * GGVP-158 P6.6: a IA só aponta o valor que aparece na fala de onde veio, conferido aqui, no código. O texto, palavra por
+ * palavra, sem acento nem caixa; o telefone pelos números, com ou sem o DDD; o e-mail também dito com "arroba" e "ponto";
+ * a data em números ou com o mês escrito. O fato novo e o documento citado são o resumo da fala, que vai junto: ficam fora.
+ */
+export function apareceNaFala(campo: Mudanca['campo'], valor: string, fala: string): boolean {
+  if (campo === 'fato' || campo === 'documento') return true
+  const dita = semAcento(fala)
+  if (campo === 'telefone') {
+    const numeros = dita.replace(/\D/g, '')
+    const numero = valor.replace(/\D/g, '')
+    return numero.length >= 8 && (numeros.includes(numero) || numeros.includes(numero.slice(-8)))
+  }
+  if (campo === 'email') {
+    const soletrado = dita.replace(/ ?\barroba\b ?/g, '@').replace(/ ?\bponto\b ?/g, '.').replace(/ /g, '')
+    return soletrado.includes(valor.trim().toLowerCase())
+  }
+  if (campo === 'pericia') {
+    const [dia, mes] = (normalizarData(valor) ?? '').split('/').map(Number)
+    if (!dia || !mes) return false
+    return new RegExp(`(^|\\D)0?${dia} ?/ ?0?${mes}(\\D|$)`).test(dita) || new RegExp(`(^|\\D)0?${dia} de ${MESES[mes - 1]}\\b`).test(dita)
+  }
+  const ditas = new Set(palavrasDe(fala))
+  return palavrasDe(valor).every((p) => ditas.has(p))
 }
 
 /** O valor corrigido como fica guardado: telefone só com números, data aaaa-mm-dd. */

@@ -9,9 +9,10 @@ import type { ContatoChatwoot, ConversaChatwoot, MensagemAoCliente } from '@ggv/
 
 type ContatoDaApi = { id: number; name?: string; phone_number?: string; contact_inboxes?: { source_id?: string; inbox?: { id?: number; name?: string } }[] }
 type ConversaDaApi = { id: number; inbox_id?: number; status?: string; last_activity_at?: number }
-type MensagemDaApi = { status?: string; content_attributes?: { external_error?: string } }
+type MensagemDaApi = { id?: number; status?: string; content_attributes?: { external_error?: string } }
 
-const STATUS: Record<string, MensagemAoCliente['status']> = { sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou' }
+/** O status do Chatwoot no do portal. A entrega e a leitura chegam depois, pela rota de entrada (GGVP-158 P6.5). */
+export const STATUS_DO_CHATWOOT: Record<string, MensagemAoCliente['status']> = { sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou' }
 export const MSG_CHATWOOT_FORA = 'o Chatwoot não respondeu; tente de novo em alguns minutos'
 
 export type Chatwoot = NonNullable<ReturnType<typeof abrirChatwoot>>
@@ -105,11 +106,25 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
       return (await chamar<{ id: number }>('/conversations', { source_id: fonte, inbox_id: caixa, contact_id: contato.id })).id
     },
 
-    /** POST conversations/{id}/messages: sai como mensagem do escritório, que o cliente vê. */
-    async enviar(conversa: number, texto: string): Promise<{ status: MensagemAoCliente['status']; erro?: string }> {
+    /**
+     * GGVP-158 P6.5: o status de uma mensagem do escritório. O aviso de mudança do Chatwoot não traz o status, então o
+     * portal pergunta. Nulo quando a mensagem não está na última página da conversa.
+     */
+    async statusDaMensagem(conversa: number, id: number): Promise<MensagemAoCliente['status'] | null> {
+      const { payload = [] } = await chamar<{ payload?: MensagemDaApi[] }>(`/conversations/${conversa}/messages`)
+      const m = payload.find((x) => x.id === id)
+      return m ? (STATUS_DO_CHATWOOT[m.status ?? 'sent'] ?? null) : null
+    },
+
+    /**
+     * POST conversations/{id}/messages: sai como mensagem do escritório, que o cliente vê. O id volta para a entrega e a
+     * leitura que o Chatwoot avisa depois (GGVP-158 P6.5).
+     */
+    async enviar(conversa: number, texto: string): Promise<{ status: MensagemAoCliente['status']; erro?: string; id?: number }> {
       const m = await chamar<MensagemDaApi>(`/conversations/${conversa}/messages`, { content: texto, message_type: 'outgoing', private: false })
-      const status = STATUS[m.status ?? 'sent'] ?? 'enviada'
-      return status === 'falhou' ? { status, erro: m.content_attributes?.external_error ?? 'o WhatsApp recusou a mensagem' } : { status }
+      const status = STATUS_DO_CHATWOOT[m.status ?? 'sent'] ?? 'enviada'
+      const id = typeof m.id === 'number' ? { id: m.id } : {}
+      return status === 'falhou' ? { status, erro: m.content_attributes?.external_error ?? 'o WhatsApp recusou a mensagem', ...id } : { status, ...id }
     },
   }
 }
