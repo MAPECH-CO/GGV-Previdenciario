@@ -67,6 +67,7 @@ import { criarCorreio, registrarRotasMensagens } from './rotas/mensagens.ts'
 import { registrarRotasChatwootEntrada } from './rotas/chatwoot-entrada.ts'
 import { registrarRotasEstrategia } from './rotas/estrategia.ts'
 import { registrarRotasValores } from './rotas/valores.ts'
+import { registrarRotasRaioX } from './rotas/raio-x.ts'
 import { registrarRotasSeguranca } from './rotas/seguranca.ts'
 import { registrarRotasImportacao } from './rotas/importacao.ts'
 import { registrarRotasFeriados } from './rotas/feriados.ts'
@@ -242,6 +243,8 @@ export function criarServidor({
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
     registrarRotasGestao(app, { banco, agora })
     registrarRotasAcervo(app, { banco, agora, ia: motorIa, preparo })
+    // GGVP-158 P7.7 (GGVP-148): o importador do Raio-X e os indicadores da base importada.
+    registrarRotasRaioX(app, { banco, agora })
     registrarRotasJuizo(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })

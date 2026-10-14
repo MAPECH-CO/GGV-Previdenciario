@@ -653,20 +653,26 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - o valor errado recusa.
 
   Verificado em 13/10: `rotas/valores.test.ts` 4/4 (novo) e `rotas/processo.test.ts` 9/9. A advogada grava; o Financeiro e o Sócio leem; o Atendimento, a Documentação e a Sênior recebem 403; o valor errado recusa; a prestação só para a advogada do caso na prestação de contas; o resumo do processo traz só o que o perfil vê.
-- [ ] 7.11 O Raio-X, a leitura (P7.7, decisão 73): o contrato, a leitura da planilha e o relatório, numa função pura.
+- [x] 7.11 O Raio-X, a leitura (P7.7, decisão 73): o contrato, a leitura da planilha e o relatório, numa função pura.
   - Verifica com teste, com uma base inventada:
     - a linha sem número recusa;
     - as colunas pessoais são ignoradas;
     - os peritos, os juízes, as varas e a data de corte.
-- [ ] 7.12 O Raio-X, a carga (P7.7): a simulação e a confirmação com a marca, sem duplicar, com o perito pelo nome.
+
+  Verificado em 13/10, em `fluxo/raio-x.test.ts` (novo): a linha sem número recusa; nome, CPF e telefone viram colunas ignoradas e nada deles entra; os peritos, os juízes, as varas e a data de corte; o número já no acervo fica; o repetido, o desfecho e o "sim ou não" desconhecidos recusam; sem a coluna cnj, nada.
+- [x] 7.12 O Raio-X, a carga (P7.7): a simulação e a confirmação com a marca, sem duplicar, com o perito pelo nome.
   - Verifica com `rotas/raio-x.test.ts`:
     - a simulação não grava;
     - a confirmação grava uma vez;
     - a marca de outra planilha recusa.
-- [ ] 7.13 O Raio-X, os indicadores (P7.7): a função pura e `GET /api/acervo/raio-x`.
+
+  Verificado em 13/10: `rotas/raio-x.test.ts` 2/2 (novo), com `importacao` e `acervo`, 28/28. A simulação não grava nem registra; a marca de outra planilha recusa; a confirmação grava os dois processos uma vez, conferidos pela Sênior, com o perito pelo nome; o histórico guarda só as contagens; a mesma planilha de novo não duplica.
+- [x] 7.13 O Raio-X, os indicadores (P7.7): a função pura e `GET /api/acervo/raio-x`.
   - Verifica com teste:
     - cada indicador com o número de casos;
     - a data da base;
     - sem base, vazio.
+
+  Verificado em 13/10, em `fluxo/raio-x.test.ts` e `rotas/raio-x.test.ts`: cada indicador com o número de casos, no total e por safra; o cartório e o foro; a data da base; sem base, vazio; o Sócio lê e o Atendimento recebe 403.
 - [ ] 7.14 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
 - [ ] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.

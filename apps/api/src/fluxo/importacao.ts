@@ -42,7 +42,7 @@ export type NoPortal = {
 export type Analise = { linhas: LinhaAnalisada[]; erros: { linha: number; motivo: string }[]; colunasIgnoradas: string[] }
 
 /** Sem acento, minúsculo, só letras e números separados por espaço: "BPC/LOAS Idoso" → "bpc loas idoso". */
-const chave = (s: string) =>
+export const chave = (s: string) =>
   s
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
@@ -52,6 +52,8 @@ const chave = (s: string) =>
 
 /** O benefício pelo código ("bpc_loas_idoso") ou pelo nome ("BPC/LOAS Idoso"). */
 const PELO_NOME = new Map<string, Beneficio>(BENEFICIOS.flatMap((b) => [[chave(b), b] as const, [chave(ROTULO_BENEFICIO[b]), b] as const]))
+/** GGVP-158 P7.7: o benefício de uma célula da planilha, pelo código ou pelo nome; desconhecido, nulo. O Raio-X usa o mesmo. */
+export const beneficioDaPlanilha = (texto: string) => PELO_NOME.get(chave(texto)) ?? null
 const FASES: FaseImportada[] = ['atendimento', 'administrativa', 'judicial']
 
 /** CSV com vírgula ou ponto e vírgula (o do Excel em português), aspas e quebra de linha dentro das aspas. */
@@ -120,7 +122,7 @@ export function analisarPlanilha(texto: string, portal: NoPortal): Analise {
     if (v.telefone && !validarTelefone(v.telefone)) motivos.push('telefone inválido')
     if (v.email && !validarEmail(v.email)) motivos.push('e-mail inválido')
     if (v.cep && !validarCep(v.cep)) motivos.push('CEP inválido')
-    const beneficio = v.beneficio ? (PELO_NOME.get(chave(v.beneficio)) ?? null) : null
+    const beneficio = v.beneficio ? beneficioDaPlanilha(v.beneficio) : null
     if (v.beneficio && !beneficio) motivos.push('benefício desconhecido')
     const fase = chave(v.fase)
     if (fase === 'encerrado') motivos.push('processo encerrado: só entram os em andamento')
