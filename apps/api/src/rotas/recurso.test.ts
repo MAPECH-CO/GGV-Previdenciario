@@ -180,16 +180,19 @@ describe('GGVP-161 · "Vale recorrer?" com a chance do recurso e a avaliação d
     expect(usados).toHaveLength(3)
   })
 
-  it('CA3 · a avaliação da IA chega pronta, com as fontes; a que traz porcentagem é recusada e a tela recebe o motivo', async () => {
+  it('CA3 · a avaliação da IA chega pronta, com as fontes', async () => {
     await app.prepararSugestoes()
     const [pronta] = await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'avaliacao_do_recurso'))
     expect(pronta.situacao).toBe('ok')
     const r = (await chamar('helena', 'GET')).json()
     expect([r.avaliacao.chamadaId, r.avaliacao.texto.split('\n')[0], r.motivoIa]).toEqual([pronta.id, 'Bom para recorrer.', null])
     expect(r.avaliacao.fontes.map((f: { tipo: string }) => f.tipo)).toEqual(expect.arrayContaining(['caso', 'regra']))
-    // Com porcentagem no texto, a resposta não vale: o número é do código (G19).
+  })
+
+  it('CA3 · a avaliação que traz porcentagem é recusada e a tela recebe o motivo', async () => {
+    // Com porcentagem no texto, a resposta não vale: o número é do código (G19). O registro da IA só cresce (GGVP-158
+    // P8.2): a recusa vem no caso ainda sem avaliação pronta, sem apagar a que já existia.
     avaliacaoDaIa = 'Bom para recorrer: 80% de chance.'
-    await banco.delete(chamadaIa)
     const semNumero = (await chamar('helena', 'GET')).json()
     expect([semNumero.avaliacao, semNumero.motivoIa]).toEqual([null, MSG_AVALIACAO_SEM_IA])
     avaliacaoDaIa = 'Bom para recorrer.'
