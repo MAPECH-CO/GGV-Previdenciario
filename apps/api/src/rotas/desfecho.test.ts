@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, decisao, etapa, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, decisao, etapa, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_SEM_DESFECHO_ESPERANDO, PASSO_PAGAMENTO, TITULO_PAGAMENTO } from './desfecho.ts'
@@ -122,6 +122,17 @@ describe('GGVP-90 · revisão do Pedro (12/10): o trecho da sentença só para q
       expect(JSON.stringify(d)).not.toContain('F32')
     }
     for (const apelido of ['gabi', 'helena', 'sergio']) expect((await chamar(apelido, 'GET')).json().decisao.texto).toBe(medica)
+  })
+
+  it('GGVP-158 P8.1 · quem recebe o trecho fica registrado; quem não recebe, não; sem sentença, nada', async () => {
+    const leituras = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.usuarioId, a.casoId, a.recurso])
+    await chamar('ana', 'GET')
+    expect(await leituras()).toEqual([])
+    await chamar('gabi', 'GET')
+    expect(await leituras()).toEqual([[ids.gabi, casoId, `desfecho:${casoId}`]])
+    await banco.delete(publicacao).where(eq(publicacao.casoId, casoId))
+    expect((await chamar('gabi', 'GET')).json().decisao).toBeNull()
+    expect(await leituras()).toHaveLength(1)
   })
 })
 

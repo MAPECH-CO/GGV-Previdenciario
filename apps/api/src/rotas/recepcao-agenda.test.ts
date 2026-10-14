@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { configuracao, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, configuracao, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -224,5 +224,25 @@ describe('GGVP-158 P3.7 · a desistência antes da entrevista fica no servidor (
     expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'outro-escritorio' })
     expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Foi a outro escritório\. Lead arquivado com o motivo \(G16\)$/)
     expect((await resultado(agendamento.id, { resultado: 'realizado' })).statusCode).toBe(400)
+  })
+})
+
+describe('GGVP-158 P8.1 · quem abre conteúdo médico fica registrado', () => {
+  it('a lista da Recepção com a gravação do Jurídico registra a leitura, uma por abertura; sem ela, nada', async () => {
+    const joana = await lead('Joana Ribeiro', '11987654321')
+    const leituras = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.perfil, a.casoId, a.recurso])
+    await json('gabi', 'GET', '/api/recepcao')
+    expect(await leituras()).toEqual([])
+    // A entrevista gravada com a advogada tem dado de saúde: só do Jurídico.
+    const dados = { id: 'gravacao-1', fichaId: joana, soJuridico: true, trechos: [{ aos: 0, quem: 'Joana', papel: 'cliente', texto: 'A dor na coluna piorou.' }] }
+    await banco.insert(gravacaoRecepcao).values({ id: 'gravacao-1', pessoaId: joana, soJuridico: true, dados })
+    expect((await json('ana', 'GET', '/api/recepcao')).gravacoes).toEqual([])
+    expect(await leituras()).toEqual([])
+    expect((await json('gabi', 'GET', '/api/recepcao')).gravacoes).toHaveLength(1)
+    await json('gabi', 'GET', '/api/recepcao')
+    expect(await leituras()).toEqual([
+      ['advogada', null, 'recepcao:gravacoes'],
+      ['advogada', null, 'recepcao:gravacoes'],
+    ])
   })
 })

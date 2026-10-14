@@ -4,7 +4,7 @@ import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { ConfirmarDesfecho, DesfechoParaConfirmar, ehProcedente, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, etapa, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, decisao, etapa, eventoAuditoria, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { abrirDecisaoDoRecurso, sentencaEPrazo } from './recurso.ts'
@@ -44,13 +44,17 @@ export function registrarRotasDesfecho(app: FastifyInstance, { banco, agora = ()
       .orderBy(desc(decisao.decididoEm))
       .limit(1)
     const pendente = await aberta(casoId)
+    // A sentença pode trazer laudo, diagnóstico ou CID: o trecho vai só a quem vê dado de saúde (revisão do Pedro, 12/10), e
+    // a leitura fica registrada (GGVP-158 P8.1).
+    const veSaude = pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')
+    if (d?.texto && veSaude)
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId, recurso: `desfecho:${casoId}`, quando: agora() })
     return DesfechoParaConfirmar.parse({
       casoId,
       fichaId: c.fichaId,
       cliente: c.nome,
       beneficio: c.beneficio,
-      // A sentença pode trazer laudo, diagnóstico ou CID: o trecho vai só a quem vê dado de saúde (revisão do Pedro, 12/10).
-      decisao: d ? { disponibilizadaEm: d.em, fonte: d.fonte, numeroCnj: d.cnj, texto: pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe') ? d.texto : null, classeSugeridaIa: d.sugerida, confiancaIa: d.confianca === null ? null : Number(d.confianca) } : null,
+      decisao: d ? { disponibilizadaEm: d.em, fonte: d.fonte, numeroCnj: d.cnj, texto: veSaude ? d.texto : null, classeSugeridaIa: d.sugerida, confiancaIa: d.confianca === null ? null : Number(d.confianca) } : null,
       // O mesmo prazo que a Sênior recebe em "Decidir recurso" (G12, a conta do #35).
       prazoRecurso: (await sentencaEPrazo(banco, casoId)).prazo?.fim ?? null,
       // ponytail: a decisão guarda a forma (procedente) ou a causa (extinção) no mesmo campo; coluna própria se precisar das duas.

@@ -16,7 +16,7 @@ import {
   type FonteDaIa,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, decisao, documento, etapa, exigencia, kitDocumento, parecerMedico, pericia, pessoa, publicacao, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, decisao, documento, etapa, exigencia, kitDocumento, parecerMedico, pericia, pessoa, publicacao, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { buscarNoAcervo } from '../ia/acervo.ts'
 import { FINALIDADES, MSG_CHAMADA_DE_OUTRO_CASO, chamadaDoCaso, lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
@@ -148,6 +148,9 @@ export function registrarRotasRecomendacaoPericia(app: FastifyInstance, { banco,
       .where(eq(pericia.casoId, casoId))
       .orderBy(asc(pericia.criadoEm))
     const aprovadas = await aprovacoes(casoId)
+    // GGVP-158 P8.1: a recomendação aprovada sai do parecer e dos laudos; quando ela vai, a leitura fica registrada.
+    if (lista.some(({ pericia: p }) => aprovadas.has(p.id)))
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId, recurso: `pericias:${casoId}`, quando: agora() })
     return PericiasDoCaso.parse({
       casoId,
       cliente: c.nome,
@@ -168,7 +171,14 @@ export function registrarRotasRecomendacaoPericia(app: FastifyInstance, { banco,
 
   // Sugestão pronta: a recomendação que o preparo deixou (sem nova chamada), ou feita agora, se ainda não havia.
   app.post<{ Params: { id: string } }>('/api/pericias/:id/recomendacao/sugestao', { preHandler: exigir(banco, 'dado_saude.ver_detalhe', agora) }, async (pedido, resposta) => {
-    return (await recomendar(pedido.params.id, pedido.usuario!.id)) ?? negar(resposta, 404, 'Perícia não encontrada.')
+    const r = await recomendar(pedido.params.id, pedido.usuario!.id)
+    if (!r) return negar(resposta, 404, 'Perícia não encontrada.')
+    // GGVP-158 P8.1: com a recomendação na resposta, a leitura fica registrada, com o caso.
+    if (r.recomendacao) {
+      const p = (await periciaDe(pedido.params.id))!
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: p.casoId, recurso: `recomendacao:${p.id}`, quando: agora() })
+    }
+    return r
   })
 
   // CA4: só a advogada aprova; grava o que ela aprovou, com a chamada da IA à parte; sem outra esperando, a tarefa fecha.
