@@ -2,8 +2,8 @@
 // change ggvp-13 e as regras são as das telas (regras/complemento.ts e o laço da cobrança, G15), com o perfil da sessão. O
 // parecer Insuficiente ou Contraditório abre a pendência (rotas/parecer.ts). Daqui nada sai para o cliente: a orientação
 // vai pela janela do Chatwoot, pelo correio do servidor (rotas/mensagens.ts, GGVP-146), e aqui fica só a tentativa.
-import type { FastifyInstance, FastifyReply } from 'fastify'
-import { DecisaoDoComplemento, TentativaDoComplemento, type Erro } from '@ggv/contratos'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { DecisaoDoComplemento, TentativaDoComplemento, pode, type Erro } from '@ggv/contratos'
 import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -20,6 +20,12 @@ export const MSG_AINDA_NO_LIMITE = 'O complemento ainda não passou do limite.'
 
 type Opcoes = ComIa
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
+
+/** GGVP-158 P8.6: a justificativa da nova tentativa é texto livre e pode citar a doença: só quem vê dado de saúde lê. */
+const naVisaoDe = (pedido: FastifyRequest, tela: ComplementoNaTela): ComplementoNaTela =>
+  pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe') || !tela.complemento.decisoes
+    ? tela
+    : { ...tela, complemento: { ...tela.complemento, decisoes: tela.complemento.decisoes.map((d) => ({ ...d, justificativa: '' })) } }
 
 /** O complemento do caso, comum às rotas e à sincronização das Centrais. */
 export function criarComplementoDoCaso(opcoes: ComIa) {
@@ -58,7 +64,7 @@ export function registrarRotasComplemento(app: FastifyInstance, opcoes: Opcoes) 
     const c = await acharCaso(pedido.params.id)
     if (!c) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
     const m = await montar(c)
-    return m?.tela ?? negar(resposta, 404, MSG_SEM_COMPLEMENTO)
+    return m ? naVisaoDe(pedido, m.tela) : negar(resposta, 404, MSG_SEM_COMPLEMENTO)
   })
 
   // CA3 (G15): cada tentativa do Atendimento entra no laço; a segunda sem resposta sobe para a Sênior.
@@ -76,7 +82,7 @@ export function registrarRotasComplemento(app: FastifyInstance, opcoes: Opcoes) 
     await gravarParte(c.id, 'complemento', m.lista)
     await anotar(c, `Complemento ao médico: ${complemento.tentativas.length}ª tentativa por ${CANAIS[entrada.data.canal]} (${RESULTADOS[entrada.data.resultado]})`, pedido)
     await historico(pedido.usuario!.id, 'complemento_tentativa_registrada', pedido, `caso:${c.id}`, { tentativa: complemento.tentativas.length, ...entrada.data })
-    return resposta.code(201).send((await montar(c))!.tela)
+    return resposta.code(201).send(naVisaoDe(pedido, (await montar(c))!.tela))
   })
 
   // CA3 (G15): no limite, só a Sênior decide a nova tentativa, com prazo e justificativa. A dispensa do parecer é outra rota.
@@ -96,8 +102,9 @@ export function registrarRotasComplemento(app: FastifyInstance, opcoes: Opcoes) 
     complemento.decisoes = [...(complemento.decisoes ?? []), { opcao: 'nova-tentativa', justificativa, prazo, quando: agora().toISOString(), quem: await nomeDe(pedido) }]
     complemento.adiadaPara = prazo
     await gravarParte(c.id, 'complemento', m.lista)
-    await anotar(c, `Complemento ao médico: a sênior decidiu nova tentativa até ${dataCurta(prazo, hojeEmBrasilia(agora()))}. Justificativa: ${justificativa}`, pedido)
+    // GGVP-158 P8.6: o histórico da ficha é de todos os perfis; a justificativa fica na decisão, para o Jurídico e o Sócio.
+    await anotar(c, `Complemento ao médico: a sênior decidiu nova tentativa até ${dataCurta(prazo, hojeEmBrasilia(agora()))}`, pedido)
     await historico(pedido.usuario!.id, 'complemento_decidido', pedido, `caso:${c.id}`, { opcao: 'nova-tentativa', prazo })
-    return resposta.code(201).send((await montar(c))!.tela)
+    return resposta.code(201).send(naVisaoDe(pedido, (await montar(c))!.tela))
   })
 }
