@@ -390,7 +390,7 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
 |---|---|
 | Como confirmou que é o cliente | lista fixa: chamada de vídeo ou no escritório |
 | A alteração vai em contrato novo | caixa de marcar, obrigatória |
-| Banco, agência, conta, Pix | texto; agência com 4 números (e o dígito), conta com números e o dígito; o servidor confere de novo |
+| Banco, agência, conta, Pix | texto; agência com 4 números (e o dígito), conta com números e o dígito; o servidor confere de novo. Agência e conta pela biblioteca `campos` (CA9): o traço entra sozinho ao digitar |
 
 ### Decisões da história
 
@@ -410,6 +410,10 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
 5. **Nunca a senha** (CA4): todo modelo termina com a frase do escritório; o texto que pede a senha não sai (G9, GGVP-102).
 6. **O chat** (CA7): "o cliente me ligou" responde com a próxima tarefa do cliente e lembra de confirmar a identidade. O
    resto do chat é da GGVP-82.
+7. **Agência e conta pela biblioteca** (CA9, teste do Pedro, 14/10): `packages/campos` ganha `formatarConta`/`validarConta`
+   (só números e o dígito no fim, que pode ser X; o traço antes do último; de 3 a 12 números mais o dígito) e
+   `formatarAgencia`/`validarAgencia` (4 números; com 5, o último é o dígito, depois do traço). O cartão formata a cada
+   tecla; `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens, na tela e no servidor.
 
 ## Risks / Trade-offs
 
