@@ -18,7 +18,7 @@ import {
   type WidgetDoChat,
 } from '@ggv/contratos'
 import { tool, type Tool } from '@openai/agents'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { Banco } from '../banco/conexao.ts'
@@ -43,6 +43,8 @@ import {
   tipoDoAnexo,
   tituloDaTarefa,
 } from '../../../web/src/regras/chat.ts'
+import type { Ficha } from '../../../web/src/dados/tipos.ts'
+import { etapaDaFicha } from '../../../web/src/regras/busca.ts'
 import { recusaDoChat } from '../../../web/src/regras/parecer.ts'
 import { recusaDoChatNaPericia } from '../../../web/src/regras/pericia.ts'
 import { ehAudio } from '../../../web/src/regras/entrevista.ts'
@@ -52,6 +54,13 @@ import { UUID } from './recepcao.ts'
 
 /** A resposta que sai do código, não do modelo (CA2): não há chamada de IA a registrar. */
 export const MODELO_DA_REGRA = 'regra do portal (sem IA)'
+
+/** CA7 (Pedro, 14/10): sem cliente achado, o chat diz que não achou, em vez de pedir o nome completo em volta. */
+export const MSG_CLIENTE_NAO_ACHADO =
+  'Nenhum cliente achado na conversa, com caso ou sem caso. Se a pessoa já deu um nome, diga que não achou cliente com esse nome e indique a busca do topo, sem pedir o nome de novo. Se ela não citou ninguém, pergunte de qual cliente é.'
+
+/** CA8 (Pedro, 14/10): a leitura recusada ao perfil vira "sem acesso", dito com clareza. */
+export const MSG_SEM_ACESSO = 'Sem acesso: o perfil da pessoa não abre este caso. Diga a ela, com clareza, que o perfil dela não tem acesso a isso.'
 
 type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
@@ -109,18 +118,24 @@ export function antesDoModelo(
 
   const fora = foraDoPerfil(intencao, grupoDe(perfil))
   if (fora) {
-    const texto = `«${fora.acao}» é ${fora.quem}: não está na lista do seu perfil. Peça a tarefa para quem faz, e eu mostro o cartão.`
+    // CA8 (Pedro, 14/10): diz que o perfil não tem acesso; o cartão de tarefa só é prometido a quem cria tarefa.
+    const pedir = pode(perfil ?? null, 'tarefa.atribuir') ? 'Peça a tarefa para quem faz, e eu mostro o cartão.' : 'Para pedir, fale com a Sênior ou a líder do Atendimento, que criam a tarefa.'
+    const texto = `«${fora.acao}» é ${fora.quem}: seu perfil não tem acesso a isso. ${pedir}`
     return { resposta: daRegra('resposta', texto, [{ tipo: 'regra', referencia: 'lista fixa de ações do perfil' }], agora) }
   }
   return null
 }
 
-type Alvo = { casoId: string; pessoaId: string; beneficio: string | null }
+/** O cliente do contexto e o caso mais novo dele; `casoId` nulo é o cliente sem caso, o lead (CA6, Pedro 14/10). */
+type Alvo = { casoId: string | null; pessoaId: string; beneficio: string | null }
 const palavras = (texto: string) => ` ${semAcento(texto).replace(/[^a-z0-9]+/g, ' ').trim()} `
+const LIGACOES = new Set(['de', 'da', 'do', 'das', 'dos', 'e'])
+/** As palavras sem as ligações do nome: "Maria da Silva" e "maria silva" se encontram, "maria da penha" não. */
+const semLigacoes = (texto: string) => ` ${palavras(texto).trim().split(' ').filter((p) => !LIGACOES.has(p)).join(' ')} `
 
-/** GGVP-162: o caso abre na página do processo para quem a abre; o Atendimento e a Documentação, na ficha do cliente. */
+/** GGVP-162: o caso abre na página do processo para quem a abre; o Atendimento, a Documentação e o lead, na ficha do cliente. */
 const linkDoCaso = (perfil: string | null | undefined, alvo: Alvo): LinkDoChat =>
-  pode(perfil, 'processo.abrir') ? { rotulo: 'Abrir o caso', href: `/casos/${alvo.casoId}` } : { rotulo: 'Abrir a ficha do cliente', href: `/clientes/${alvo.pessoaId}` }
+  alvo.casoId && pode(perfil, 'processo.abrir') ? { rotulo: 'Abrir o caso', href: `/casos/${alvo.casoId}` } : { rotulo: 'Abrir a ficha do cliente', href: `/clientes/${alvo.pessoaId}` }
 
 /** O caso aberto no chat (o `processoId` do contexto). */
 async function umCaso(banco: Banco, casoId: string): Promise<Alvo | null> {
@@ -129,23 +144,29 @@ async function umCaso(banco: Banco, casoId: string): Promise<Alvo | null> {
 }
 
 /**
- * O cliente citado pelo nome inteiro, entre as pessoas que têm caso; o caso mais novo dele. Dois clientes na pergunta,
- * ou nomes iguais: a pergunta "qual deles?". ponytail: lê as pessoas com caso a cada pergunta; com milhares, buscar no banco.
+ * O cliente citado (CA6, Pedro 14/10): entre todos os clientes, com caso ou não, por nome e sobrenome (os dois primeiros
+ * nomes do cadastro, sem as ligações); o caso mais novo dele, quando há. Os textos vão em ordem: a pergunta, depois as
+ * mensagens anteriores da pessoa, da mais nova para a mais velha; vale o primeiro que cita alguém. Dois clientes no mesmo
+ * texto: a pergunta "qual deles?". ponytail: lê os clientes a cada pergunta; com milhares, buscar no banco.
  */
-async function casoCitado(banco: Banco, texto: string): Promise<Alvo | { opcoes: string[] } | null> {
-  const t = palavras(texto)
+async function clienteCitado(banco: Banco, textos: string[]): Promise<Alvo | { opcoes: string[] } | null> {
   const linhas = await banco
-    .select({ casoId: caso.id, pessoaId: caso.pessoaId, beneficio: caso.beneficio, nome: pessoa.nome })
-    .from(caso)
-    .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
-    .orderBy(desc(caso.criadoEm))
-  const citados = new Map<string, Alvo>()
-  for (const l of linhas) {
-    const nome = palavras(l.nome)
-    if (nome.trim().split(' ').length >= 2 && t.includes(nome) && !citados.has(l.nome)) citados.set(l.nome, { casoId: l.casoId, pessoaId: l.pessoaId, beneficio: l.beneficio })
+    .select({ casoId: caso.id, pessoaId: pessoa.id, beneficio: caso.beneficio, nome: pessoa.nome })
+    .from(pessoa)
+    .leftJoin(caso, eq(caso.pessoaId, pessoa.id))
+    // O caso mais novo primeiro; o lead (sem caso) por último, para o homônimo com caso valer.
+    .orderBy(sql`${caso.criadoEm} desc nulls last`)
+  for (const texto of textos) {
+    const t = semLigacoes(texto)
+    const citados = new Map<string, Alvo>()
+    for (const l of linhas) {
+      const [nome, sobrenome] = semLigacoes(l.nome).trim().split(' ')
+      if (sobrenome && t.includes(` ${nome} ${sobrenome} `) && !citados.has(l.nome)) citados.set(l.nome, { casoId: l.casoId, pessoaId: l.pessoaId, beneficio: l.beneficio })
+    }
+    if (citados.size > 1) return { opcoes: [...citados.keys()] }
+    if (citados.size) return citados.values().next().value!
   }
-  if (citados.size > 1) return { opcoes: [...citados.keys()] }
-  return citados.values().next().value ?? null
+  return null
 }
 
 const SEM_IA: Record<Extract<Rodada, { tipo: 'sem-ia' }>['motivo'], string> = {
@@ -260,9 +281,17 @@ function oferecer(x: Ambiente, ofertas: Oferta[]): string {
  */
 async function casoPelaFicha(x: Ambiente, alvo: Alvo) {
   const r = await x.app.inject({ method: 'GET', url: `/api/fichas/${alvo.pessoaId}`, headers: { cookie: x.cookie } })
-  if (r.statusCode !== 200) return 'O perfil da pessoa não abre este caso.'
-  const ficha = r.json() as { nome: string; processos: Partial<Record<'id' | 'numero' | 'beneficio' | 'etapa' | 'proximaAcao' | 'prazo', string>>[] }
-  const p = ficha.processos.find((q) => q.id === alvo.casoId)
+  if (r.statusCode !== 200) return MSG_SEM_ACESSO
+  const ficha = r.json() as Ficha
+  // CA6 (Pedro, 14/10): o cliente sem caso, o lead, é lido pela ficha: sem CPF, contato nem endereço (LGPD: o mínimo).
+  if (!alvo.casoId) {
+    x.fontes.push({ tipo: 'caso', referencia: `ficha:${alvo.pessoaId}` })
+    const agendamentos = (ficha.agendamentos ?? []).map((a) => ({ data: a.data, hora: a.hora, oQue: a.oQue, com: a.com }))
+    const lido = { cliente: ficha.nome, semCaso: true, situacao: ficha.situacao, desde: ficha.desde, etapa: etapaDaFicha(ficha, x.hoje), beneficioDeInteresse: ficha.beneficioInteresse ?? null, agendamentos }
+    return comoDado(JSON.stringify(lido))
+  }
+  const processos = ficha.processos as Partial<Record<'id' | 'numero' | 'beneficio' | 'etapa' | 'proximaAcao' | 'prazo', string>>[]
+  const p = processos.find((q) => q.id === alvo.casoId)
   if (!p) return 'Este caso ainda não aparece na ficha do cliente.'
   x.fontes.push({ tipo: 'caso', referencia: `caso:${alvo.casoId}` })
   return comoDado(JSON.stringify({ cliente: ficha.nome, processo: { numero: p.numero, beneficio: p.beneficio, etapa: p.etapa, proximaAcao: p.proximaAcao, prazo: p.prazo } }))
@@ -272,13 +301,14 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
   return [
     tool({
       name: 'ler_caso',
-      description: 'Lê o caso do contexto como o perfil da pessoa vê: situação, etapas, tarefas abertas com prazo, documentos (sem conteúdo) e a perícia.',
+      description:
+        'Lê o caso do contexto como o perfil da pessoa vê: situação, etapas, tarefas abertas com prazo, documentos (sem conteúdo) e a perícia. Cliente sem caso: o que a ficha mostra.',
       parameters: z.object({}),
       execute: async () => {
-        if (!x.alvo) return 'Nenhum caso no contexto: peça o nome completo do cliente.'
-        if (!pode(x.perfil, 'processo.abrir')) return casoPelaFicha(x, x.alvo)
+        if (!x.alvo) return MSG_CLIENTE_NAO_ACHADO
+        if (!pode(x.perfil, 'processo.abrir') || !x.alvo.casoId) return casoPelaFicha(x, x.alvo)
         const r = await x.app.inject({ method: 'GET', url: `/api/casos/${x.alvo.casoId}/processo`, headers: { cookie: x.cookie } })
-        if (r.statusCode !== 200) return 'O perfil da pessoa não abre este caso.'
+        if (r.statusCode !== 200) return MSG_SEM_ACESSO
         x.fontes.push({ tipo: 'caso', referencia: `caso:${x.alvo.casoId}` })
         // O modelo não precisa do CPF nem da data de nascimento para responder (LGPD: o mínimo).
         const { pessoa: quem, ...resto } = r.json() as { pessoa?: { nome: string } }
@@ -348,7 +378,7 @@ const falhou = (x: Ambiente, motivo: string) => {
 async function criarTarefaPeloChat(x: Ambiente, acao: string, para: string, prazo: string | null) {
   // GGVP-158 P7.3: criar tarefa pelo chat é de quem atribui tarefa (a Sênior e o líder do Atendimento); confere de novo.
   if (!pode(x.perfil, 'tarefa.atribuir')) return falhou(x, 'criar tarefa pelo chat é da Sênior e do líder do Atendimento.')
-  const casoId = x.alvo!.casoId
+  const casoId = x.alvo!.casoId!
   const pessoas = await pessoasDoEscritorio(x.banco)
   const quem = x.confirmacao?.responsavel ? pessoas.find((p) => p.nome === x.confirmacao!.responsavel) : responsavelCitado(para, pessoas)
   if (!quem) return falhou(x, 'escolha quem vai fazer a tarefa.')
@@ -370,7 +400,7 @@ export const MSG_PECA_ANTES_DO_DESPACHO = 'A petição é pedida depois do despa
  * sai da tela da petição, com o G17.
  */
 async function pedirPecaPeloChat(x: Ambiente, peca: string) {
-  const casoId = x.alvo!.casoId
+  const casoId = x.alvo!.casoId!
   const [aberta] = await x.banco
     .select({ id: tarefa.id, titulo: tarefa.titulo })
     .from(tarefa)
@@ -389,7 +419,8 @@ async function pedirPecaPeloChat(x: Ambiente, peca: string) {
  * (o cartão) antes de rodar. Os parâmetros sem valor vão como nulo: o modelo da OpenAI pede o esquema estrito.
  */
 function ferramentasDeAcao(x: Ambiente): Tool[] {
-  if (!x.alvo) return []
+  // CA6: sem caso (o lead), não há ação em caso.
+  if (!x.alvo?.casoId) return []
   const lista: Tool[] = []
   // GGVP-158 P7.3: só quem atribui tarefa recebe a ferramenta de criar tarefa.
   if (pode(x.perfil, 'tarefa.atribuir'))
@@ -418,7 +449,7 @@ function ferramentasDeAcao(x: Ambiente): Tool[] {
 
 /** CA3: o cartão a partir da aprovação pedida pelo kit: os passos, o que conferir, as travas e o responsável. */
 async function cartaoDaAprovacao(x: Ambiente, ferramenta: string, argumentos: Record<string, unknown>): Promise<CartaoDeAcao | null> {
-  const casoId = x.alvo!.casoId
+  const casoId = x.alvo!.casoId!
   const cliente = await clienteDoCaso(x.banco, casoId)
   const comum = { id: `acao-${randomUUID()}`, cliente, processoId: casoId }
   if (ferramenta === 'criar_tarefa') {
@@ -499,14 +530,16 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
       return antes.resposta
     }
 
-    const alvo = doCaso ? await umCaso(banco, doCaso) : abreCaso ? await casoCitado(banco, texto) : null
+    // CA6 (Pedro, 14/10): sem cliente na pergunta, vale o citado antes pela pessoa, da mensagem mais nova para a mais velha.
+    const daPessoa = entrada.data.anteriores.filter((m) => m.de === 'pessoa').map((m) => m.texto).reverse()
+    const alvo = doCaso ? await umCaso(banco, doCaso) : abreCaso ? await clienteCitado(banco, [texto, ...daPessoa]) : null
     if (alvo && 'opcoes' in alvo) return { ...daRegra('pergunta', 'De qual cliente? Escolha um.', [], agora()), opcoes: alvo.opcoes }
     const casoId = alvo?.casoId ?? null
     // O link só leva à tela, que confere a permissão dela (a prestação de contas é do Financeiro, que não abre o caso).
     const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
     if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
-    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes }, texto)
+    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores: entrada.data.anteriores }, texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
       const cartao = await cartaoDaAprovacao(x, rodada.ferramenta, rodada.argumentos)
       if (cartao) {

@@ -153,3 +153,15 @@ describe('GGVP-82 · CA12 · o que é o arquivo anexado', () => {
     expect(tipoDoAnexo(texto, arquivos)).toBe(tipo)
   })
 })
+
+describe('GGVP-142 CA8 · criar, preparar ou elaborar uma peça é pedir a peça (Pedro, 14/10)', () => {
+  it.each([
+    ['quero criar uma minuta pra cliente pedro grigorio', 'pedir-peca'],
+    ['prepara o recurso da Vera', 'pedir-peca'],
+    ['elabore a petição inicial do Rui', 'pedir-peca'],
+    ['a criança teve o recurso negado?', 'consulta'],
+    ['cria uma tarefa para a advogada fazer a petição', 'criar-tarefa'],
+  ])('"%s" → %s', (texto, intencao) => {
+    expect(entenderPedido(texto)).toBe(intencao)
+  })
+})

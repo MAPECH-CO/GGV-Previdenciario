@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
 import { CentralAdvogada } from '../paginas/CentralAdvogada.tsx'
@@ -186,5 +186,36 @@ describe('GGVP-82 CA6 · o Suporte nas outras telas', () => {
     fireEvent.click(within(suporte).getByRole('button', { name: 'Enviar' }))
     expect(await within(suporte).findByText(/^G8: O aviso ao cliente só nasce depois do OK da advogada/)).toBeTruthy()
     window.history.pushState({}, '', '/')
+  })
+})
+
+describe('GGVP-142 CA5 · a conversa vai junto ao servidor (Pedro, 14/10)', () => {
+  const corpos: { anteriores?: unknown }[] = []
+  beforeEach(() => {
+    corpos.length = 0
+    configurarExemplo({ servidor: true })
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
+      if (url !== '/api/chat') return new Response('{}', { status: 404, headers: { 'content-type': 'application/json' } })
+      corpos.push(JSON.parse(String(init.body)))
+      const sugestao = { chamadaId: '0b9b7c5e-7d4c-4b5f-9a3e-2f1d6c8e9a10', sugestao: true, texto: `Resposta ${corpos.length}.`, fontes: [], modelo: 'gpt-4.1-mini', geradaEm: '2026-10-14T15:00:00.000Z', alerta: null }
+      return new Response(JSON.stringify({ tipo: 'resposta', sugestao, links: [] }), { status: 200, headers: { 'content-type': 'application/json' } })
+    })
+  })
+  afterEach(() => {
+    configurarExemplo({ servidor: false })
+    vi.unstubAllGlobals()
+  })
+
+  it('a segunda pergunta leva a primeira e a resposta dela, nessa ordem', async () => {
+    chat('Atendimento')
+    enviar('Qual o próximo passo de um BPC negado?')
+    await screen.findByText('Resposta 1.')
+    enviar('Qual o próximo passo de um auxílio negado?')
+    await screen.findByText('Resposta 2.')
+    expect(corpos[0].anteriores, 'a primeira vai sem histórico').toBeUndefined()
+    expect(corpos[1].anteriores).toEqual([
+      { de: 'pessoa', texto: 'Qual o próximo passo de um BPC negado?' },
+      { de: 'chat', texto: 'Resposta 1.' },
+    ])
   })
 })

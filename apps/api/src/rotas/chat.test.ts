@@ -7,7 +7,7 @@ import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, doc
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MODELO_DA_REGRA, MSG_PECA_ANTES_DO_DESPACHO } from './chat.ts'
+import { MODELO_DA_REGRA, MSG_CLIENTE_NAO_ACHADO, MSG_PECA_ANTES_DO_DESPACHO, MSG_SEM_ACESSO } from './chat.ts'
 
 const SENHA = 'senha-do-portal-1'
 const CHAVE = { OPENAI_API_KEY: 'chave-de-teste' }
@@ -443,5 +443,102 @@ describe('12/10 · os widgets do chat', () => {
     const r = await perguntar('ana', 'O que tem hoje?')
     expect(JSON.stringify(r)).not.toContain('M54.5')
     expect(saidaDaFerramenta(1)).not.toMatch(/\{\{w2\}\}/)
+  })
+})
+
+describe('GGVP-142 · ajustes do teste do Pedro no chat (14/10)', () => {
+  async function comAnteriores(apelido: string, texto: string, anteriores: { de: 'pessoa' | 'chat'; texto: string }[]) {
+    const r = await app.inject({ method: 'POST', url: '/api/chat', cookies: await cookieDe(apelido), payload: { texto, anteriores } })
+    expect(r.statusCode, r.body).toBe(200)
+    return RespostaDoChat.parse(r.json())
+  }
+  const conteudo = (m: { content: unknown }) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
+
+  it('18.12 CA5 · o modelo recebe a conversa como histórico, antes da pergunta', async () => {
+    await comAnteriores('ana', 'qual passo ele está?', [
+      { de: 'pessoa', texto: 'preciso de ajuda com a Vera Lúcia' },
+      { de: 'chat', texto: 'Claro, o que você quer saber?' },
+    ])
+    const conversa = chamadas[0].corpo.messages.filter((m) => m.role !== 'system').map((m) => [m.role, conteudo(m)])
+    expect(conversa).toEqual([
+      ['user', expect.stringContaining('preciso de ajuda com a Vera Lúcia')],
+      ['assistant', expect.stringContaining('Claro, o que você quer saber?')],
+      ['user', expect.stringContaining('qual passo ele está?')],
+    ])
+  })
+
+  async function lead(nome: string) {
+    const [p] = await banco.insert(pessoa).values({ nome, situacao: 'lead', cpf: '43970452830', telefone: '11910410899' }).returning()
+    return p.id
+  }
+  const fichaDe = (id: string) => ({ rotulo: 'Abrir a ficha do cliente', href: '/clientes/' + id })
+
+  it('18.13 CA6 · o lead citado por nome e sobrenome é lido pela ficha, sem CPF nem contato, com o link da ficha', async () => {
+    const id = await lead('Pedro Grigorio de Jesus')
+    roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'É lead.' }]
+    const r = await perguntar('ana', 'o que tem do pedro grigorio?')
+    expect(r.links).toEqual([fichaDe(id)])
+    const lido = saidaDaFerramenta(1)
+    expect(lido).toContain('"cliente":"Pedro Grigorio de Jesus"')
+    expect(lido).toContain('"semCaso":true')
+    for (const dado of ['43970452830', '11910410899', 'cpf', 'telefone']) expect(lido).not.toContain(dado)
+    expect(r.sugestao.fontes).toEqual([{ tipo: 'caso', referencia: 'ficha:' + id }])
+  })
+
+  it('18.13 CA6 · sem caso, nem a Sênior recebe ferramenta de ação; a advogada lê o lead pela ficha e o link é a ficha', async () => {
+    const id = await lead('Pedro Grigorio de Jesus')
+    montar({ ...CHAVE, IA_PERMITE_DADO_DE_SAUDE: 'sim' })
+    await perguntar('helena', 'Como está o Pedro Grigorio?')
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).not.toContain('criar_tarefa')
+    roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'É lead.' }]
+    const r = await perguntar('gabi', 'Como está o Pedro Grigorio?')
+    expect(r.links).toEqual([fichaDe(id)])
+    expect(saidaDaFerramenta(2)).toContain('"semCaso":true')
+  })
+
+  it('18.13 CA6 · sem ninguém na pergunta, vale o cliente citado antes pela pessoa, não o que o chat disse', async () => {
+    const id = await lead('Pedro Grigorio de Jesus')
+    const r = await comAnteriores('ana', 'qual passo ele está?', [
+      { de: 'pessoa', texto: 'preciso de ajuda com o pedro grigorio de jesus' },
+      { de: 'chat', texto: 'É a Vera Lúcia?' },
+    ])
+    expect(r.links).toEqual([fichaDe(id)])
+  })
+
+  it('18.13 CA6 · as ligações do nome não confundem: "maria da penha" não é a Maria da Silva Souza', async () => {
+    const id = await lead('Maria da Silva Souza')
+    expect((await perguntar('ana', 'e a maria da penha?')).links).toEqual([])
+    expect((await perguntar('ana', 'e a maria silva?')).links).toEqual([fichaDe(id)])
+  })
+
+  it('18.14 CA7 · sem cliente achado, a ferramenta e a instrução (versão 3) mandam dizer que não achou, sem pedir o nome de novo', async () => {
+    roteiro = [ferramenta('ler_caso'), { role: 'assistant', content: 'Não achei cliente com esse nome.' }]
+    await perguntar('ana', 'como está o caso do João Inexistente da Costa?')
+    expect(saidaDaFerramenta(1)).toBe(MSG_CLIENTE_NAO_ACHADO)
+    expect(MSG_CLIENTE_NAO_ACHADO).not.toMatch(/peça o nome completo/)
+    const instrucao = conteudo(chamadas[0].corpo.messages.find((m) => m.role === 'system' || m.role === 'developer')!)
+    expect(instrucao).toContain('Nunca peça de novo o nome que a pessoa já deu.')
+    expect(await registros()).toMatchObject([{ versaoInstrucao: 3 }])
+  })
+
+  it('18.15 CA8 · o Atendimento pede uma minuta: o código diz que o perfil não tem acesso e manda pedir à Sênior, sem modelo', async () => {
+    await lead('Pedro Grigorio de Jesus')
+    const r = await perguntar('ana', 'quero criar uma minuta pra cliente Pedro Grigorio')
+    expect(r.sugestao.modelo).toBe(MODELO_DA_REGRA)
+    expect(r.sugestao.texto).toBe('«Pedir petição» é da advogada do caso: seu perfil não tem acesso a isso. Para pedir, fale com a Sênior ou a líder do Atendimento, que criam a tarefa.')
+    expect(r.acao).toBeUndefined()
+    expect(chamadas, 'a trava não chama o modelo').toEqual([])
+  })
+
+  it('18.15 CA8 · a quem cria tarefa, o cartão continua prometido; a leitura recusada e a instrução dizem "sem acesso"', async () => {
+    expect((await perguntar('helena', 'Marca a perícia da Vera para amanhã', casoId)).sugestao.texto).toBe(
+      '«Marcar perícia» é do Jurídico administrativo: seu perfil não tem acesso a isso. Peça a tarefa para quem faz, e eu mostro o cartão.',
+    )
+    const r = await perguntar('julia', 'Marca a perícia da Vera para amanhã', casoId)
+    expect(r.sugestao.texto).toBe('«Marcar perícia» é do Jurídico administrativo: seu perfil não tem acesso a isso. Para pedir, fale com a Sênior ou a líder do Atendimento, que criam a tarefa.')
+    expect(MSG_SEM_ACESSO).toMatch(/^Sem acesso:.*não tem acesso a isso\.$/)
+    await perguntar('ana', 'Oi')
+    const instrucao = conteudo(chamadas[0].corpo.messages.find((m) => m.role === 'system' || m.role === 'developer')!)
+    expect(instrucao).toContain('diga com clareza que o perfil dela não tem acesso a isso')
   })
 })
