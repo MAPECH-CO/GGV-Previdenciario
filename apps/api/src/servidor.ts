@@ -257,7 +257,7 @@ export function criarServidor({
     registrarRotasRecepcao(app, { banco, agora, tarefasPorArea, armazenamento: arquivos, cofre: cofreDoGov, leitor, drive: doAmbiente })
     registrarRotasRecepcaoAgenda(app, { banco, agora })
     registrarRotasRecepcaoEntrevista(app, { banco, agora, ia: motorIa, armazenamento: arquivos, preparo })
-    registrarRotasRecepcaoDecisoes(app, { banco, agora })
+    registrarRotasRecepcaoDecisoes(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasRecepcaoSegundaFicha(app, { banco, agora, armazenamento: arquivos, cofre: cofreDoGov, leitor })
     registrarRotasRecepcaoContrato(app, {
       banco,

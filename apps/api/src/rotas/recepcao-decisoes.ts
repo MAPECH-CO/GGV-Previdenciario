@@ -24,8 +24,10 @@ import {
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { credencialGovbr } from '../banco/esquema.ts'
+import { criarSugestaoDoBeneficio } from '../fluxo/sugestao-do-beneficio.ts'
+import type { Ia } from '../ia/ia.ts'
+import type { Preparo } from '../ia/preparo.ts'
 import { exigir } from '../sessao/rotas.ts'
-import { analisar, cnisDoCaso } from '../../../web/src/dados/acervo.ts'
 import { BENEFICIOS, MOTIVOS_DE_NAO_FECHAR, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import type { Agendamento, Calculo, Cadastro, Demanda, Ficha, Renovacao, TarefaEncaminhada } from '../../../web/src/dados/tipos.ts'
 import { cadastroDaFicha, errosDoCadastro, errosDoRepresentante, fichaDoCadastro, mesclar, normalizarRg, ROTULOS_DO_CADASTRO } from '../../../web/src/regras/cadastro.ts'
@@ -45,10 +47,11 @@ const minusculo = (rotulo: string) => (rotulo === rotulo.toUpperCase() ? rotulo 
 const dataIso = (data: string) => dataParaIso(normalizarData(data))
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
-type Opcoes = { banco: Banco; agora?: () => Date }
+type Opcoes = { banco: Banco; agora?: () => Date; ia: Ia; preparo: Preparo }
 
-export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, agora = () => new Date(), ia, preparo }: Opcoes) {
   const f = criarFichario(banco, agora)
+  const sugestoes = criarSugestaoDoBeneficio({ banco, ia })
   const { hoje, evento, nomeDe, fichas, guardar, garantirAberta, concluirTarefas, tarefas, acharAgendamento, arquivar, marcarRecontato } = f
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const analisarFicha = { preHandler: exigir(banco, 'ficha.analisar', agora) }
@@ -154,9 +157,23 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     return { abertas, ...(await devolver(ficha)) }
   })
 
+  /** A transcrição pronta da entrevista (a da última gravação), ou nada. */
+  const transcricaoDa = async (agendamentoId: string) =>
+    (await f.gravacoes(true)).filter((g) => g.agendamentoId === agendamentoId && g.transcricao === 'pronta').at(-1)
+
+  // GGVP-158 P7.4: a definição do benefício, com a sugestão da IA já pronta (o preparo a faz quando a entrevista é
+  // transcrita), o que a advogada citou (G3), os dados dos requisitos (G19) e, sem a IA, o aviso.
+  app.get<{ Params: { id: string } }>('/api/entrevistas/:id/beneficio', analisarFicha, async (pedido, resposta) => {
+    const achado = await acharAgendamento(pedido.params.id)
+    if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
+    const { ficha, agendamento } = achado
+    const gravacao = await transcricaoDa(agendamento.id)
+    return { ficha, agendamento, transcrita: gravacao !== undefined, ...(await sugestoes.definicao(ficha, gravacao, hoje(), { quem: pedido.usuario!.id })) }
+  })
+
   // GGVP-51: guarda o benefício final, quem decidiu, o citado, a sugestão e os casos consultados (CA6); recusar a
   // sugestão vai ao histórico (CA3); trocar substitui, com o anterior no histórico (CA8). Benefício com cálculo abre
-  // "Calcular tempo e pontos" (GGVP-57).
+  // "Calcular tempo e pontos" (GGVP-57). GGVP-158 P7.4: a sugestão é a mesma que a tela mostrou, sem chamar a IA de novo.
   app.post<{ Params: { id: string } }>('/api/entrevistas/:id/beneficio', analisarFicha, async (pedido, resposta) => {
     const entrada = DecisaoDoBeneficio.safeParse(pedido.body)
     const d = entrada.success ? entrada.data : null
@@ -165,26 +182,25 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     const achado = await acharAgendamento(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
     const { ficha, agendamento } = achado
-    const gravacao = (await f.gravacoes(true)).filter((g) => g.agendamentoId === agendamento.id && g.transcricao === 'pronta').at(-1)
-    const { sugestao } = analisar(ficha, gravacao, hoje())
+    const { citado, sugestao } = await sugestoes.definicao(ficha, await transcricaoDa(agendamento.id), hoje(), { soLer: true })
     const quem = await nomeDe(pedido)
     const motivo = d.motivoDaRecusa || undefined
     const anterior = ficha.beneficioDefinido
-    const recusou = sugestao !== undefined && d.beneficio !== sugestao.sugerido
+    const recusou = sugestao !== null && d.beneficio !== sugestao.sugerido
     ficha.beneficioDefinido = {
       beneficio: d.beneficio,
       agendamentoId: agendamento.id,
       quem,
       quando: agora().toISOString(),
-      citado: sugestao?.citado,
+      citado: citado ?? undefined,
       sugerido: sugestao?.sugerido,
-      fontes: sugestao?.base.map((c) => c.id) ?? [],
+      fontes: sugestao?.fontes.map((x) => x.referencia) ?? [],
       recusouSugestao: recusou,
       ...(motivo && { motivoDaRecusa: motivo }),
     }
     if (anterior && anterior.beneficio !== d.beneficio)
       ficha.historico.push(evento(`Trocou o benefício do caso: «${nomeBeneficio(anterior.beneficio)}» → «${nomeBeneficio(d.beneficio)}»`, quem))
-    const manteveOCitado = sugestao?.citado === d.beneficio
+    const manteveOCitado = citado === d.beneficio
     ficha.historico.push(evento(`Definiu o benefício do caso (D1.12): ${nomeBeneficio(d.beneficio)}${manteveOCitado ? ' · o que citou na entrevista (G3)' : ''}`, quem))
     if (recusou) {
       const comMotivo = motivo ? `: ${motivo}` : ''
@@ -202,7 +218,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     let tarefa: TarefaEncaminhada | undefined
     if (!exigeCalculo(d.beneficio)) await concluirTarefas(ficha.id, 'Calcular tempo e pontos', `calcular-${ficha.id}`)
     else {
-      const cnis = cnisDoCaso(ficha.id)
+      const cnis = ficha.cnisDigitado
       tarefa = {
         id: `calcular-${ficha.id}`,
         codigo: 'D1.13',
@@ -269,17 +285,16 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     if (!achado) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
     const { ficha } = achado
     if (!exigeCalculo(ficha.beneficioDefinido?.beneficio)) return negar(resposta, 400, 'O benefício deste caso não exige cálculo.')
-    // GGVP-158 P3.4: com o CNIS digitado, o tempo, os pontos e a carência são os do servidor; o que a tela mandou não vale.
-    // Sem ele, a semente segue com o CNIS de exemplo.
-    const digitado = ficha.cnisDigitado
-    if (digitado?.resultado.parcial) return negar(resposta, 400, 'O CNIS tem competências pendentes: confira antes de registrar o cálculo.')
-    const cnis = digitado ? { origem: digitado.origem, extraidoEm: digitado.extraidoEm } : cnisDoCaso(ficha.id)
+    // GGVP-158 P3.4: o tempo, os pontos e a carência são os do servidor, sobre o CNIS registrado no caso; o que a tela
+    // mandou não vale. P7.4: sem CNIS registrado, não há cálculo (o CNIS de exemplo saiu do servidor).
+    const cnis = ficha.cnisDigitado
     if (!cnis) return negar(resposta, 400, 'Sem CNIS no caso.')
+    if (cnis.resultado.parcial) return negar(resposta, 400, 'O CNIS tem competências pendentes: confira antes de registrar o cálculo.')
     const quem = await nomeDe(pedido)
     const anterior = ficha.calculos?.at(-1)
     const calculo: Calculo = {
-      tempo: digitado ? tempoDosDias(digitado.resultado.diasTotais) : registro.tempo,
-      pontos: digitado ? pontosDoCnis(digitado.resultado.pontos) : registro.pontos,
+      tempo: tempoDosDias(cnis.resultado.diasTotais),
+      pontos: pontosDoCnis(cnis.resultado.pontos),
       regra: registro.regra,
       podeAposentar: registro.podeAposentar,
       ...(!registro.podeAposentar && { dataPrevista: dataPrevistaIso(registro.dataPrevista)! }),
@@ -287,7 +302,8 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
       quando: agora().toISOString(),
       cnisOrigem: cnis.origem,
       cnisExtraidoEm: cnis.extraidoEm,
-      ...(digitado && { carencia: digitado.resultado.carencia, versao: digitado.resultado.versao }),
+      carencia: cnis.resultado.carencia,
+      versao: cnis.resultado.versao,
     }
     const resumo = (c: Calculo) =>
       `${tempoFalado(c.tempo)}, ${pontosFalados(c.pontos)} pontos, ${c.regra}; ${c.podeAposentar ? 'já pode se aposentar' : `ainda não pode se aposentar: previsto para ${dataCurta(c.dataPrevista!, hoje())}`}`
@@ -496,4 +512,21 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     await guardar(ficha)
     return { senhaGov: ficha.senhaGov, renovacao, ...(await devolver(ficha)) }
   })
+
+  // GGVP-158 P7.4 e GGVP-106: a sugestão do benefício fica pronta quando a entrevista é transcrita, enquanto o benefício
+  // não foi definido.
+  preparo.registrar(
+    async () => {
+      const prontas = (await f.gravacoes(true)).filter((g) => !g.conversaId && g.agendamentoId && g.transcricao === 'pronta')
+      if (!prontas.length) return []
+      const ja = await sugestoes.sugeridas()
+      const semBeneficio = new Set((await fichas([...new Set(prontas.map((g) => g.fichaId))])).filter((x) => !x.beneficioDefinido).map((x) => x.id))
+      return [...new Set(prontas.filter((g) => semBeneficio.has(g.fichaId) && !ja.has(`gravacao:${g.id}`)).map((g) => g.agendamentoId!))]
+    },
+    async (agendamentoId) => {
+      const achado = await acharAgendamento(agendamentoId)
+      const gravacao = achado && (await transcricaoDa(agendamentoId))
+      if (achado && gravacao) await sugestoes.preparar(achado.ficha, gravacao)
+    },
+  )
 }

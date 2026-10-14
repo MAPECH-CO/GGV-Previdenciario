@@ -2,7 +2,7 @@
 // fica registrada (CA4); sem chave, desliga e nada trava; dado de saúde só com autorização do escritório (LGPD).
 import { createHash } from 'node:crypto'
 import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm'
-import type { FonteDaIa, SugestaoDaIa } from '@ggv/contratos'
+import { CATALOGO_BENEFICIOS, type FonteDaIa, type SugestaoDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { chamadaIa, eventoAuditoria } from '../banco/esquema.ts'
 import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
@@ -337,6 +337,24 @@ export const FINALIDADES = {
       'Leia as falas e responda só com um objeto JSON: {"resumo": "a entrevista em até 4 frases simples, sem concluir o benefício", "itens": [{"tipo": "telefone" | "estadoCivil" | "profissao" | "contatoApoio" | "documento" | "desde", "valor": "o que foi dito", "i": número da fala de onde saiu}]}.',
       'Só entra o que o cliente (ou quem falou por ele) disse: o telefone dele, com DDD, só se foi dito inteiro; o estado civil; a profissão; o contato de apoio (quem é e o telefone); cada documento que ele citou, um item por documento, em linguagem simples; e desde quando não consegue trabalhar ("desde"), como foi dito (por exemplo, 06/2026).',
       'Não calcule datas, não complete o que não foi dito e não defina o benefício: quem decide é a advogada. Use só o que está no conteúdo; se nada disso foi dito, "itens" vazio.',
+    ].join(' '),
+  },
+  /**
+   * GGVP-158 P7.4: o benefício sugerido depois da entrevista, pelas falas e pelos casos parecidos do acervo, para a
+   * advogada conferir e decidir (G3). Os ids são os do catálogo, conferidos no código; os requisitos numéricos são do
+   * código (G19). Leitura interna, do Jurídico.
+   */
+  sugerir_beneficio: {
+    versao: 1,
+    saude: true,
+    json: true,
+    barrarCid: false,
+    instrucao: [
+      'Você sugere o benefício de um cliente do escritório previdenciário, depois da entrevista inicial, para a advogada conferir e decidir.',
+      'Leia o benefício de interesse, as falas da entrevista e, se houver, os trechos do acervo da casa (outros casos), e responda só com um objeto JSON:',
+      '{"sugerido": "o id do benefício que mais combina com o caso", "alternativa": "o id de outro benefício possível, ou null", "porque": "em até 3 frases simples: o que a entrevista e o acervo mostram"}.',
+      `Use só estes ids: ${CATALOGO_BENEFICIOS.map((b) => `${b.id} (${b.nome})`).join('; ')}.`,
+      'Recomende sempre um benefício, mesmo sem caso parecido. Cite caso do acervo só se o trecho estiver no conteúdo. Não calcule carência, idade, tempo nem prazo: os requisitos numéricos são do sistema.',
     ].join(' '),
   },
   /**

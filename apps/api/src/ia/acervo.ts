@@ -12,6 +12,8 @@ import { acervoTrecho } from '../banco/esquema.ts'
 import type { Ia } from './ia.ts'
 
 export const MSG_SEM_REFERENCIA = 'Sem referência na casa: nada parecido no acervo; a IA usou só o caso.'
+/** Sem caso no contexto (o chat, a entrevista antes do caso), a busca no acervo não tem caso a deixar de fora. */
+export const SEM_CASO = '00000000-0000-0000-0000-000000000000'
 
 /** `saude`: trecho só do Jurídico entra (os fluxos passam pela finalidade da IA). `ia`: com ela, também pelo sentido (GGVP-141). */
 type Busca = { casoId: string; beneficio: string | null; consulta: string; limite?: number; saude?: boolean; ia?: Ia }

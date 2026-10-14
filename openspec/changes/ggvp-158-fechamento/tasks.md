@@ -620,15 +620,19 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - depois, a mesma tarefa.
 
   Verificado em 13/10: `rotas/chat.test.ts` 29/29. A atendente e a advogada não recebem a ferramenta de criar tarefa, e a Sênior recebe (os testes de criar tarefa passaram a ser da Sênior); a peça antes do despacho recusa, sem tarefa; depois, aponta para a mesma "Pedir a petição".
-- [ ] 7.7 A sugestão de benefício, a IA (P7.4, decisão 70): a finalidade `sugerir_beneficio`, a busca do acervo e a saída conferida contra o catálogo.
+- [x] 7.7 A sugestão de benefício, a IA (P7.4, decisão 70): a finalidade `sugerir_beneficio`, a busca do acervo e a saída conferida contra o catálogo.
   - Verifica com teste, com a IA de mentira:
     - o benefício fora do catálogo não vale;
     - sem fonte, "Sem referência na casa".
-- [ ] 7.8 A sugestão de benefício, as rotas (P7.4): o `GET` no servidor, o `POST` com a sugestão pronta, o preparo e o fim do acervo e do CNIS de exemplo no servidor.
+
+  Verificado em 13/10, em `rotas/recepcao-decisoes.test.ts`: o benefício fora do catálogo não vale e dá o aviso; sem caso parecido, o porquê começa com "Sem referência na casa", sem fontes.
+- [x] 7.8 A sugestão de benefício, as rotas (P7.4): o `GET` no servidor, o `POST` com a sugestão pronta, o preparo e o fim do acervo e do CNIS de exemplo no servidor.
   - Verifica com `rotas/recepcao-decisoes.test.ts`:
     - pronta, com as fontes;
     - a recusa no histórico;
     - sem a IA, o aviso.
+
+  Verificado em 13/10: `rotas/recepcao-decisoes.test.ts` 13/13 (4 novos) e `regras/regras.test.ts` 79/79. A sugestão pronta na rodada, com a fonte do acervo; a tela abre e a decisão registra a mesma, sem chamar a IA de novo; o Atendimento recebe 403; a recusa vai ao histórico com o motivo e a sugestão recusada; a carência vem do CNIS registrado; sem a IA, o aviso, e o citado segue.
 - [x] 7.9 O desfecho no acervo (P7.5, decisão 71): `desfechoNoAcervo` no deferimento do INSS, na ida ao banco e no caso perdido.
   - Verifica com `rotas/vigilia.test.ts` e `rotas/prestacao.test.ts`:
     - o deferimento entra no acervo;

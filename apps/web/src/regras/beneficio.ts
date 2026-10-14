@@ -61,16 +61,17 @@ export function diasDesde(mesAno: string, hoje: string): number | null {
 
 /**
  * Os requisitos numéricos do benefício, calculados por código (CA7, G19). Sem o dado, o requisito diz o que falta e fica
- * sem resposta (nulo).
+ * sem resposta (nulo). `carencia`: as competências de carência que o cálculo do CNIS registrado no caso já contou
+ * (GGVP-158 P7.4); sem ela, conta pelos vínculos.
  */
 export function requisitosDoBeneficio(
   beneficio: string,
-  dados: { vinculos?: Vinculo[]; semTrabalharDesde?: string; nascimento?: string },
+  dados: { vinculos?: Vinculo[]; carencia?: number; semTrabalharDesde?: string; nascimento?: string },
   hoje: string,
 ): Requisito[] {
   const carencia = (): Requisito => {
-    if (!dados.vinculos) return { texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }
-    const n = contribuicoes(dados.vinculos, hoje)
+    const n = dados.carencia ?? (dados.vinculos && contribuicoes(dados.vinculos, hoje))
+    if (n === undefined) return { texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }
     return { texto: `Carência: ${n} contribuições no CNIS; o mínimo é ${CARENCIA} (calculado por código, G19)`, atende: n >= CARENCIA }
   }
   const afastamento = (): Requisito => {

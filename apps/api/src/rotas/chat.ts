@@ -24,7 +24,7 @@ import { z } from 'zod'
 import type { Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, caso, documentacaoMedica, etapa, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_IA_DESLIGADA, MSG_IA_SEM_RESPOSTA, MSG_IA_SEM_SAUDE } from '../fluxo/transcricao.ts'
-import { MSG_SEM_REFERENCIA, buscarNoAcervo } from '../ia/acervo.ts'
+import { MSG_SEM_REFERENCIA, SEM_CASO, buscarNoAcervo } from '../ia/acervo.ts'
 import { comoDado, conversar, type Rodada } from '../ia/chat.ts'
 import { temCid, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
@@ -187,9 +187,6 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
   const resposta = daRegra('resposta', `O chat ainda não sobe arquivo no servidor. ${destino.texto}${semCaso}`, [{ tipo: 'regra', referencia: 'envio de arquivo pela tela' }], agora)
   return { ...resposta, links: destino.links }
 }
-
-/** Sem caso no contexto, a busca no acervo não tem caso a deixar de fora. */
-const SEM_CASO = '00000000-0000-0000-0000-000000000000'
 
 /**
  * O que as ferramentas de uma pergunta conhecem: quem pergunta (com a sessão dele), o caso e as fontes usadas. Na

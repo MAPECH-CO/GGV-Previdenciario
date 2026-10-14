@@ -443,11 +443,11 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - `criar_tarefa` só entra nas ferramentas de quem tem `tarefa.atribuir`, e a execução confere de novo.
     - `pedir_peca` confere a "Pedir a petição" (D3.05) aberta pelo despacho. Sem ela: "A petição é pedida depois do despacho da Sênior.". Com ela, não cria outra: devolve o link da petição e registra o pedido no histórico.
 70. **A sugestão de benefício** (P7.4).
-    - Finalidade nova, `sugerir_beneficio`, com dado de saúde. O conteúdo: o benefício de interesse, as falas da entrevista (sem a senha) e as informações conferidas. As fontes: a busca do acervo (até 3, com saúde).
-    - A saída é `{ sugerido, alternativa, porque }`, com os ids do catálogo, conferidos no código. O citado e os requisitos ficam no código, como hoje. Sem fonte, o porquê diz "Sem referência na casa".
-    - `GET /api/entrevistas/:id/beneficio` no servidor: transcrita, sugestão, os dados dos requisitos e o aviso.
-    - O `POST` usa a mesma sugestão pronta, sem chamar de novo. O preparo deixa a sugestão pronta nas entrevistas transcritas sem benefício definido.
-    - O servidor deixa de importar o acervo de exemplo (`web/src/dados/acervo.ts`). Os requisitos usam o CNIS registrado no caso (parte 3); sem ele, sem vínculo.
+    - Finalidade nova, `sugerir_beneficio`, com dado de saúde. O conteúdo: o benefício de interesse e as falas da entrevista (já sem a senha). As informações conferidas ficam de fora (13/10, na implementação): mudam depois da transcrição e tirariam a sugestão do pronto, e o que elas dizem já está nas falas. As fontes: a busca do acervo (até 3, com saúde, de todos os benefícios), sem o caso mais novo da pessoa.
+    - A saída é `{ sugerido, alternativa, porque }`, com os ids do catálogo, conferidos no código. O citado e os requisitos ficam no código, como hoje; o citado vem à parte, também sem a IA (G3). Sem fonte, o porquê começa com "Sem referência na casa".
+    - `GET /api/entrevistas/:id/beneficio` no servidor (`ficha.analisar`): a transcrita, o citado, a sugestão, os dados dos requisitos e o aviso.
+    - A sugestão da entrevista é a última que a IA deu para a gravação: o `POST` registra a mesma, sem chamar de novo. O preparo deixa a sugestão pronta nas entrevistas transcritas sem benefício definido.
+    - O servidor deixa de importar o acervo de exemplo (`web/src/dados/acervo.ts`). Os requisitos usam o CNIS registrado no caso (parte 3), pela carência que o cálculo já contou (`requisitosDoBeneficio` aceita a carência pronta); sem ele, a carência fica sem resposta, e o cálculo recusa.
     - A base da sugestão são as fontes da IA ("de onde veio").
 71. **O desfecho no acervo** (P7.5).
     - Uma função só, `desfechoNoAcervo(banco, casoId, { desfecho, dataDecisao })`: insere quando o caso não tem registro, com o número, o perito da perícia mais nova, o juízo e a data; quando o registro existe sem desfecho, completa.

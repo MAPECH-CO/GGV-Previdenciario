@@ -2,7 +2,10 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, chamadaIa, fichaRecepcao, gravacaoRecepcao, pessoa, resultadoInss, usuario } from '../banco/esquema.ts'
+import { MSG_IA_DESLIGADA, MSG_IA_SEM_RESPOSTA } from '../fluxo/transcricao.ts'
+import { MSG_SEM_REFERENCIA } from '../ia/acervo.ts'
+import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { cadastroDaFicha } from '../../../web/src/regras/cadastro.ts'
@@ -277,5 +280,106 @@ describe('GGVP-158 P3.4 · o cálculo de tempo e pontos sai do CNIS digitado, no
     expect((await chamar('gabi', 'PUT', `${url}/cnis`, pendente)).statusCode).toBe(200)
     const r = await chamar('gabi', 'POST', `${url}/calculo`, REGISTRO)
     expect([r.statusCode, r.json().erro]).toEqual([400, 'O CNIS tem competências pendentes: confira antes de registrar o cálculo.'])
+  })
+})
+
+describe('GGVP-158 P7.4 · a sugestão de benefício vem do acervo de verdade', () => {
+  // A IA é de mentira: devolve `saida` quando o pedido é a sugestão de benefício.
+  let saida: object = {}
+  let enviado = ''
+  const SEM_IA = (motivo: string) => `Sem a sugestão da IA: ${motivo}. Defina o benefício pela lista do escritório.`
+  const chamadas = async () => (await banco.select().from(chamadaIa).where(eq(chamadaIa.finalidade, 'sugerir_beneficio'))).length
+  async function comIa() {
+    await app.close()
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
+      const doBeneficio = corpo.messages[0].content.includes('Você sugere o benefício')
+      if (doBeneficio) enviado = corpo.messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: doBeneficio ? JSON.stringify(saida) : 'Texto.' } }] }))
+    }
+    const ambiente = { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }
+    app = criarServidor({ banco, agora: () => relogio, ia: criarIa({ banco, ambiente, fetch, agora: () => relogio }) })
+  }
+  // Inventada: a advogada cita o auxílio-doença, e o "desde" conferido é de junho.
+  const FALAS = [
+    { aos: 10, quem: 'Paula', papel: 'advogada', texto: 'O que aconteceu com o seu trabalho?' },
+    { aos: 20, quem: 'Joana', papel: 'cliente', texto: 'Parei de trabalhar na limpeza por causa da coluna; tenho laudo do ortopedista.' },
+    { aos: 30, quem: 'Paula', papel: 'advogada', texto: 'Então vamos pedir o auxílio-doença.' },
+  ]
+  const DESDE = { id: 'desde-0', rotulo: 'Sem trabalhar desde', valor: '06/2026', destino: 'processo', aos: 20, trecho: FALAS[1].texto, conferidaEm: relogio.toISOString() }
+  /** A entrevista transcrita (o teste não tem áudio): as falas e o "desde" que a advogada conferiu. */
+  async function transcrita() {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    const [g] = await banco.select().from(gravacaoRecepcao).where(eq(gravacaoRecepcao.pessoaId, fichaId))
+    await banco
+      .update(gravacaoRecepcao)
+      .set({ dados: { ...(g.dados as object), transcricao: 'pronta', trechos: FALAS, extraidas: [DESDE] } })
+      .where(eq(gravacaoRecepcao.id, g.id))
+    return { fichaId, url: `/api/entrevistas/${agendamentoId}/beneficio` }
+  }
+  /** Outro caso da casa, indeferido pela coluna: entra no acervo pelo motivo. */
+  async function casoParecido() {
+    const [p] = await banco.insert(pessoa).values({ nome: 'Rita Souza' }).returning()
+    const [c] = await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'auxilio_incapacidade_temporaria', fase: 'administrativa' }).returning()
+    await banco.insert(resultadoInss).values({ casoId: c.id, resultado: 'indeferido', dataDecisao: '2026-09-01', motivoEscrito: 'A perícia não viu incapacidade da coluna; faltou o laudo do ortopedista.' })
+  }
+
+  it('a sugestão fica pronta na rodada, com as fontes do acervo; a tela abre e a decisão registra a mesma, sem chamar de novo', async () => {
+    await comIa()
+    const { url } = await transcrita()
+    await casoParecido()
+    saida = { sugerido: 'incapacidade-temporaria', alternativa: 'incapacidade-permanente', porque: 'Parou de trabalhar pela coluna, com laudo, como um caso da casa.' }
+    await app.prepararSugestoes()
+    expect(await chamadas()).toBe(1)
+    for (const trecho of ['Benefício de interesse: ', 'Parei de trabalhar na limpeza', 'Motivo de indeferimento: ']) expect(enviado).toContain(trecho)
+    expect((await chamar('ana', 'GET', url)).statusCode).toBe(403)
+    const d = await json('gabi', 'GET', url)
+    expect(d).toMatchObject({ transcrita: true, citado: 'incapacidade-temporaria', aviso: null, dados: { semTrabalharDesde: '06/2026' } })
+    expect(d.sugestao).toMatchObject({ sugerido: 'incapacidade-temporaria', alternativa: 'incapacidade-permanente', porque: 'Parou de trabalhar pela coluna, com laudo, como um caso da casa.' })
+    expect(d.sugestao.fontes).toEqual([expect.objectContaining({ tipo: 'acervo', trecho: expect.stringContaining('ortopedista') })])
+    // Os requisitos são do código (G19): sem CNIS, a carência fica sem resposta; o afastamento conta do "desde" conferido.
+    expect(d.sugestao.requisitos.map((r: { atende: boolean | null }) => r.atende)).toEqual([null, true])
+    expect(await chamadas()).toBe(1)
+    const def = await json('gabi', 'POST', url, { beneficio: 'incapacidade-temporaria', conferi: true })
+    expect(def.ficha.beneficioDefinido).toMatchObject({ citado: 'incapacidade-temporaria', sugerido: 'incapacidade-temporaria', recusouSugestao: false, fontes: [d.sugestao.fontes[0].referencia] })
+    expect(await chamadas()).toBe(1)
+  })
+
+  it('sem caso parecido, o porquê diz que não há referência na casa; benefício fora do catálogo não vale', async () => {
+    await comIa()
+    const { url } = await transcrita()
+    saida = { sugerido: 'auxilio-inventado', porque: 'Qualquer coisa.' }
+    const fora = await json('gabi', 'GET', url)
+    expect([fora.sugestao, fora.aviso, fora.citado]).toEqual([null, SEM_IA(MSG_IA_SEM_RESPOSTA), 'incapacidade-temporaria'])
+    saida = { sugerido: 'loas-idoso', alternativa: null, porque: 'Tem 66 anos e procura o BPC.' }
+    const d = await json('gabi', 'GET', url)
+    expect(d.sugestao).toMatchObject({ sugerido: 'loas-idoso', porque: `${MSG_SEM_REFERENCIA} Tem 66 anos e procura o BPC.`, fontes: [] })
+    expect(d.sugestao.alternativa).toBeUndefined()
+  })
+
+  it('a advogada recusa: a recusa fica no histórico, com o motivo e a sugestão recusada; a carência vem do CNIS registrado', async () => {
+    await comIa()
+    const { url } = await transcrita()
+    const entrevista = url.replace('/beneficio', '')
+    await json('gabi', 'POST', url, { beneficio: 'aposentadoria-idade', conferi: true })
+    // Inventado: 13 competências de carência, de 09/2025 a 09/2026.
+    const calculo = { nascimento: '10/03/1980', referencia: '01/10/2026', vinculos: [{ inicio: '01/09/2025', fim: '30/09/2026', tempo: 'conferido', carencia: 'conferido' }], excecoes: [] }
+    expect((await chamar('gabi', 'PUT', `${entrevista}/cnis`, { origem: 'impresso', extraidoEm: '05/10/2026', calculo })).statusCode).toBe(200)
+    saida = { sugerido: 'incapacidade-permanente', porque: 'A coluna não melhora.' }
+    const d = await json('gabi', 'GET', url)
+    expect(d.dados.carencia).toBe(13)
+    expect(d.sugestao.requisitos).toEqual([{ texto: 'Carência: 13 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: true }])
+    const r = await json('gabi', 'POST', url, { beneficio: 'auxilio-acidente', conferi: true, motivoDaRecusa: 'Foi acidente no trabalho.' })
+    expect(r.ficha.beneficioDefinido).toMatchObject({ beneficio: 'auxilio-acidente', sugerido: 'incapacidade-permanente', recusouSugestao: true, motivoDaRecusa: 'Foi acidente no trabalho.' })
+    expect(r.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContain('Recusou a sugestão da IA (Aposentadoria por Incapacidade Permanente): Foi acidente no trabalho.')
+  })
+
+  it('sem a IA: não há sugestão, o aviso diz o motivo e o citado segue; a decisão grava sem sugestão', async () => {
+    const { url } = await transcrita()
+    const d = await json('gabi', 'GET', url)
+    expect(d).toMatchObject({ transcrita: true, sugestao: null, citado: 'incapacidade-temporaria', aviso: SEM_IA(MSG_IA_DESLIGADA) })
+    const def = await json('gabi', 'POST', url, { beneficio: 'incapacidade-temporaria', conferi: true })
+    expect(def.ficha.beneficioDefinido).toMatchObject({ citado: 'incapacidade-temporaria', recusouSugestao: false, fontes: [] })
+    expect(def.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/· o que citou na entrevista \(G3\)$/))
   })
 })
