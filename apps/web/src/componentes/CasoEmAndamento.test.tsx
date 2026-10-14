@@ -67,9 +67,10 @@ describe('GGVP-135 · o que cada perfil abre do caso pela ficha, por clique', ()
       expect([perfil, atalhos()]).toEqual([perfil, [historico, deficiencia]])
       cleanup()
     }
+    // GGVP-162: o histórico do processo é de quem abre o processo; o Atendimento lê o caso na ficha.
     entrarComo('atendimento')
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
-    expect(atalhos()).toEqual([historico])
+    expect(atalhos()).toEqual([])
     cleanup()
     // O parecer do caso do servidor chega pela sincronização da documentação médica; insuficiente, a Sênior pode dispensar.
     const banco = ler()
@@ -84,9 +85,27 @@ describe('GGVP-135 · o que cada perfil abre do caso pela ficha, por clique', ()
 describe('GGVP-130 · as pendências de documento aparecem em cada processo da ficha', () => {
   it('o processo do Antônio, com a cobrança aberta, diz o que falta; a Rita, sem cobrança, não', async () => {
     await abrir('antonio-exemplo', 'documentacao')
-    expect(screen.getByRole('link', { name: /Judicial · exigência/ }).textContent).toContain('Documentos pendentes: Notas do produtor rural e Certidão.')
+    expect(screen.getByText('Documentos pendentes: Notas do produtor rural e Certidão.')).toBeTruthy()
     cleanup()
     await abrir('rita-exemplo', 'documentacao')
     expect(screen.queryByText(/Documentos pendentes/)).toBeNull()
+  })
+})
+
+describe('GGVP-162 · quem não abre o processo lê o caso na ficha, sem link para a página dele', () => {
+  it('CA3 · o Atendimento, a líder e a Documentação veem o benefício e a etapa, sem link; o Jurídico abre o processo', async () => {
+    for (const perfil of ['atendimento', 'atendimento-lider', 'documentacao']) {
+      await abrir('rita-exemplo', perfil)
+      expect(screen.getByText('Documentação · conferência'), perfil).toBeTruthy()
+      expect(screen.queryAllByRole('link'), perfil).toEqual([])
+      cleanup()
+    }
+    await abrir('rita-exemplo', 'advogada')
+    expect(screen.getByRole('link', { name: /Documentação · conferência/ }).getAttribute('href')).toBe('/casos/rita-exemplo-1')
+  })
+
+  it('CA3 · o caso em perícia continua abrindo a página da perícia', async () => {
+    await abrir('antonio-exemplo', 'atendimento')
+    expect(screen.getByRole('link', { name: /Judicial · exigência/ }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/pericia')
   })
 })

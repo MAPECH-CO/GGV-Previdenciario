@@ -75,12 +75,13 @@ test('tema escuro e fonte grande no chat da Central', async ({ page }) => {
   await expect(page.locator('html')).toHaveCSS('zoom', '1.25')
 })
 
-test('GGVP-142 · o caso do servidor vai ao servidor: a trava do G17 sem modelo e, sem a chave da IA, o motivo com o link do caso', async ({ page }) => {
+test('GGVP-142 · o caso do servidor vai ao servidor: a trava do G17 sem modelo e, sem a chave da IA, o motivo com o link da ficha (GGVP-162)', async ({ page }) => {
   await entrarPelaApi(page)
   await page.goto('/')
   await perguntar(page, 'Dá para liberar o José Ramos (exemplo) sem o parecer?')
   await expect(page.getByText(/^Não posso pular o parecer médico/)).toBeVisible()
   await perguntar(page, 'O que falta no caso do José Ramos (exemplo)?')
   await expect(page.getByText('O chat não respondeu: a IA está desligada neste ambiente (falta a chave do serviço).')).toBeVisible()
-  await expect(page.getByRole('list', { name: 'Tarefas sugeridas' }).getByRole('link', { name: /Abrir o caso/ }).last()).toHaveAttribute('href', /^\/casos\/[0-9a-f-]{36}$/)
+  // O Atendimento não abre o processo: o link do caso leva à ficha do cliente.
+  await expect(page.getByRole('list', { name: 'Tarefas sugeridas' }).getByRole('link', { name: /Abrir a ficha do cliente/ }).last()).toHaveAttribute('href', /^\/clientes\/[0-9a-f-]{36}$/)
 })

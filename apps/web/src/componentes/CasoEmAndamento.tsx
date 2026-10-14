@@ -15,6 +15,8 @@ import styles from './CasoEmAndamento.module.css'
 /** "Caso em andamento" (Figma 73:351): um cartão por processo. A visão do Atendimento nunca traz petição nem valores. */
 export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
   const { processos } = ficha
+  // GGVP-162: a página do processo é do Jurídico e do Sócio; o Atendimento e a Documentação leem o caso aqui, sem link.
+  const abreProcesso = usePode('processo.abrir')
   return (
     <Cartao titulo={processos.length > 1 ? 'Casos em andamento' : 'Caso em andamento'}>
       {/* O caso novo do lead, com o benefício definido pela advogada (GGVP-51) e o cálculo que falta (GGVP-57, CA1). */}
@@ -39,8 +41,10 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
         const pericia = etapaDaPericia(p.id)
         // As pendências de documento do caso (GGVP-130): o que a cobrança ainda espera do cliente.
         const pendentes = pendenciasDeDocumento(p.id)
-        return [
-          <a key={p.id} className={styles.caso} href={pericia ? `/casos/${p.id}/pericia` : `/casos/${p.id}`}>
+        // A página da perícia é de todos que veem o caso (GGVP-156); a do processo, só de quem a abre.
+        const destino = pericia ? `/casos/${p.id}/pericia` : abreProcesso ? `/casos/${p.id}` : null
+        const conteudo = (
+          <>
             <span className={styles.numero}>{p.numero ?? 'Processo ainda sem número'}</span>
             <span className={styles.selos}>
               <span className={styles.beneficio}>◆ {nomeBeneficio(p.beneficio)}</span>
@@ -52,7 +56,18 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
             {pericia && <span className={styles.acao}>A perícia está com o Jurídico administrativo.</span>}
             {pendentes.length > 0 && <span className={styles.urgente}>Documentos pendentes: {juntar(pendentes)}.</span>}
             {p.prazo && <span className={p.urgente ? styles.urgente : styles.prazo}>{p.prazo}</span>}
-          </a>,
+          </>
+        )
+        return [
+          destino ? (
+            <a key={p.id} className={styles.caso} href={destino}>
+              {conteudo}
+            </a>
+          ) : (
+            <div key={p.id} className={styles.caso}>
+              {conteudo}
+            </div>
+          ),
           <AtalhosDoCaso key={`${p.id}-atalhos`} processo={p} />,
         ]
       })}
@@ -68,13 +83,14 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
  */
 function AtalhosDoCaso({ processo: p }: { processo: Processo }) {
   const perfil = usePerfil()?.id
-  const veCaso = usePode('caso.ver')
+  // O histórico do processo é de quem abre o processo (GGVP-162).
+  const abreProcesso = usePode('processo.abrir')
   const semente = !doServidor(p.id)
   const senior = perfil?.startsWith('senior') === true
   // Só a sênior dispensa (GGVP-33); com o parecer suficiente ou já dispensado, não há o que dispensar.
   const situacao = senior && precisaDeParecer(p.beneficio) ? (parecerParaOPortao(ler(), p.id)?.situacao ?? 'sem-parecer') : undefined
   const atalhos = [
-    veCaso && !semente && { rotulo: 'Histórico do processo', href: `/casos/${p.id}/historico` },
+    abreProcesso && !semente && { rotulo: 'Histórico do processo', href: `/casos/${p.id}/historico` },
     doJuridico(perfil) && p.beneficio.startsWith('aposentadoria-pcd') && { rotulo: 'Linha do tempo da deficiência', href: `/casos/${p.id}/deficiencia` },
     situacao && situacao !== 'suficiente' && situacao !== 'dispensado' && { rotulo: 'Dispensar o parecer', href: `/casos/${p.id}/parecer/dispensa` },
   ].filter((a) => !!a)

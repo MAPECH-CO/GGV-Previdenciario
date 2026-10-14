@@ -3,6 +3,7 @@ import type { CartaoDeAcao, RespostaDoChat } from '@ggv/contratos'
 import { cancelarAcao, confirmarAcao, perguntar, type ResultadoDaAcao } from '../dados/chat.ts'
 import { pessoasDoEscritorio } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
+import { usePode } from '../sessao.ts'
 import { CartaoConfirmacao, type EstadoAcao } from './CartaoConfirmacao.tsx'
 import { ChatIA } from './ChatIA.tsx'
 import cartao from './CartaoConfirmacao.module.css'
@@ -122,6 +123,9 @@ export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId }: Props) 
   )
 }
 
+/** GGVP-162: o link para a página do processo só aparece a quem abre o processo; aos outros, o servidor já manda a ficha. */
+const PAGINA_DO_PROCESSO = /^\/casos\/[^/]+$/
+
 function Resposta({
   m,
   aoConfirmar,
@@ -137,6 +141,8 @@ function Resposta({
 }) {
   const r = m.resposta!
   const fontes = r.sugestao.fontes.filter((f) => f.tipo !== 'caso')
+  const abreProcesso = usePode('processo.abrir')
+  const links = r.links.filter((l) => abreProcesso || !PAGINA_DO_PROCESSO.test(l.href))
   return (
     <>
       {r.blocos ? (
@@ -150,9 +156,9 @@ function Resposta({
         </p>
       )}
       {r.portao &&<span className={styles.portao}>Portão {r.portao}</span>}
-      {r.links.length > 0 && (
+      {links.length > 0 && (
         <ul className={itens.itens} aria-label="Tarefas sugeridas">
-          {r.links.map((l) => {
+          {links.map((l) => {
             const [cliente, ...resto] = l.rotulo.split(' · ')
             return (
               <li key={l.href + l.rotulo}>
@@ -195,6 +201,7 @@ function Resposta({
 
 /** O cartão de ação (Figma 2176:388, 2186:405, 2186:211, 2085:2): o resumo em passos, o que conferir, as travas, o responsável com "Trocar". */
 function Cartao({ acao, c, aoConfirmar, aoCancelar, aoMudar }: { acao: CartaoDeAcao; c: EstadoDoCartao; aoConfirmar: () => Promise<void>; aoCancelar: () => void; aoMudar: (c: Partial<EstadoDoCartao>) => void }) {
+  const abreProcesso = usePode('processo.abrir')
   // O laudo novo do Atendimento segue o card da GGVP-17 (Figma 2052:2).
   if (acao.tipo === 'anexar-laudo') {
     return <CartaoConfirmacao cliente={acao.cliente!} arquivo={acao.passos[0].replace(/^Subir (.+) na pasta do cliente$/, '$1')} estado={c.estado} nota={acao.travas[0]} aoConfirmar={aoConfirmar} aoCancelar={aoCancelar} />
@@ -203,7 +210,7 @@ function Cartao({ acao, c, aoConfirmar, aoCancelar, aoMudar }: { acao: CartaoDeA
     return (
       <p className={cartao.feito} role="status">
         {c.resultado?.texto}{' '}
-        {c.resultado?.links.map((l) => (
+        {c.resultado?.links.filter((l) => abreProcesso || !PAGINA_DO_PROCESSO.test(l.href)).map((l) => (
           <a key={l.href} href={l.href}>
             {l.rotulo}
           </a>

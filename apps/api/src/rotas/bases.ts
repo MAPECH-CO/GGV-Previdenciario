@@ -198,6 +198,8 @@ export function registrarRotasBases(app: FastifyInstance, { banco, agora = () =>
 
   app.get('/api/clientes', ver, clientes)
   app.post('/api/clientes/busca', ver, clientes)
-  app.get('/api/processos', ver, processos)
-  app.post('/api/processos/busca', ver, processos)
+  // GGVP-162: a lista e a busca de processos são de quem abre o processo (o Jurídico e o Sócio).
+  const abrir = { preHandler: exigir(banco, 'processo.abrir', agora) }
+  app.get('/api/processos', abrir, processos)
+  app.post('/api/processos/busca', abrir, processos)
 }

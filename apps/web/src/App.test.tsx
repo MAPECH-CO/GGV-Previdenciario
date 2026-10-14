@@ -226,6 +226,18 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
   })
 
+  it('GGVP-162 CA1 · o processo é do Jurídico e do Sócio: o Atendimento, a líder e a Documentação veem "Sem permissão" na página, na lista e no histórico', async () => {
+    zerarExemplo()
+    for (const perfil of ['atendimento', 'atendimento_lider', 'documentacao']) {
+      for (const caminho of ['/casos/antonio-exemplo-1', '/processos', '/casos/00000000-0000-4000-8000-000000000001/historico']) {
+        servidorResponde(200, { ...usuario, perfis: [perfil], perfilAtivo: perfil })
+        render(<App caminho={caminho} />)
+        expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), `${perfil} em ${caminho}`).toBeTruthy()
+        cleanup()
+      }
+    }
+  })
+
   it('GGVP-96 · o contrato é do Atendimento; a manifestação, do Jurídico; a entrevista, não do Jurídico administrativo', async () => {
     zerarExemplo()
     const semPermissao = async (perfil: string, caminho: string) => {

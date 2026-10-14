@@ -293,8 +293,10 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
           .orderBy(desc(decisao.decididoEm))
           .limit(1)
       : []
+    const [dono] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
     return CasoParaLiberacao.parse({
       casoId: dados.casoId,
+      pessoaId: dono.pessoaId,
       cliente: dados.cliente,
       beneficio: dados.beneficio,
       checklist: dados.checklist,

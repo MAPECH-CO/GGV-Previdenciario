@@ -1,4 +1,4 @@
-GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129, GGVP-126, GGVP-107 (GGVP-108 e GGVP-105 ainda não refinadas).
+GGVP-2 · Fundação técnica · histórias: GGVP-118, GGVP-119, GGVP-117, GGVP-96, GGVP-129, GGVP-126, GGVP-107, GGVP-162 (GGVP-108 e GGVP-105 ainda não refinadas).
 
 ## Por quê
 
@@ -13,6 +13,7 @@ Nenhuma outra história vira código sem base: repositório com a stack decidida
 5. **GGVP-129** · Modelo de dados do portal: tabelas de todos os épicos, RLS, travas no banco e LGPD · perfil: time de desenvolvimento. (Criada na revisão de 07/10 para dar história ao modelo feito em 05/10; no Jira, em "Tarefas pendentes".)
 6. **GGVP-126** · Homologação com usuários e dados de teste · perfil: o Lucas testando, e todos. Do CA1 ao CA5; o CA6 espera a lista das pessoas do escritório (abaixo).
 7. **GGVP-107** · Integração com o Google Drive: pasta do cliente, banco de motivos e pacote de protocolo · perfil: Sistema (time de desenvolvimento); a Documentação recebe a tarefa da falha. (Entrou em 08/10: o Pedro decidiu em 05/10 que o Drive é essencial antes de 09/10. O motivo de indeferimento fica só no banco, decisão do Mateus em 08/10.)
+8. **GGVP-162** · Quem abre o processo: o Jurídico e o Sócio; o Atendimento, a líder e a Documentação trabalham pela ficha e pelas tarefas · perfil: Atendimento, líder do Atendimento e Documentação (restringe); o Jurídico e o Sócio não mudam. (Decisão do Mateus em 14/10, da auditoria de entrega; o Lucas confirma na review. Continua a GGVP-96.)
 
 ## Travadas
 
