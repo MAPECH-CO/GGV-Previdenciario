@@ -508,7 +508,7 @@ O que já está feito e não entra: as outras leituras de conteúdo médico já 
     - Vai num pedido à parte (decisão do Mateus, 14/10), que entra depois que a tela da entrevista mandar o campo. A tela de hoje não manda, e o teste de tela da subida quebraria.
 79. **A justificativa só para quem vê dado de saúde** (P8.6).
     - As duas justificativas em texto livre (a da dispensa do parecer e a da nova tentativa do complemento) saem da linha do histórico da ficha. A linha diz o que aconteceu, sem o texto.
-    - Na tela do parecer e na do complemento, quem não tem `dado_saude.ver_detalhe` recebe a justificativa vazia, como a conferência da Sênior já faz com a dispensa.
+    - Na tela do parecer e na do complemento, quem não tem `dado_saude.ver_detalhe` recebe a justificativa vazia, como a conferência da Sênior já faz com a dispensa. O portão do parecer dispensado na documentação médica (`GET /api/documentacao-medica`) sai sem ela (14/10, na implementação: ele também levava o texto a todos).
     - A decisão guarda o texto (`decisao` e a parte do complemento) para o Jurídico e o Sócio.
     - Sem migração de dado: a homologação só tem dado de teste.
 
