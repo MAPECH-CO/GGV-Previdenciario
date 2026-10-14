@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido } from './banco/conexao.ts'
-import { criarServidor, MSG_ERRO_INESPERADO, MSG_LEITURA_SO_NO_TESTE } from './servidor.ts'
+import { criarServidor, MSG_ERRO_INESPERADO, MSG_LEITURA_SO_NO_TESTE, msgVariavelDeTeste, variaveisDeTeste } from './servidor.ts'
 
 async function saude(opcoes: Parameters<typeof criarServidor>[0]) {
   const app = criarServidor(opcoes)
@@ -62,6 +62,25 @@ describe('GGVP-158 P4.10 · a leitura de exemplo só nos testes de tela', () => 
     expect(await rotas(false)).toEqual([false, false])
     expect(await rotas(true)).toEqual([true, true])
     await fechar()
+  })
+})
+
+describe('GGVP-158 P9.1 · a produção não sobe com variável de teste', () => {
+  it('o Drive só leitura e a conversa simulada recusam em produção; a mensagem diz qual sobrou', () => {
+    expect(variaveisDeTeste({ AMBIENTE: 'producao', GOOGLE_DRIVE_SO_LEITURA: 'sim', RELACIONAMENTO_SIMULADO: 'entrega' })).toEqual(['GOOGLE_DRIVE_SO_LEITURA', 'RELACIONAMENTO_SIMULADO'])
+    expect(variaveisDeTeste({ AMBIENTE: 'producao', GOOGLE_DRIVE_SO_LEITURA: 'nao', RELACIONAMENTO_SIMULADO: 'nao' })).toEqual([])
+    vi.stubEnv('AMBIENTE', 'producao')
+    vi.stubEnv('GOOGLE_DRIVE_SO_LEITURA', 'sim')
+    expect(() => criarServidor({})).toThrow(msgVariavelDeTeste(['GOOGLE_DRIVE_SO_LEITURA']))
+    vi.unstubAllEnvs()
+  })
+
+  it('a homologação e a máquina seguem subindo com elas', () => {
+    for (const AMBIENTE of ['homologacao', undefined]) expect(variaveisDeTeste({ AMBIENTE, GOOGLE_DRIVE_SO_LEITURA: 'sim', RELACIONAMENTO_SIMULADO: 'entrega' })).toEqual([])
+    vi.stubEnv('AMBIENTE', 'homologacao')
+    vi.stubEnv('GOOGLE_DRIVE_SO_LEITURA', 'sim')
+    expect(() => criarServidor({})).not.toThrow()
+    vi.unstubAllEnvs()
   })
 })
 
