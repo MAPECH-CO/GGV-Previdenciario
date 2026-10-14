@@ -46,7 +46,13 @@ export type Conversa = {
   fontes: FonteDaIa[]
   /** CA5 (Pedro, 14/10): as últimas mensagens da conversa, que o modelo lê como histórico antes da pergunta. */
   anteriores?: MensagemAnterior[]
+  /** CA9 (Pedro, 14/10): o dia de hoje em Brasília (aaaa-mm-dd), que vai na instrução. */
+  hoje?: string
 }
+
+/** CA9: a instrução com o dia de hoje; o atraso das tarefas vem marcado pelo código. */
+export const instrucaoDoDia = (hoje?: string) =>
+  hoje ? `${INSTRUCAO_DO_CHAT}\nHoje é ${hoje.split('-').reverse().join('/')} (horário de Brasília). O atraso de cada tarefa vem marcado na lista: use só essa marca.` : INSTRUCAO_DO_CHAT
 
 export type Rodada =
   | { tipo: 'resposta'; texto: string; chamadaId: string; modelo: string; alerta: string | null }
@@ -78,7 +84,7 @@ export async function conversar(c: Conversa, entrada: string | { estado: string;
     return { tipo: 'sem-ia', motivo: 'desligada' }
   }
   const cliente = new OpenAI({ apiKey: p.chave, fetch: p.fetch })
-  const agente = new Agent({ name: 'chat do portal', instructions: INSTRUCAO_DO_CHAT, model: new OpenAIChatCompletionsModel(cliente, p.modelo), tools: c.ferramentas })
+  const agente = new Agent({ name: 'chat do portal', instructions: instrucaoDoDia(c.hoje), model: new OpenAIChatCompletionsModel(cliente, p.modelo), tools: c.ferramentas })
   try {
     let resultado
     if (typeof entrada === 'string') {

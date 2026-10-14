@@ -156,5 +156,5 @@
 - [x] 18.14 CA7 · Sem cliente achado: a ferramenta e a instrução (versão 3) dizem que não achou e indicam a busca, sem pedir o nome de novo. Teste; verifica com `pnpm --filter @ggv/api test`.
 - [x] 18.15 CA8 · Criar, preparar e elaborar minuta, petição ou peça viram pedido de peça (regra pura); a resposta de outro perfil diz que o perfil não tem acesso e, para quem não cria tarefa, manda pedir à Sênior ou à líder do Atendimento; a leitura recusada vira "sem acesso". Teste na regra e na rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
 - [x] 18.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
-- [ ] 18.17 CA9 · O dia de hoje na instrução (Brasília) e, em `minhas_tarefas`, `hoje`, `atrasada` e `venceHoje` em cada tarefa, pelo código. Teste com `fetch` falso (a instrução e a lista que o modelo lê); verifica com `pnpm --filter @ggv/api test`.
-- [ ] 18.18 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 18.17 CA9 · O dia de hoje na instrução (Brasília) e, em `minhas_tarefas`, `hoje`, `atrasada` e `venceHoje` em cada tarefa, pelo código. Teste com `fetch` falso (a instrução e a lista que o modelo lê); verifica com `pnpm --filter @ggv/api test`.
+- [x] 18.18 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

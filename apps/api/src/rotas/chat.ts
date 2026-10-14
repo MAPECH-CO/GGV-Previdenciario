@@ -28,7 +28,7 @@ import { MSG_SEM_REFERENCIA, SEM_CASO, buscarNoAcervo } from '../ia/acervo.ts'
 import { comoDado, conversar, type Rodada } from '../ia/chat.ts'
 import { temCid, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
-import { montarBlocos, widgetDoAcervo, widgetsDasTarefas, widgetsDoCaso, type Oferta } from './widgetsDoChat.ts'
+import { dataDe, montarBlocos, widgetDoAcervo, widgetsDasTarefas, widgetsDoCaso, type Oferta } from './widgetsDoChat.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import {
   ACOES_DO_PERFIL,
@@ -335,7 +335,13 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
         const r = await x.app.inject({ method: 'GET', url: '/api/tarefas', headers: { cookie: x.cookie } })
         if (r.statusCode !== 200) return 'Não deu para ler as tarefas agora.'
         x.fontes.push({ tipo: 'regra', referencia: 'tarefas da Central' })
-        return comoDado(r.body) + oferecer(x, widgetsDasTarefas(r.json() as TarefaDaCentral[], x.hoje))
+        const tarefas = r.json() as TarefaDaCentral[]
+        // CA9 (Pedro, 14/10): o atraso sai do código, com o dia de hoje; o modelo só repete o que veio marcado.
+        const marcadas = tarefas.map((t) => {
+          const prazo = dataDe(t.prazo)
+          return { ...t, atrasada: Boolean(prazo && prazo < x.hoje), venceHoje: prazo === x.hoje }
+        })
+        return comoDado(JSON.stringify({ hoje: x.hoje, tarefas: marcadas })) + oferecer(x, widgetsDasTarefas(tarefas, x.hoje))
       },
     }),
     tool({
@@ -539,7 +545,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
     if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
-    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores: entrada.data.anteriores }, texto)
+    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores: entrada.data.anteriores, hoje: x.hoje }, texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
       const cartao = await cartaoDaAprovacao(x, rodada.ferramenta, rodada.argumentos)
       if (cartao) {
@@ -566,7 +572,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     if (!pode(pedido.perfilAtivo, 'caso.ver')) return negar(resposta, 403, 'Seu perfil não abre o caso.')
     pendentes.delete(entrada.data.acaoId)
     const x = ambiente(pedido, p.alvo, { responsavel: entrada.data.responsavel })
-    await conversar({ ia, quem: x.quem, casoId: p.alvo.casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes }, { estado: p.estado, aprovar: true })
+    await conversar({ ia, quem: x.quem, casoId: p.alvo.casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, hoje: x.hoje }, { estado: p.estado, aprovar: true })
     if (x.resultado) return { ...x.resultado, estado: 'feito' as const }
     return negar(resposta, 400, x.falha ? `Não foi feito: ${x.falha}` : 'A ação não foi feita. Peça de novo.')
   })

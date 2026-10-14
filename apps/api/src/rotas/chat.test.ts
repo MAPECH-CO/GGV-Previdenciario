@@ -541,4 +541,26 @@ describe('GGVP-142 · ajustes do teste do Pedro no chat (14/10)', () => {
     const instrucao = conteudo(chamadas[0].corpo.messages.find((m) => m.role === 'system' || m.role === 'developer')!)
     expect(instrucao).toContain('diga com clareza que o perfil dela não tem acesso a isso')
   })
+
+  it('18.17 CA9 · a instrução diz o dia de hoje, e a lista que o modelo lê traz o atraso marcado pelo código', async () => {
+    // O relógio do teste é 09/10/2026, 12h em Brasília.
+    await banco.insert(tarefa).values([
+      { casoId, titulo: 'Atrasada', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-08' },
+      { casoId, titulo: 'De hoje', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-09' },
+      { casoId, titulo: 'Da semana', perfilDono: 'atendimento', responsavelId: ids.ana, prazo: '2026-10-13' },
+      { casoId, titulo: 'Sem prazo', perfilDono: 'atendimento', responsavelId: ids.ana },
+    ])
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Uma atrasada.' }]
+    await perguntar('ana', 'Tem alguma tarefa atrasada?')
+    const instrucao = conteudo(chamadas[0].corpo.messages.find((m) => m.role === 'system' || m.role === 'developer')!)
+    expect(instrucao).toContain('Hoje é 09/10/2026 (horário de Brasília).')
+    const lido = JSON.parse(/<conteudo>\n([\s\S]*?)\n<\/conteudo>/.exec(saidaDaFerramenta(1))![1]) as { hoje: string; tarefas: { titulo: string; atrasada: boolean; venceHoje: boolean }[] }
+    expect(lido.hoje).toBe('2026-10-09')
+    expect(Object.fromEntries(lido.tarefas.map((t) => [t.titulo, [t.atrasada, t.venceHoje]]))).toEqual({
+      Atrasada: [true, false],
+      'De hoje': [false, true],
+      'Da semana': [false, false],
+      'Sem prazo': [false, false],
+    })
+  })
 })
