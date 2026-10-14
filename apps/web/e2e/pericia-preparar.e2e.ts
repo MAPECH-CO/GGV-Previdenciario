@@ -12,6 +12,18 @@ const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i
 
 const pdf = (name: string) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(`conteúdo de ${name}`) })
 
+/**
+ * A data do comprovante novo, a 30 dias de hoje, em Brasília, num dia de semana. A data fixa (28/10) quebrava o teste: no dia
+ * em que o primeiro comprovante de exemplo (hoje + 14) caía nela, a data não mudava; e, passado o dia, a perícia já teria sido.
+ */
+function dataNova() {
+  const d = new Date(Date.now() + 30 * 86_400_000)
+  const semana = () => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }).format(d)
+  while (semana() === 'Sat' || semana() === 'Sun') d.setTime(d.getTime() + 86_400_000)
+  const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(d)
+  return { iso, curta: `${iso.slice(8, 10)}/${iso.slice(5, 7)}` }
+}
+
 test('CA1 a CA4, CA6, CA7 · revisar, a verificação recusa o texto proibido, enviar pelo Chatwoot e a tarefa sai da Central', async ({ page }) => {
   test.setTimeout(120_000)
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
@@ -85,7 +97,8 @@ test('CA5 · a ligação registrada; o comprovante novo troca a data e a orienta
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia/marcar')
   await page.getByRole('button', { name: 'Subir o comprovante novo (data alterada)' }).click()
-  await page.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf('comprovante_maria_2026-10-28.pdf')])
+  const nova = dataNova()
+  await page.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf(`comprovante_maria_${nova.iso}.pdf`)])
   await expect(page.getByRole('group', { name: 'Lido do comprovante · confira' })).toBeVisible()
   await page.getByRole('radio', { name: 'Não: seguir para ligar e orientar' }).click()
   await page.getByRole('button', { name: 'Registrar a perícia' }).click()
@@ -96,7 +109,7 @@ test('CA5 · a ligação registrada; o comprovante novo troca a data e a orienta
   await expect(page.getByRole('link', { name: 'Maria Exemplo · Orientar para a perícia' })).toBeVisible()
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia/orientar')
-  await expect(page.getByRole('textbox', { name: /Orientação para Maria/ })).toHaveValue(/Quando: quarta, 28\/10, às 08:30\./)
+  await expect(page.getByRole('textbox', { name: /Orientação para Maria/ })).toHaveValue(new RegExp(`Quando: [^,]+, ${nova.curta}, às 08:30\\.`))
 })
 
 test('tema escuro e fonte grande na tela de orientar', async ({ page }) => {
