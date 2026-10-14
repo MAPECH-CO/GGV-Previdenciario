@@ -1105,6 +1105,12 @@ Os indicadores do Raio-X SHALL sair da base importada, por código com teste, ca
 - **Então** veem os indicadores, mas o "Onde julgam" (a taxa de êxito por juízo) vem vazio, como na GGVP-156 CA3 e na P5.13
 - **E** o Jurídico e o Sócio veem o "Onde julgam"
 
+#### Scenario: P7.7 · As palavras de desfecho do Raio-X
+- **Dado** a planilha com os desfechos "Êxito", "Acordo", "Perdido no mérito", "Extintos sem mérito" e "Em andamento"
+- **Quando** a Sênior simula a carga
+- **Então** eles entram como procedente, acordo, improcedente e extinto sem mérito, sem linha recusada
+- **E** o "Em andamento" entra sem desfecho
+
 #### Scenario: P7.7 · Dado pessoal na planilha
 - **Dado** a planilha com as colunas nome, CPF e telefone
 - **Quando** a Sênior simula

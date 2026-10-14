@@ -684,3 +684,7 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 - [x] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
 
   Verificado em 13/10, com a main juntada (o #78): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674; API 989 de 996 na suíte inteira (3 pulados), com 4 falhas de testes que contavam todas as chamadas da IA na rodada (a estratégia também prepara), corrigidas e de novo 45/45; Playwright 262/262 na segunda rodada (a primeira achou o teste da jurimetria supondo o acervo parado, corrigido); `openspec validate --all --strict` 16/16.
+- [ ] 7.16 As palavras de desfecho do Raio-X (P7.7, decisão 73, 14/10): "Êxito", "Acordo", "Perdido(s) no mérito", "Extinto(s) sem mérito" e "Em andamento", sem o arquivo do Raio-X à mão.
+  - Verifica com `fluxo/raio-x.test.ts`:
+    - cada palavra vira o desfecho do acervo;
+    - "Em andamento" entra sem desfecho e sem linha recusada.
