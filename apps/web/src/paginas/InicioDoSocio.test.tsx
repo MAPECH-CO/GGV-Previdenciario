@@ -53,7 +53,8 @@ describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75,
     const chat = screen.getByRole('region', { name: 'Chat com a IA' })
     expect(within(chat).getAllByRole('button').map((b) => b.textContent)).toEqual(expect.arrayContaining(['Por que perdemos em 2025?', 'Êxito por benefício', 'Faltas à perícia dobraram']))
     // Os atalhos de hoje ficam: a Gestão e a importação da planilha (configuracao.editar, GGVP-146).
-    expect(topo()).toEqual(['Início', 'Agenda', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha', 'Financeiro'])
+    // GGVP-162 CA8: Clientes e Processos depois do Início e da Agenda, como o Jurídico.
+    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes', 'Processos', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração', 'Importar planilha', 'Financeiro'])
     expect(screen.getByRole('link', { name: /Importar planilha/ }).getAttribute('href')).toBe('/gestao/importar')
     expect(screen.queryByRole('link', { name: '← Voltar ao início' })).toBeNull()
     // Sem tarefa do Sócio, a fila não ocupa a tela.

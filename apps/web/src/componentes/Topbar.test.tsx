@@ -92,6 +92,10 @@ describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 19
     expect(ids(null)).toEqual(['inicio', 'agenda'])
   })
 
+  it('GGVP-162 CA8 · o Sócio tem Clientes e Processos no topo, logo depois do Início e da Agenda', () => {
+    expect(ids('socio').slice(0, 4)).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
+  })
+
   it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {
     expect(ids('socio').at(-1)).toBe('financeiro')
     expect(ids('senior')).not.toContain('financeiro')

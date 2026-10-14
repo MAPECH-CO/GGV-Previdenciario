@@ -41,6 +41,24 @@ test('a advogada acha o processo pelo número em Processos e abre a página dele
   await expect(page).toHaveTitle('Rosa Amaral (exemplo) · Processo · GGV Previdenciário')
 })
 
+test('GGVP-162 CA8 · o Sócio chega a Clientes e a Processos pelo topo, como a Sênior', async ({ page }) => {
+  await entrarPelaApi(page, 'socio@exemplo.ggv')
+  await page.goto('/')
+  const topo = page.getByRole('navigation', { name: 'Principal' })
+  await topo.getByRole('link', { name: 'Clientes' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Clientes')
+  await page.getByRole('searchbox', { name: 'Buscar por nome, CPF ou telefone' }).fill('Renato Dias')
+  const clientes = page.getByRole('table', { name: 'Clientes' })
+  await expect(clientes.getByRole('link', { name: 'Renato Dias (exemplo)', exact: true })).toBeVisible()
+  // Quem abre o processo tem a contagem como link para os processos do cliente (o contrário do CA4 da líder).
+  await expect(clientes.getByRole('link', { name: '1 processo de Renato Dias (exemplo)' })).toBeVisible()
+
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Processos' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Processos')
+  await page.getByRole('searchbox', { name: 'Autor, nº do processo ou CPF' }).fill('0005678-75.2026')
+  await expect(page.getByRole('table', { name: 'Processos' }).getByRole('link', { name: '0005678-75.2026.4.03.6301' })).toBeVisible()
+})
+
 test('o Atendimento só tem a Agenda no topo; o Financeiro, que não vê o caso, não abre a lista', async ({ page }) => {
   await page.goto('/')
   const topo = page.getByRole('navigation', { name: 'Principal' })
