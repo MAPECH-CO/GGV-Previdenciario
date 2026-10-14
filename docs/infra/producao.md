@@ -1,33 +1,29 @@
 # Produção no Coolify (GGVP-158, parte 9)
 
-A produção roda a mesma imagem da homologação, pela tag do commit que passou nela, e nunca pela tag `main`. O banco é o Supabase "PrevGGVLucas", em São Paulo, que até a parte 9 foi o da homologação (decisão do Mateus, 14/10). Antes da produção, a homologação muda de banco e o PrevGGVLucas é limpo.
+A produção roda a mesma imagem da homologação, pela tag do commit que passou nela, e nunca pela tag `main`. O banco é o Supabase "PrevGGVLucas", em São Paulo, que até a parte 9 foi o da homologação (decisão do Mateus, 14/10). Antes da produção, a homologação volta ao "Portal Operacional", de Oregon, e o PrevGGVLucas é limpo.
+
+**Quando:** a produção só sobe depois do aceite do Lucas em todas as histórias (Mateus, 14/10). Até lá, a homologação segue no PrevGGVLucas, que é mais rápido para os testes dele.
 
 Os valores (senhas, chaves, tokens, endereços de banco) nunca vão para o repositório, o Jira ou o chat: só o Mateus os põe no Coolify e no cofre de senhas dele. Apagar dado (banco, depósito, projeto temporário) também é com ele.
 
 ## 1. A ordem
 
-1. A homologação muda de banco (seção 2). Os dois apps nunca gravam no mesmo banco.
+1. A homologação volta ao Portal Operacional (seção 2). Os dois apps nunca gravam no mesmo banco.
 2. O backup do PrevGGVLucas é conferido, e a restauração e a limpeza são ensaiadas num projeto temporário (seção 3).
 3. O PrevGGVLucas é limpo (seção 4).
 4. O app da produção sobe (seção 5).
 5. O monitor do /saude sobe e é testado (seção 7).
 
-## 2. A homologação muda de banco
+## 2. A homologação volta ao Portal Operacional
 
-A escolha é do Mateus, na hora:
+Decisão do Mateus em 14/10: a homologação é de teste e volta ao "Portal Operacional", de Oregon. A lentidão de lá, de 150 a 180 ms por consulta (o motivo da troca de 13/10), pesa menos que um projeto novo. Por isso o Portal Operacional não é apagado: a tarefa 2.16 da GGVP-2 foi cancelada.
 
-| Opção | A favor | Contra |
-| --- | --- | --- |
-| Projeto novo no Supabase, em São Paulo | Igual ao de hoje, com o depósito de arquivos | Custo de mais um projeto |
-| "Portal Operacional" (Oregon), que ainda existe | Já tem o banco e o depósito | De 150 a 180 ms por consulta (o motivo da troca de 13/10). Adia o apagar (tarefa 2.16) |
-| Postgres no Coolify, no mesmo servidor | Sem custo novo, e rápido | Precisa da imagem com pgvector (`pgvector/pgvector:pg17`) e de um volume. Os arquivos vão para uma pasta do servidor: sem `SUPABASE_URL`, o portal usa a pasta local |
+No app da homologação:
 
-Depois da escolha, no app da homologação:
-
-1. Troque o `DATABASE_URL` pelo do banco novo. Com o Supabase, troque também `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`, e crie o depósito `documentos` como na homologação (`docs/infra/homologacao.md`, "O depósito de arquivos").
-2. **Redeploy.** As migrações rodam no banco novo antes de a API subir. Confira no `/saude` da homologação: `"banco":"ligado"`.
-3. No terminal do app (Coolify → Terminal): `cd /app && pnpm --filter @ggv/api homologacao:preparar`. As senhas dos usuários de exemplo aparecem uma vez; o Mateus entrega ao Lucas fora do chat, do Jira e do repositório.
-4. Os modelos do Word sobem de novo para a homologação com o `modelos:subir` (`docs/guias/kit-de-verdade.md`).
+1. Devolva o `DATABASE_URL` (o Session pooler do Portal Operacional), o `SUPABASE_URL` e a `SUPABASE_SERVICE_ROLE_KEY` dele, como em `docs/infra/homologacao.md`, "Como voltar".
+2. **Redeploy.** Lá o banco parou em 13/10. As migrações que entraram depois rodam antes de a API subir. Confira no `/saude` da homologação: `"banco":"ligado"`.
+3. No terminal do app (Coolify → Terminal): `cd /app && pnpm --filter @ggv/api homologacao:preparar`. O comando acrescenta o que falta, sem duplicar. Se aparecerem senhas novas, o Mateus as entrega ao Lucas fora do chat, do Jira e do repositório.
+4. Confira os modelos do Word na Configuração. Os 5 de 13/10 estão no depósito e no banco de lá. O que entrou depois sobe de novo com o `modelos:subir` (`docs/guias/kit-de-verdade.md`).
 
 Só depois disso nenhum app usa o PrevGGVLucas. Confira no Coolify o `DATABASE_URL` de cada app (só o endereço do banco, sem a senha).
 

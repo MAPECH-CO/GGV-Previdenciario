@@ -783,14 +783,16 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
   - a limpeza do PrevGGVLucas;
   - a mudança da homologação.
 
-  Feito em 14/10: `docs/infra/producao.md` (novo), com a ordem, a mudança da homologação (as três opções), o backup e o ensaio no projeto temporário, a chave nova do cofre, a limpeza (os comandos e a conferência), o app, liberar e voltar uma versão, o monitor em docker compose, a cópia no Drive e o que espera o Lucas e o Pedro. A homologação aponta para ele. Na escrita: o registro dos modelos do Word fica no banco, então o depósito sai inteiro e os modelos sobem de novo (decisão 81 e P9.2 ajustadas). `variaveis.test.ts` 4/4 com a doc mexida.
+  Feito em 14/10: `docs/infra/producao.md` (novo), com a ordem, a mudança da homologação (as três opções; depois, na escolha do Mateus, a volta a Oregon), o backup e o ensaio no projeto temporário, a chave nova do cofre, a limpeza (os comandos e a conferência), o app, liberar e voltar uma versão, o monitor em docker compose, a cópia no Drive e o que espera o Lucas e o Pedro. A homologação aponta para ele. Na escrita: o registro dos modelos do Word fica no banco, então o depósito sai inteiro e os modelos sobem de novo (decisão 81 e P9.2 ajustadas). `variaveis.test.ts` 4/4 com a doc mexida.
 - [x] 9.5 Rodar typecheck, lint, testes e Playwright; colar a saída; pedido para a main.
 
   Verificado em 14/10, na branch da parte 9 (em cima do #82): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674 (a primeira rodada, junto com uma instalação em outra pasta, deixou 21 arquivos sem subir o processo de teste; repetida sozinha, passou inteira); API 1014 de 1017 na suíte inteira (3 pulados), sem falha; Playwright 262/262; `openspec validate --all --strict` 16/16.
 
 **Fora do código, com o Mateus**
 
-- [ ] 9.6 A homologação muda de banco (P9.2, decisão 81), na escolha do Mateus na hora. Depois vêm as variáveis novas no app dela, o deploy e o `homologacao:preparar`, com as senhas entregues por ele.
+As tarefas 9.6 a 9.10 esperam o aceite do Lucas em todas as histórias (Mateus, 14/10): a produção só sobe depois dele.
+
+- [ ] 9.6 A homologação volta ao "Portal Operacional", de Oregon (P9.2, decisão 81; Mateus, 14/10). Depois vêm as variáveis dele no app da homologação, o deploy e o `homologacao:preparar`, com as senhas entregues pelo Mateus.
 - [ ] 9.7 O backup e o ensaio (P9.3, decisão 82):
   - conferir o backup diário do PrevGGVLucas pelo painel;
   - restaurar o mais novo num projeto temporário, conferindo as migrações e as contagens;

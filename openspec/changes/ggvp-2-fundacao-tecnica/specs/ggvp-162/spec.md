@@ -82,3 +82,12 @@ teste por perfil.
 - **Dado** o Jurídico (advogada, Sênior, Jurídico administrativo) e o Sócio
 - **Quando** abrem processos
 - **Então** nada muda; a matriz de permissões ganha `processo.abrir` e sobe para a versão 32, com o teste por perfil
+
+### Requirement: CA8 · O Sócio tem Clientes e Processos no topo
+O topo do Sócio SHALL ter Clientes e Processos, como o Jurídico, porque o Sócio lê tudo (decisão do Lucas, 07/10) e a matriz
+já lhe dá `caso.ver` e `processo.abrir` (o Lucas, como Sócio, não achava as listas na homologação, 14/10).
+
+#### Scenario: CA8 · O topo do Sócio
+- **Dado** o Sócio
+- **Quando** abre o topo
+- **Então** tem Clientes e Processos depois do Início, além da Gestão e do Financeiro

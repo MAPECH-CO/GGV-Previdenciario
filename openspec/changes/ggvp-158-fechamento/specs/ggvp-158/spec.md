@@ -1219,7 +1219,7 @@ Na recusa, a mensagem diz qual variável sobrou.
 - **Então** o /saude da produção mostra a mesma versão
 
 ### Requirement: P9.2 · O banco da produção é o PrevGGVLucas, sem dado de teste
-O banco da produção SHALL ser o PrevGGVLucas (São Paulo). A homologação MUST mudar para outro banco antes de a produção subir, para os dois apps nunca gravarem no mesmo. O PrevGGVLucas SHALL ficar limpo do teste antes da produção: os esquemas do portal saem, a largada roda todas as migrações de novo, e o depósito de arquivos fica vazio. Os modelos do Word sobem de novo, porque o registro deles sai com o banco. Quem roda a limpeza é o Mateus.
+O banco da produção SHALL ser o PrevGGVLucas (São Paulo). A homologação MUST voltar ao "Portal Operacional", de Oregon, antes de a produção subir, para os dois apps nunca gravarem no mesmo. A produção só sobe depois do aceite do Lucas em todas as histórias. O PrevGGVLucas SHALL ficar limpo do teste antes da produção: os esquemas do portal saem, a largada roda todas as migrações de novo, e o depósito de arquivos fica vazio. Os modelos do Word sobem de novo, porque o registro deles sai com o banco. Quem roda a limpeza é o Mateus.
 
 #### Scenario: P9.2 · A produção sobe vazia
 - **Dado** o PrevGGVLucas limpo e a homologação em outro banco
