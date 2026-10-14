@@ -12,7 +12,7 @@ import type { Drive } from '../drive.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE } from './recepcao.ts'
+import { MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE, criarFichario } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -333,5 +333,44 @@ describe('GGVP-158 P4.7 · a pasta do cliente no Drive', () => {
     const criada = await cadastrar()
     expect(criada.pastas).toEqual([])
     expect(await pasta(criada.id, 'nova')).toEqual({ erro: MSG_SEM_DRIVE })
+  })
+})
+
+describe('GGVP-158 P8.4 · o histórico da ficha também no histórico de auditoria', () => {
+  const daFicha = async () =>
+    (await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'historico_da_ficha'))).map((e) => ({
+      quem: e.quem,
+      alvo: e.alvo,
+      quando: e.quando.toISOString(),
+      ...(e.detalhe as { texto: string; por?: string }),
+    }))
+
+  it('cada linha entra uma vez, com quem fez e a hora dela; guardar de novo não repete', async () => {
+    const { id } = await cadastrar()
+    const [ana] = await banco.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, 'ana@exemplo.ggv'))
+    expect(await daFicha()).toEqual([{ quem: ana.id, alvo: `ficha:${id}`, quando: '2026-10-08T15:00:00.000Z', texto: 'Criou a ficha no balcão (lead)' }])
+    relogio = new Date('2026-10-08T16:00:00Z')
+    const editar = { nome: 'Joana Ribeiro', telefone: '11987654321', cpf: '52998224725', cidadeUf: 'Osasco / SP', comoChegou: 'instagram', email: 'joana@exemplo.com' }
+    await chamar('ana', 'PATCH', `/api/fichas/${id}`, editar)
+    await chamar('ana', 'PATCH', `/api/fichas/${id}`, editar)
+    const final = (await chamar('ana', 'GET', `/api/fichas/${id}`)).json()
+    const linhas = await daFicha()
+    expect(final.historico.length).toBeGreaterThan(1)
+    expect(linhas.map((l) => l.texto)).toEqual(final.historico.map((h: { oQue: string }) => h.oQue))
+    expect(linhas.every((l) => l.quem === ana.id && l.alvo === `ficha:${id}`)).toBe(true)
+    expect(linhas.at(-1)!.quando).toBe('2026-10-08T16:00:00.000Z')
+  })
+
+  it('a linha do sistema entra como do sistema, com o nome no detalhe; a senha sai mascarada (G9)', async () => {
+    const { id } = await cadastrar()
+    const fichario = criarFichario(banco, () => relogio)
+    const [ficha] = await fichario.fichas([id])
+    ficha.historico.push(fichario.evento('Chegou pelo scanner: 1 documento na pasta do Drive', 'Automação do scanner'))
+    ficha.historico.push(fichario.evento('Não conseguiu renovar a senha do gov.br: a nova seria Girassol2024', 'ana'))
+    await fichario.guardar(ficha)
+    const [, scanner, senha] = await daFicha()
+    expect([scanner.quem, scanner.por, scanner.texto]).toEqual(['sistema', 'Automação do scanner', 'Chegou pelo scanner: 1 documento na pasta do Drive'])
+    expect(senha.texto).toMatch(/^Não conseguiu renovar a senha do gov\.br: /)
+    expect(JSON.stringify(await banco.select().from(eventoAuditoria))).not.toContain('Girassol2024')
   })
 })
