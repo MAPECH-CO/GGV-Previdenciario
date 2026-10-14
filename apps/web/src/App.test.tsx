@@ -211,11 +211,15 @@ describe('App', () => {
 
   it('GGVP-135 · tela de outro perfil: o Atendimento não abre as do Jurídico, nem a Documentação a entrevista', async () => {
     zerarExemplo()
-    for (const caminho of ['/advogada', '/entrevista/josefa-entrevista/preparar', '/entrevista/josefa-entrevista', '/clientes/josefa-exemplo/cadastro']) {
+    for (const caminho of ['/entrevista/josefa-entrevista/preparar', '/entrevista/josefa-entrevista', '/clientes/josefa-exemplo/cadastro']) {
       render(<App caminho={caminho} />)
       expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
       cleanup()
     }
+    // GGVP-158: o /advogada (o Início das telas da advogada) leva o Atendimento à tela inicial dele, nunca à da advogada.
+    render(<App caminho="/advogada" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Início do Atendimento' })).toBeTruthy()
+    cleanup()
     servidorResponde(200, { ...usuario, perfis: ['documentacao'], perfilAtivo: 'documentacao' })
     render(<App caminho="/entrevista/josefa-entrevista/gravacao" />)
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
@@ -238,7 +242,11 @@ describe('App', () => {
     const caso = '/casos/00000000-0000-4000-8000-000000000001/manifestacao'
     for (const perfil of ['atendimento', 'documentacao']) await semPermissao(perfil, caso)
     await semPermissao('juridico_adm', '/entrevista/josefa-entrevista')
-    await semPermissao('juridico_adm', '/advogada')
+    // GGVP-158: no /advogada, o Jurídico administrativo vê a tela inicial dele, e não a Central da advogada.
+    servidorResponde(200, { ...usuario, perfis: ['juridico_adm'], perfilAtivo: 'juridico_adm' })
+    render(<App caminho="/advogada" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Início do Jurídico administrativo' })).toBeTruthy()
+    cleanup()
     servidorResponde(200, usuario)
     render(<App caminho="/contrato/cleide-exemplo-1/preparar" />)
     expect(await screen.findByRole('heading', { level: 1, name: /Preparar contrato/ })).toBeTruthy()
@@ -390,6 +398,20 @@ describe('App', () => {
     servidorResponde(200, { ...usuario, perfis: ['advogada'], perfilAtivo: 'advogada' })
     render(<App caminho="/" />)
     expect(await screen.findByRole('heading', { name: 'Início da Advogada' })).toBeTruthy()
+  })
+
+  it('GGVP-158 · o Início das telas da advogada (/advogada) leva cada perfil à tela inicial dele', async () => {
+    for (const [perfil, inicio] of [
+      ['atendimento', 'Início do Atendimento'],
+      ['senior', 'Início da Sênior'],
+      ['advogada', 'Início da Advogada'],
+    ]) {
+      zerarExemplo()
+      servidorResponde(200, { ...usuario, perfis: [perfil], perfilAtivo: perfil })
+      const { unmount } = render(<App caminho="/advogada" />)
+      expect(await screen.findByRole('heading', { level: 1, name: inicio }), perfil).toBeTruthy()
+      unmount()
+    }
   })
 
   it('GGVP-137 · a decisão da perícia fica em /pericia/decidir; /pericia é a página da perícia, também no caso do servidor', async () => {

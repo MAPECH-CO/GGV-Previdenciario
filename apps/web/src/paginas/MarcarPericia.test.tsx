@@ -171,4 +171,11 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     fireEvent.click(screen.getByRole('button', { name: 'Autorizar mais uma remarcação' }))
     expect(await screen.findByText('Remarcação autorizada: a tarefa de marcar volta para o Jurídico administrativo.')).toBeTruthy()
   })
+
+  it('GGVP-158 · com sessão, o Início da página do processo é a tela inicial de quem entrou, e não a Central da advogada', async () => {
+    entrarComo('atendimento')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
+    await screen.findByRole('heading', { name: 'Perícias' })
+    expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/')
+  })
 })
