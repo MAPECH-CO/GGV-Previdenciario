@@ -1116,6 +1116,11 @@ Os indicadores do Raio-X SHALL sair da base importada, por código com teste, ca
 - **Quando** a Sênior simula
 - **Então** as três aparecem como colunas ignoradas, e nada delas é gravado
 
+#### Scenario: P7.7 · A Base do acervo com a data de corte
+- **Dado** a base carregada, com a decisão mais nova em 05/10/2026
+- **Quando** a Gestão abre os Resultados
+- **Então** a "Base do acervo" traz os totais e a data de corte, 05/10/2026 (GGVP-148 CA5)
+
 ### Requirement: P8.1 · Quem abre conteúdo médico fica registrado
 Toda rota que entrega conteúdo com a trava do dado de saúde SHALL registrar a leitura, como as outras: quem leu, o perfil, o caso e o que foi lido. Valem:
 - a lista da Recepção com as gravações do Jurídico;
