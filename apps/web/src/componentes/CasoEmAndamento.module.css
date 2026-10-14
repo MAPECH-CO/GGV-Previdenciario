@@ -75,11 +75,11 @@
   font-size: var(--fonte-12);
 }
 
-/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
-.caso:not(:disabled):hover {
+/* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). O cartão sem link (GGVP-162) não muda. */
+a.caso:hover {
   background-image: var(--estado-passar);
 }
 
-.caso:not(:disabled):active {
+a.caso:active {
   background-image: var(--estado-apertar);
 }

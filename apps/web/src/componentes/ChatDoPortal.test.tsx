@@ -37,12 +37,21 @@ describe('GGVP-82 · o chat que consulta (Figma 2107:2, 2186:631, 2107:667, 2186
   })
 
   it('CA1 · a resposta cita o caso e o passo, com o link para abrir', async () => {
+    entrarComo('advogada')
     chat()
     enviar('O que falta no caso do Antônio Exemplo?')
     expect(await screen.findByText(/^Antônio Exemplo \(aposentadoria por incapacidade permanente\) está em Vigília · exigência do juiz/)).toBeTruthy()
     const link = within(screen.getByRole('list', { name: 'Tarefas sugeridas' })).getByRole('link')
     expect(link.getAttribute('href')).toBe('/casos/antonio-exemplo-1')
     expect(link.textContent).toContain('Vigília · exigência do juiz')
+  })
+
+  it('GGVP-162 CA6 · para o Atendimento, a resposta cita o caso, mas o link para a página do processo não aparece', async () => {
+    entrarComo('atendimento')
+    chat('Atendimento')
+    enviar('O que falta no caso do Antônio Exemplo?')
+    expect(await screen.findByText(/^Antônio Exemplo \(aposentadoria por incapacidade permanente\) está em Vigília · exigência do juiz/)).toBeTruthy()
+    expect(document.querySelector('a[href="/casos/antonio-exemplo-1"]')).toBeNull()
   })
 
   it('CA2 · o Atendimento pede o valor da prestação de contas: não tem acesso e o valor não aparece', async () => {

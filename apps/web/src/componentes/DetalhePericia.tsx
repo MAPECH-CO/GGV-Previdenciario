@@ -3,6 +3,7 @@ import { CATEGORIAS_DA_AGENDA } from '../dados/catalogos.ts'
 import type { EventoDaAgenda } from '../dados/tipos.ts'
 import { dataLonga } from '../regras/agenda.ts'
 import { NOMES_DA_INSTANCIA } from '../regras/pericia.ts'
+import { usePode } from '../sessao.ts'
 import cat from './Categorias.module.css'
 import styles from './DetalheCompromisso.module.css'
 
@@ -20,6 +21,8 @@ const ESTADO: Record<EventoDaAgenda['estado'], string> = {
  */
 export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; aoFechar: () => void }) {
   const janela = useRef<HTMLDialogElement>(null)
+  // GGVP-162: o botão leva à página da perícia; para quem não abre o processo, ele diz isso.
+  const abreProcesso = usePode('processo.abrir')
 
   useEffect(() => {
     const dialogo = janela.current
@@ -68,7 +71,7 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
       </dl>
       <div className={styles.botoes}>
         <a className={styles.primario} href={processo}>
-          Abrir o processo
+          {abreProcesso ? 'Abrir o processo' : 'Abrir a perícia'}
         </a>
         {/* O comparecimento (DP.07, GGVP-66): depois do dia e da hora, a tela registra se o cliente foi. */}
         <a className={styles.botao} href={`/casos/${evento.processoId}/pericia/comparecimento`}>

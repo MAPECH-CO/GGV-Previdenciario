@@ -5,7 +5,12 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 31, digital: 'bee5f34f' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 32, digital: 'fcc7bef5' })
+  })
+
+  it('GGVP-162 CA7 · o processo é do Jurídico e do Sócio; o Atendimento, a líder e a Documentação ficam com o caso das tarefas', () => {
+    expect(PERFIS.filter((p) => pode(p, 'processo.abrir'))).toEqual(['advogada', 'senior', 'juridico_adm', 'socio'])
+    for (const p of ['atendimento', 'atendimento_lider', 'documentacao'] as const) expect(pode(p, 'caso.ver'), p).toBe(true)
   })
 
   it('GGVP-158 · todo perfil usa o chat e vê as próprias tarefas; o Sócio não é responsável de pendência', () => {
@@ -93,7 +98,7 @@ describe('matriz de permissões (GGVP-96)', () => {
   it('GGVP-96 · o Sócio é dono e lê tudo, com os valores (Lucas, 07/10) e o dado de saúde (Pedro, 09/10); não faz passo do caso', () => {
     const leituras = (Object.keys(MATRIZ) as Acao[]).filter((a) => /\.ver(_|$)/.test(a))
     expect(leituras.filter((a) => !pode('socio', a))).toEqual([])
-    expect(acoesDe('socio').filter((a) => !leituras.includes(a))).toEqual(['chat.usar', 'configuracao.editar', 'historico.autorizar_exportacao', 'perfis.atribuir'])
+    expect(acoesDe('socio').filter((a) => !leituras.includes(a))).toEqual(['chat.usar', 'configuracao.editar', 'historico.autorizar_exportacao', 'perfis.atribuir', 'processo.abrir'])
     expect(pode('socio', 'prestacao.dar_ok')).toBe(false)
   })
 
@@ -204,11 +209,11 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento: 19,
       atendimento_lider: 23,
       documentacao: 12,
-      advogada: 41,
-      senior: 58,
-      juridico_adm: 20,
+      advogada: 42,
+      senior: 59,
+      juridico_adm: 21,
       financeiro: 10,
-      socio: 21,
+      socio: 22,
     })
   })
 })

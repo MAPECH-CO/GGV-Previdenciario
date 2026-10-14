@@ -4,25 +4,27 @@ import { entrarPelaApi } from './entrar.ts'
 // GGVP-78 · Clientes e Processos pelo topo (Figma 1927:605 e 1927:888), com os dados de exemplo do banco: cada teste
 // chega por clique, sem digitar o endereço da lista.
 
-test('o líder do Atendimento chega a Clientes pelo topo, acha o cliente, abre os processos dele e volta à ficha', async ({ page }) => {
+test('o líder do Atendimento chega a Clientes pelo topo, acha o cliente e abre a ficha; Processos não é dele (GGVP-162)', async ({ page }) => {
   await entrarPelaApi(page, 'lider@exemplo.ggv')
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Clientes' }).click()
+  const topo = page.getByRole('navigation', { name: 'Principal' })
+  await expect(topo.getByRole('link', { name: 'Processos' })).toHaveCount(0)
+  await topo.getByRole('link', { name: 'Clientes' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Clientes')
 
   await page.getByRole('searchbox', { name: 'Buscar por nome, CPF ou telefone' }).fill('Renato Dias')
   const clientes = page.getByRole('table', { name: 'Clientes' })
   await expect(clientes.getByRole('row')).toHaveCount(2)
   await expect(clientes.getByRole('row').nth(1)).toContainText('Êxito')
+  // A contagem de processos é número, sem link para a lista (CA4).
+  await expect(clientes.getByRole('link', { name: '1 processo de Renato Dias (exemplo)' })).toHaveCount(0)
 
-  await clientes.getByRole('link', { name: '1 processo de Renato Dias (exemplo)' }).click()
-  await expect(page).toHaveURL(/\/processos\?cliente=[0-9a-f-]{36}$/)
-  const processos = page.getByRole('table', { name: 'Processos' })
-  await expect(processos.getByRole('row')).toHaveCount(2)
-  await expect(processos.getByRole('row').nth(1)).toContainText('LOAS Deficiente')
-
-  await processos.getByRole('link', { name: 'Renato Dias (exemplo)' }).click()
+  await clientes.getByRole('link', { name: 'Renato Dias (exemplo)' }).click()
   await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
+
+  // Pelo endereço, a lista de processos diz "Sem permissão" (CA1).
+  await page.goto('/processos')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sem permissão')
 })
 
 test('a advogada acha o processo pelo número em Processos e abre a página dele', async ({ page }) => {

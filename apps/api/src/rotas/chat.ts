@@ -115,12 +115,16 @@ export function antesDoModelo(
   return null
 }
 
-type Alvo = { casoId: string; beneficio: string | null }
+type Alvo = { casoId: string; pessoaId: string; beneficio: string | null }
 const palavras = (texto: string) => ` ${semAcento(texto).replace(/[^a-z0-9]+/g, ' ').trim()} `
+
+/** GGVP-162: o caso abre na página do processo para quem a abre; o Atendimento e a Documentação, na ficha do cliente. */
+const linkDoCaso = (perfil: string | null | undefined, alvo: Alvo): LinkDoChat =>
+  pode(perfil, 'processo.abrir') ? { rotulo: 'Abrir o caso', href: `/casos/${alvo.casoId}` } : { rotulo: 'Abrir a ficha do cliente', href: `/clientes/${alvo.pessoaId}` }
 
 /** O caso aberto no chat (o `processoId` do contexto). */
 async function umCaso(banco: Banco, casoId: string): Promise<Alvo | null> {
-  const [c] = await banco.select({ casoId: caso.id, beneficio: caso.beneficio }).from(caso).where(eq(caso.id, casoId))
+  const [c] = await banco.select({ casoId: caso.id, pessoaId: caso.pessoaId, beneficio: caso.beneficio }).from(caso).where(eq(caso.id, casoId))
   return c ?? null
 }
 
@@ -131,14 +135,14 @@ async function umCaso(banco: Banco, casoId: string): Promise<Alvo | null> {
 async function casoCitado(banco: Banco, texto: string): Promise<Alvo | { opcoes: string[] } | null> {
   const t = palavras(texto)
   const linhas = await banco
-    .select({ casoId: caso.id, beneficio: caso.beneficio, nome: pessoa.nome })
+    .select({ casoId: caso.id, pessoaId: caso.pessoaId, beneficio: caso.beneficio, nome: pessoa.nome })
     .from(caso)
     .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
     .orderBy(desc(caso.criadoEm))
   const citados = new Map<string, Alvo>()
   for (const l of linhas) {
     const nome = palavras(l.nome)
-    if (nome.trim().split(' ').length >= 2 && t.includes(nome) && !citados.has(l.nome)) citados.set(l.nome, { casoId: l.casoId, beneficio: l.beneficio })
+    if (nome.trim().split(' ').length >= 2 && t.includes(nome) && !citados.has(l.nome)) citados.set(l.nome, { casoId: l.casoId, pessoaId: l.pessoaId, beneficio: l.beneficio })
   }
   if (citados.size > 1) return { opcoes: [...citados.keys()] }
   return citados.values().next().value ?? null
@@ -151,8 +155,8 @@ const SEM_IA: Record<Extract<Rodada, { tipo: 'sem-ia' }>['motivo'], string> = {
 }
 
 /** A resposta da rodada do agente, com os links do código (o caso), nunca do texto do modelo (CA2). */
-function daRodada(rodada: Rodada, casoId: string | null, fontes: FonteDaIa[], agora: Date, widgets: Map<string, WidgetDoChat>): RespostaDoChat {
-  const links: LinkDoChat[] = casoId ? [{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }] : []
+function daRodada(rodada: Rodada, link: LinkDoChat | null, fontes: FonteDaIa[], agora: Date, widgets: Map<string, WidgetDoChat>): RespostaDoChat {
+  const links: LinkDoChat[] = link ? [link] : []
   if (rodada.tipo === 'resposta') {
     // 12/10: os marcadores {{wN}} viram os widgets que as ferramentas montaram; o texto do registro fica sem eles.
     const { texto, blocos } = montarBlocos(rodada.texto, widgets)
@@ -167,11 +171,12 @@ function daRodada(rodada: Rodada, casoId: string | null, fontes: FonteDaIa[], ag
  * CA3: o que depende de enviar arquivo (laudo, comprovante do INSS, comprovante do pagamento, documento, lote do acervo)
  * leva à tela onde a pessoa sobe e confere, até a rota de envio existir no servidor (Recepção, PR #22; GGVP-55).
  */
-function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: string | null, agora: Date): RespostaDoChat {
+function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: string | null, principal: LinkDoChat | null, agora: Date): RespostaDoChat {
   const tipo = tipoDoAnexo(texto, anexos.map((a) => a.nome))
   const doCaso = (sufixo: string, rotulo: string): LinkDoChat[] => (casoId ? [{ rotulo, href: `/casos/${casoId}${sufixo}` }] : [])
+  const abrir = principal ? [principal] : []
   const destino = {
-    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo (G17).', links: doCaso('', 'Abrir o caso') },
+    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo (G17).', links: abrir },
     'comprovante-inss': {
       texto: 'Para marcar a perícia com o comprovante do INSS, abra a perícia do caso: lá a IA lê a data, a hora e o local, e você confere antes de marcar.',
       links: doCaso('/pericia', 'Abrir a perícia'),
@@ -180,7 +185,7 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
       texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da advogada (G8).',
       links: doCaso('/prestacao', 'Abrir a prestação de contas'),
     },
-    documento: { texto: 'Para enviar o documento, abra o caso e suba pela pasta do cliente: a Documentação confere a leitura.', links: doCaso('', 'Abrir o caso') },
+    documento: { texto: 'Para enviar o documento, abra o caso e suba pela pasta do cliente: a Documentação confere a leitura.', links: abrir },
     acervo: { texto: 'Para subir processos no acervo, use a base do acervo na Gestão.', links: [{ rotulo: 'Abrir a base do acervo', href: '/gestao/resultados' }] },
   }[tipo]
   const semCaso = casoId || tipo === 'acervo' ? '' : ' Diga de qual cliente é, com o nome completo.'
@@ -249,6 +254,20 @@ function oferecer(x: Ambiente, ofertas: Oferta[]): string {
   return linhas.length ? `\n\nWidgets prontos (escreva o marcador sozinho numa linha para mostrar):\n${linhas.join('\n')}` : ''
 }
 
+/**
+ * GGVP-162 CA6: quem não abre o processo (o Atendimento, a líder e a Documentação) lê o caso como a ficha do cliente mostra:
+ * o número, o benefício, a etapa, o que fazer agora e o prazo. A ficha vem da rota da tela, com a sessão de quem pergunta.
+ */
+async function casoPelaFicha(x: Ambiente, alvo: Alvo) {
+  const r = await x.app.inject({ method: 'GET', url: `/api/fichas/${alvo.pessoaId}`, headers: { cookie: x.cookie } })
+  if (r.statusCode !== 200) return 'O perfil da pessoa não abre este caso.'
+  const ficha = r.json() as { nome: string; processos: Partial<Record<'id' | 'numero' | 'beneficio' | 'etapa' | 'proximaAcao' | 'prazo', string>>[] }
+  const p = ficha.processos.find((q) => q.id === alvo.casoId)
+  if (!p) return 'Este caso ainda não aparece na ficha do cliente.'
+  x.fontes.push({ tipo: 'caso', referencia: `caso:${alvo.casoId}` })
+  return comoDado(JSON.stringify({ cliente: ficha.nome, processo: { numero: p.numero, beneficio: p.beneficio, etapa: p.etapa, proximaAcao: p.proximaAcao, prazo: p.prazo } }))
+}
+
 function ferramentasDeLeitura(x: Ambiente): Tool[] {
   return [
     tool({
@@ -257,6 +276,7 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
       parameters: z.object({}),
       execute: async () => {
         if (!x.alvo) return 'Nenhum caso no contexto: peça o nome completo do cliente.'
+        if (!pode(x.perfil, 'processo.abrir')) return casoPelaFicha(x, x.alvo)
         const r = await x.app.inject({ method: 'GET', url: `/api/casos/${x.alvo.casoId}/processo`, headers: { cookie: x.cookie } })
         if (r.statusCode !== 200) return 'O perfil da pessoa não abre este caso.'
         x.fontes.push({ tipo: 'caso', referencia: `caso:${x.alvo.casoId}` })
@@ -338,7 +358,7 @@ async function criarTarefaPeloChat(x: Ambiente, acao: string, para: string, praz
   const cliente = await clienteDoCaso(x.banco, casoId)
   await x.banco.insert(tarefa).values({ casoId, titulo: daLista, perfilDono: quem.perfil, responsavelId: quem.id, prazo })
   await x.evento('tarefa_criada_pelo_chat', `caso:${casoId}`, { titulo: daLista, responsavel: quem.id, peloChat: true })
-  x.resultado = { texto: `✓ Feito: tarefa «${tituloDaTarefa(cliente.nome, daLista)}» criada para ${quem.nome}.`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${casoId}` }] }
+  x.resultado = { texto: `✓ Feito: tarefa «${tituloDaTarefa(cliente.nome, daLista)}» criada para ${quem.nome}.`, links: [linkDoCaso(x.perfil, x.alvo!)] }
   return x.resultado.texto
 }
 
@@ -467,7 +487,8 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const entrada = PerguntaDoChat.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Pergunta inválida.')
     const { texto, processoId } = entrada.data
-    // Quem não abre caso (`caso.ver`, como na página do processo) conversa sem caso no contexto e sem ação em caso.
+    // Quem não vê o caso (`caso.ver`) conversa sem caso no contexto e sem ação em caso; quem vê o caso sem abrir o processo
+    // (o Atendimento e a Documentação) lê o caso pela ficha (GGVP-162).
     const abreCaso = pode(pedido.perfilAtivo, 'caso.ver')
     const noProcesso = processoId && UUID.test(processoId) ? processoId : undefined
     const doCaso = abreCaso ? noProcesso : undefined
@@ -482,7 +503,8 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     if (alvo && 'opcoes' in alvo) return { ...daRegra('pergunta', 'De qual cliente? Escolha um.', [], agora()), opcoes: alvo.opcoes }
     const casoId = alvo?.casoId ?? null
     // O link só leva à tela, que confere a permissão dela (a prestação de contas é do Financeiro, que não abre o caso).
-    if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, agora())
+    const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
+    if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
     const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes }, texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
@@ -495,7 +517,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
         return { tipo: 'acao', sugestao, links: [], acao: cartao } satisfies RespostaDoChat
       }
     }
-    return daRodada(rodada, casoId, x.fontes, agora(), x.widgets)
+    return daRodada(rodada, link, x.fontes, agora(), x.widgets)
   })
 
   // CA3: o clique em "Confirmar". Só quem pediu, com o mesmo perfil; o kit continua e a ação roda pelo código, com as travas.

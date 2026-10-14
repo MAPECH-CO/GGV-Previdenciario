@@ -18,7 +18,7 @@ function buscar(termo = 'Cliente Inventado') {
 it('consulta as duas bases por POST e abre cliente e processo sem ler exemplos', async () => {
   const fetch = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/clientes/busca' ? clientes : processos)))
   vi.stubGlobal('fetch', fetch)
-  tela()
+  tela('advogada')
   expect(fetch).not.toHaveBeenCalled()
   buscar('1234567890')
   expect((await screen.findByRole('link', { name: '1234567890 · Cliente Inventado Busca' })).getAttribute('href')).toBe('/casos/' + casoId)
@@ -29,6 +29,17 @@ it('consulta as duas bases por POST e abre cliente e processo sem ler exemplos',
     expect(init.method).toBe('POST')
     expect(JSON.parse(String(init.body)).busca).toBe('1234567890')
   }
+})
+it.each(['atendimento', 'atendimento_lider', 'documentacao'])('GGVP-162 CA2 · %s busca só clientes: a API de processos nem é chamada', async (perfil) => {
+  const fetch = vi.fn(async (url: string) => new Response(JSON.stringify(url === '/api/clientes/busca' ? clientes : processos)))
+  vi.stubGlobal('fetch', fetch)
+  tela(perfil)
+  expect(screen.getByRole('searchbox').getAttribute('placeholder')).toBe('Cliente, CPF ou telefone')
+  buscar('Cliente Inventado')
+  expect((await screen.findByRole('link', { name: 'Cliente Inventado Busca' })).getAttribute('href')).toBe('/clientes/' + clienteId)
+  expect(screen.queryByRole('heading', { name: /Casos e processos/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: /1234567890/ })).toBeNull()
+  expect(fetch.mock.calls.map(([url]) => url)).toEqual(['/api/clientes/busca'])
 })
 it('sem acesso ao caso não oferece busca nem chama a API', () => {
   const fetch = vi.fn()

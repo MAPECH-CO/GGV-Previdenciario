@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { ROTULO_SITUACAO_DO_CLIENTE, SITUACOES_DO_CLIENTE, type ListaDeClientes } from '@ggv/contratos'
 import { baixarCsv, comTodos, consultarBase, plural, useTermo } from '../dados/bases.ts'
 import { agora } from '../dados/servidor.ts'
+import { usePode } from '../sessao.ts'
 import { haQuanto } from '../regras/bases.ts'
 import { hojeIso } from '../regras/datas.ts'
 import { CampoDaBusca, Etiqueta, Filtro, MolduraDaBase, Paginacao } from './Base.tsx'
 import styles from './Bases.module.css'
 
 // Figma: "Clientes · Atendimento líder" (1927:605), "· Sênior" (1927:14), "· Advogada" (1931:130), "· Financeiro" (1933:29).
-// A base de clientes e leads do servidor, com busca, filtros e página; o nome abre a ficha, a contagem abre os processos.
+// A base de clientes e leads do servidor, com busca, filtros e página; o nome abre a ficha, a contagem abre os processos
+// (para quem abre o processo, GGVP-162).
 
 const SITUACOES: [string, string][] = [
   ['ativos', 'Ativos'],
@@ -27,6 +29,8 @@ export function Clientes() {
   const [lista, setLista] = useState<ListaDeClientes | null>(null)
   const [erro, setErro] = useState('')
   const hoje = hojeIso(agora())
+  // GGVP-162: a contagem abre os processos só para quem abre o processo; para a líder do Atendimento, é número.
+  const abreProcesso = usePode('processo.abrir')
 
   useEffect(() => {
     let valendo = true
@@ -127,12 +131,12 @@ export function Clientes() {
                 <td>{c.beneficio ?? '—'}</td>
                 <td>{c.cidade ?? '—'}</td>
                 <td>
-                  {c.processos > 0 ? (
+                  {c.processos > 0 && abreProcesso ? (
                     <a className={styles.link} href={`/processos?cliente=${c.id}`} aria-label={`${plural(c.processos, 'processo')} de ${c.nome}`}>
                       {c.processos}
                     </a>
                   ) : (
-                    0
+                    c.processos
                   )}
                 </td>
                 <td>

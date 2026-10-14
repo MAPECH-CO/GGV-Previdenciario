@@ -21,7 +21,8 @@ export const ITENS_DAS_BASES: ItemNavegacao[] = [
 
 /**
  * No Figma, Clientes e Processos são do líder do Atendimento, da Advogada, da Sênior e do Financeiro; o Atendimento só tem
- * a Agenda. A matriz manda: o Financeiro não vê o caso (`caso.ver`) e fica sem os dois até ela mudar.
+ * a Agenda. A matriz manda: o Financeiro não vê o caso (`caso.ver`) e fica sem os dois até ela mudar, e Processos é só de
+ * quem abre o processo (`processo.abrir`, GGVP-162): a líder do Atendimento fica com Clientes.
  */
 const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro']
 
@@ -35,7 +36,10 @@ export const ITEM_DO_FINANCEIRO: ItemNavegacao = { id: 'financeiro', rotulo: 'Fi
  */
 export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | undefined): ItemNavegacao[] {
   const tem = (lista: ItemNavegacao[]) => lista.some((i) => itens.some((x) => x.id === i.id))
-  const bases = COM_AS_BASES.includes(perfil ?? '') && pode(perfil, 'caso.ver') && !tem(ITENS_DAS_BASES) ? ITENS_DAS_BASES : []
+  const bases =
+    COM_AS_BASES.includes(perfil ?? '') && pode(perfil, 'caso.ver') && !tem(ITENS_DAS_BASES)
+      ? ITENS_DAS_BASES.filter((i) => i.id !== 'processos' || pode(perfil, 'processo.abrir'))
+      : []
   // GGVP-96: quem vê os Resultados sem a Gestão (o Financeiro) fica só com eles.
   const resultados = ITENS_DA_GESTAO.filter((i) => i.id === 'resultados')
   const gestao = pode(perfil, 'gestao.ver')
