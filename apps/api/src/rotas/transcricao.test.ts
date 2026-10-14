@@ -15,7 +15,7 @@ import { COOKIE } from '../sessao/rotas.ts'
 import { analisar } from '../../../web/src/dados/acervo.ts'
 import { requisitosDoBeneficio } from '../../../web/src/regras/beneficio.ts'
 import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
-import { MSG_GRAVACAO_SO_DO_JURIDICO } from './recepcao-entrevista.ts'
+import { MSG_GRAVACAO_SO_DO_JURIDICO, MSG_SEM_AVISO_DE_FORA } from './recepcao-entrevista.ts'
 import { MSG_SEM_AO_VIVO } from './transcricao.ts'
 
 // GGVP-133: a transcrição de verdade da entrevista, sempre com serviço falso (nenhuma chamada de verdade à OpenAI).
@@ -110,7 +110,7 @@ function comArquivo(nome: string, mime: string, conteudo: string, campos: Record
   return { payload: partes.join('') + `--${f}--\r\n`, headers: { 'content-type': `multipart/form-data; boundary=${f}` } }
 }
 const subir = async (url: string, arquivo: ReturnType<typeof comArquivo>, apelido = 'gabi') => app.inject({ method: 'POST', url, cookies: await cookieDe(apelido), ...arquivo })
-const LIGACAO = () => comArquivo('ligacao-chatwoot.ogg', 'audio/ogg', 'OggS áudio da ligação')
+const LIGACAO = () => comArquivo('ligacao-chatwoot.ogg', 'audio/ogg', 'OggS áudio da ligação', { avisoNaGravacao: 'sim' })
 
 /** Um lead do balcão com a entrevista confirmada (o mesmo caminho do teste da entrevista no servidor). */
 async function entrevistaConfirmada() {
@@ -304,6 +304,18 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     expect((await subir(url, comArquivo('laudo.pdf', 'application/pdf', '%PDF'))).json().erro).toBe('Esse arquivo não é de áudio.')
     expect((await subir(url, LIGACAO(), 'ana')).statusCode).toBe(403)
     expect(await banco.select().from(documento)).toHaveLength(0)
+  })
+
+  it('GGVP-158 P8.5 (G10) · o áudio gravado fora só entra com a confirmação do aviso de gravação, e o histórico diz', async () => {
+    montar()
+    const { agendamentoId } = await entrevistaConfirmada()
+    const url = `/api/entrevistas/${agendamentoId}/audio`
+    const semAviso = await subir(url, comArquivo('ligacao-chatwoot.ogg', 'audio/ogg', 'OggS áudio da ligação'))
+    expect([semAviso.statusCode, semAviso.json().erro]).toEqual([400, MSG_SEM_AVISO_DE_FORA])
+    expect(await banco.select().from(documento)).toHaveLength(0)
+    expect(await banco.select().from(gravacaoRecepcao)).toHaveLength(0)
+    const r = (await subir(url, LIGACAO())).json()
+    expect(r.ficha.historico.at(-1).oQue).toBe('Subiu o áudio da entrevista gravado fora do portal (ligacao-chatwoot.ogg), com o aviso de gravação confirmado (G10); foi para a transcrição')
   })
 
   it('CA1, CA10 · a gravação no portal: as partes sobem pela rota que já existe, o encerramento mantém o áudio de verdade e o preparo em segundo plano transcreve', async () => {

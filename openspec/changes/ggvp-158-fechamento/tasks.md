@@ -731,10 +731,12 @@ O aviso do áudio gravado fora (8.6) vai na branch `feat/GGVP-158-parte-8-aviso`
     - a senha sai mascarada.
 
   Verificado em 14/10: `rotas/recepcao.test.ts` 17/17 (2 novos) e a suíte inteira da API, 1007 de 1010 (3 pulados), sem falha. A linha nova entra uma vez, com quem fez e a hora dela, e a ficha guardada de novo não repete; a linha do scanner entra como do sistema, com o nome no detalhe; a senha sai mascarada. As suítes que contam o histórico de auditoria filtram pela ação e seguiram passando.
-- [ ] 8.6 O aviso no áudio gravado fora (P8.5, decisão 78), no pedido à parte: `POST /api/entrevistas/:id/audio` exige `avisoNaGravacao=sim`.
+- [x] 8.6 O aviso no áudio gravado fora (P8.5, decisão 78), no pedido à parte: `POST /api/entrevistas/:id/audio` exige `avisoNaGravacao=sim`.
   - Verifica com a suíte da entrevista:
     - sem a confirmação, 400 e nada no caso;
     - com ela, o áudio entra e o histórico diz que o aviso foi confirmado.
+
+  Verificado em 14/10, na branch `feat/GGVP-158-parte-8-aviso`: `rotas/transcricao.test.ts` (1 novo), `rotas/recepcao-entrevista.test.ts` e `rotas/transcricao-conversa.test.ts`, 32/32; typecheck e lint da API sem erro. Sem a confirmação, 400 e nada no caso; com ela, o áudio entra e o histórico diz que o aviso foi confirmado. O teste de tela `transcricao-ligacao.e2e.ts` falha (1 de 3), como esperado: a tela da entrevista ainda não manda `avisoNaGravacao=sim`. O pedido fica em rascunho até a tela do Pedro.
 - [ ] 8.7 Avisar o Pedro: os dois pedidos listam o que muda para as telas (a caixa do aviso na entrevista; a justificativa vazia para quem não vê dado de saúde).
 - [x] 8.8 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
 
