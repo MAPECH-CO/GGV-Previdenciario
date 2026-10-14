@@ -3,7 +3,7 @@
 // vez só pelo número. A confirmação dela vale como a conferência dos desfechos: entram conferidos, e a jurimetria lê. Os
 // indicadores saem da base importada, por código. Nada do arquivo vai ao registro do servidor: o histórico guarda só as
 // contagens, e o erro do banco sai só com o código.
-import { ConfirmacaoDaImportacao, PlanilhaDoEscritorio, TAMANHO_MAXIMO_DA_PLANILHA, type Erro } from '@ggv/contratos'
+import { ConfirmacaoDaImportacao, PlanilhaDoEscritorio, TAMANHO_MAXIMO_DA_PLANILHA, pode, type Erro } from '@ggv/contratos'
 import { eq, isNotNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
@@ -70,8 +70,9 @@ export function registrarRotasRaioX(app: FastifyInstance, { banco, agora = () =>
     }
   })
 
-  // Os indicadores do Raio-X, da base importada, cada um com o número de casos e a data da base.
-  app.get('/api/acervo/raio-x', { preHandler: exigir(banco, 'resultados.ver', agora) }, async () => {
+  // Os indicadores do Raio-X, da base importada, cada um com o número de casos e a data da base. O "Onde julgam" é a taxa
+  // por juízo: jurimetria, só do Jurídico e do Sócio (`estudo.ver`, GGVP-156 CA3 e P5.13); os outros recebem a lista vazia.
+  app.get('/api/acervo/raio-x', { preHandler: exigir(banco, 'resultados.ver', agora) }, async (pedido) => {
     const base = await banco
       .select({
         numeroCnj: processoAcervo.numeroCnj,
@@ -86,6 +87,7 @@ export function registrarRotasRaioX(app: FastifyInstance, { banco, agora = () =>
       })
       .from(processoAcervo)
       .where(eq(processoAcervo.fonte, 'raio_x'))
-    return indicadoresDoRaioX(base.map((r) => ({ ...r, numeroCnj: r.numeroCnj ?? '', cartorioCobrou: r.cartorioCobrou as string[] | null })))
+    const raioX = indicadoresDoRaioX(base.map((r) => ({ ...r, numeroCnj: r.numeroCnj ?? '', cartorioCobrou: r.cartorioCobrou as string[] | null })))
+    return pode(pedido.perfilAtivo, 'estudo.ver') ? raioX : { ...raioX, ondeJulgam: [] }
   })
 }

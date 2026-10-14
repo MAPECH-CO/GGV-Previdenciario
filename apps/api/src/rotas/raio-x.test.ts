@@ -34,7 +34,7 @@ const carregar = (conferido: string, arquivo = PLANILHA) => chamar('helena', 'PO
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco })
-  for (const [apelido, perfil] of [['helena', 'senior'], ['ana', 'atendimento'], ['lauro', 'socio']] as const) {
+  for (const [apelido, perfil] of [['helena', 'senior'], ['ana', 'atendimento'], ['lauro', 'socio'], ['julia', 'financeiro']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -96,5 +96,13 @@ describe('GGVP-158 P7.7 · o importador do Raio-X', () => {
     expect(raioX.indicadores.find((i: { chave: string }) => i.chave === 'exito')).toMatchObject({ casos: 2, valor: 0.5 })
     expect(raioX.indicadores.find((i: { chave: string }) => i.chave === 'laudo_favoravel')).toMatchObject({ casos: 2, valor: 0.5 })
     expect((await chamar('ana', 'GET', '/api/acervo/raio-x')).statusCode).toBe(403)
+  })
+
+  it('GGVP-156 CA3 e P5.13 · o "Onde julgam" (a taxa por juízo) só para o Jurídico e o Sócio; o Financeiro vê o resto', async () => {
+    await carregar((await simular('helena')).json().conferido)
+    expect((await chamar('lauro', 'GET', '/api/acervo/raio-x')).json().ondeJulgam.length).toBeGreaterThan(0)
+    const doFinanceiro = (await chamar('julia', 'GET', '/api/acervo/raio-x')).json()
+    expect([doFinanceiro.processos, doFinanceiro.ondeJulgam]).toEqual([2, []])
+    expect(doFinanceiro.indicadores.find((i: { chave: string }) => i.chave === 'exito')).toMatchObject({ casos: 2, valor: 0.5 })
   })
 })
