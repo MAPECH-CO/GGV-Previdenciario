@@ -33,7 +33,7 @@ estagiário-assistente** vem de `perfis.md`, pelo texto das caixas. Regra de atr
   A perícia (DP.02, DP.06, DP.07) passou ao Jurídico administrativo em 29/09 (decisão do Lucas).
 **Histórias:** GGVP-16, 21, 36, 60, 65, 69, 72, 77, 85, 89, 97, 101, 18, 29, 102, 98,
 22. Compartilhadas: 58, 83, 76, 103.
-**Nunca vê:** petição, estratégia jurídica, valores (o percentual de honorários aparece só no contrato que confere). Não decide benefício (G3),
+**Nunca vê:** petição, estratégia jurídica, valores (o percentual de honorários aparece só no contrato que confere); a página, a lista e o histórico do processo (lê o caso pela ficha do cliente, GGVP-162). Não decide benefício (G3),
 suficiência médica (G17/G20) nem setor da exigência (G5); não protocola (G2/G7); cobrança tem limite
 que escala à sênior (G15).
 **Home:** agenda do dia; fila de tarefas (assinatura, verificação de contrato, cobrança, exigência,
@@ -45,7 +45,7 @@ laudo novo a subir); leads a recontatar.
 pede (DP.03, quando o Jurídico administrativo decide que ela pede documento novo); laços de setor (D2.05, D3.04, D3a.03). (Digitalizar é [SCANNER] e ler é [IA]; a pessoa
 confere.)
 **Histórias:** GGVP-17, 81, 91, 95, 47, 56. Compartilhadas: 58, 83.
-**Nunca vê:** petição, valores. Limite de cobrança escala à sênior (G15).
+**Nunca vê:** petição, valores; a página, a lista e o histórico do processo (lê o caso pela ficha do cliente, GGVP-162). Limite de cobrança escala à sênior (G15).
 **Home:** sem painel próprio (decisão de 29/09): as tarefas de documentação entram na Central do Atendimento (cards de documentos pendentes, fila do scanner, checklist por benefício).
 
 ## Advogada responsável (Jurídico)

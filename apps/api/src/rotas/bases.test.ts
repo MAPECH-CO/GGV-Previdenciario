@@ -39,7 +39,7 @@ const buscar = async (apelido: string, url: string, payload: object) => app.inje
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => new Date('2026-10-09T15:00:00Z') })
-  for (const [apelido, perfil] of [['eva', 'atendimento_lider'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['rui', 'socio']] as const) {
+  for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['fabio', 'documentacao'], ['gabi', 'advogada'], ['julia', 'financeiro'], ['rui', 'socio']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -183,12 +183,12 @@ describe('Processos (GGVP-78)', () => {
   })
 
   it('a busca acha pelo número do processo, o NB e o CPF; os filtros cortam', async () => {
-    const autores = async (corpo: object) => (await buscar('eva', '/api/processos/busca', corpo)).json().processos.map((p: { autor: string }) => p.autor)
+    const autores = async (corpo: object) => (await buscar('gabi', '/api/processos/busca', corpo)).json().processos.map((p: { autor: string }) => p.autor)
     expect(await autores({ busca: '5005290-87.2026' })).toEqual(['Sebastião Nunes'])
     expect(await autores({ busca: '123.456.789' })).toEqual(['Clara Nunes'])
     expect(await autores({ busca: '111.444' })).toEqual(['Clara Nunes'])
     expect(await autores({ busca: 'souza' })).toEqual(['Maria Souza'])
-    const filtrar = async (consulta: string) => (await listar('eva', `/api/processos?${consulta}`)).json().processos.map((p: { autor: string }) => p.autor)
+    const filtrar = async (consulta: string) => (await listar('gabi', `/api/processos?${consulta}`)).json().processos.map((p: { autor: string }) => p.autor)
     expect(await filtrar('fase=administrativa')).toEqual(['Clara Nunes'])
     expect(await filtrar(`perito=${encodeURIComponent('Dr. Rui Tavares')}`)).toEqual(['Sebastião Nunes'])
     expect(await filtrar(`foro=${encodeURIComponent('JEF São Paulo')}`)).toEqual(['Sebastião Nunes'])
@@ -204,6 +204,16 @@ describe('quem vê e o que fica registrado (GGVP-78)', () => {
       expect((await listar('julia', url)).statusCode, `julia ${url}`).toBe(403)
       expect((await listar('rui', url)).statusCode, `rui ${url}`).toBe(200)
     }
+  })
+
+  it('GGVP-162 CA1, CA2 · o Atendimento, a líder e a Documentação ficam com os clientes; a lista e a busca de processos recusam, com a tentativa registrada', async () => {
+    for (const apelido of ['ana', 'eva', 'fabio']) {
+      expect((await listar(apelido, '/api/clientes')).statusCode, `${apelido} clientes`).toBe(200)
+      expect((await listar(apelido, '/api/processos')).statusCode, `${apelido} processos`).toBe(403)
+      expect((await buscar(apelido, '/api/processos/busca', { busca: 'nunes' })).statusCode, `${apelido} busca`).toBe(403)
+    }
+    const negados = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'acesso_negado'))
+    expect(negados.map((e) => (e.detalhe as { acao: string }).acao)).toEqual(Array(6).fill('processo.abrir'))
   })
 
   it('Exportar CSV traz o filtro inteiro e fica no histórico com quem e quantas linhas, sem o termo da busca', async () => {

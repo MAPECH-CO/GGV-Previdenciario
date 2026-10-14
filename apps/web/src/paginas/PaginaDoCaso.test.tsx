@@ -170,7 +170,8 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     expect(document.body.textContent).not.toContain('R$')
   })
 
-  it('A ficha leva ao caso: o processo fora da perícia abre /casos/:id', async () => {
+  it('A ficha leva ao caso: o processo fora da perícia abre /casos/:id, para quem abre o processo (GGVP-162)', async () => {
+    entrarComo('advogada')
     const ficha = (await obterFicha('nair-exemplo'))!
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     expect(screen.getByRole('link', { name: /Processo ainda sem número/ }).getAttribute('href')).toBe('/casos/nair-exemplo-1')

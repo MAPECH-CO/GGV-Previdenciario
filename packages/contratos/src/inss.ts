@@ -310,6 +310,8 @@ export type RecomendacaoAprovada = z.infer<typeof RecomendacaoAprovada>
  */
 export const CasoParaLiberacao = z.object({
   casoId: z.uuid(),
+  /** A ficha do cliente (GGVP-162): quem não abre o processo corrige o caso por ela. */
+  pessoaId: z.uuid(),
   cliente: z.string(),
   beneficio: z.string().nullable(),
   /** G1, igual à conferência da Sênior. */

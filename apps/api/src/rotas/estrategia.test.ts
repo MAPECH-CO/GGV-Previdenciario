@@ -84,13 +84,13 @@ describe('GGVP-158 P7.1 · a estratégia do caso: a IA propõe, e o Jurídico co
     expect((await chamar('gabi', 'GET', `/api/casos/${casoId}/processo`)).json().estrategia).toBe('Esperar a perícia judicial e só então decidir a inicial.')
   })
 
-  it('fora do Jurídico: o Atendimento não lê, nem no resumo do processo; nem salva', async () => {
+  it('fora do Jurídico: o Atendimento não lê, nem salva; o resumo do processo ele nem abre (GGVP-162)', async () => {
     await chamar('gabi', 'POST', `/api/casos/${casoId}/estrategia`, { texto: 'Um caminho qualquer para o caso, só do Jurídico.' })
     expect((await chamar('ana', 'GET', `/api/casos/${casoId}/estrategia`)).statusCode).toBe(403)
     expect((await chamar('ana', 'POST', `/api/casos/${casoId}/estrategia`, { texto: 'O Atendimento tenta escrever a estratégia.' })).statusCode).toBe(403)
-    const resumo = (await chamar('ana', 'GET', `/api/casos/${casoId}/processo`)).json()
-    expect(resumo.estrategia).toBeUndefined()
-    expect(JSON.stringify(resumo)).not.toContain('Um caminho qualquer')
+    const resumo = await chamar('ana', 'GET', `/api/casos/${casoId}/processo`)
+    expect(resumo.statusCode).toBe(403)
+    expect(resumo.body).not.toContain('Um caminho qualquer')
   })
 
   it('a proposta de outro caso, o texto curto e a saída fora do formato não valem; sem a IA, o aviso', async () => {

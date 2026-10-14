@@ -63,7 +63,8 @@ type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
-  app.get<{ Params: { id: string } }>('/api/casos/:id/processo', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+  // GGVP-162: a página do processo é de quem abre o processo; o Atendimento e a Documentação leem o caso pela ficha.
+  app.get<{ Params: { id: string } }>('/api/casos/:id/processo', { preHandler: exigir(banco, 'processo.abrir', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     if (!UUID.test(casoId)) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
     const [c] = await banco.select({ caso, pessoa }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
