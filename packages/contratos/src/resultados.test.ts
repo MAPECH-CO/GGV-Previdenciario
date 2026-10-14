@@ -37,5 +37,8 @@ describe('painel de resultado para os sócios (GGVP-75)', () => {
     expect(PainelDeResultados.parse(painel).totais).toBeNull()
     const base = { situacao: 'com_dados' as const, processos: 12, conferidos: 9, aguardandoConferencia: 3, dataDaBase: '2026-10-06' }
     expect(PainelDeResultados.parse({ ...painel, baseDoAcervo: base }).baseDoAcervo).toEqual(base)
+    // GGVP-148 CA5: a data de corte vem quando a base tem decisão; o painel sem ela segue valendo (acima).
+    const comCorte = { ...base, dataDeCorte: '2026-10-05' }
+    expect(PainelDeResultados.parse({ ...painel, baseDoAcervo: comCorte }).baseDoAcervo).toEqual(comCorte)
   })
 })

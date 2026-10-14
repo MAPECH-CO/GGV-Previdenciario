@@ -286,7 +286,17 @@ describe('GGVP-75 · painel de resultado para os sócios', () => {
       { numeroCnj: '00000021220204036301', desfecho: 'improcedente', fonte: 'lote', criadoEm: as('2026-10-02') },
       { numeroCnj: '00000031220204036301', fonte: 'lote', criadoEm: as('2026-10-02') },
     ])
-    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toEqual({ situacao: 'com_dados', processos: 3, conferidos: 1, aguardandoConferencia: 1, dataDaBase: '2026-10-02' })
+    // Sem decisão na base, a data de corte fica nula (GGVP-148 CA5).
+    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toEqual({ situacao: 'com_dados', processos: 3, conferidos: 1, aguardandoConferencia: 1, dataDaBase: '2026-10-02', dataDeCorte: null })
+  })
+
+  it('GGVP-158 P7.7 (GGVP-148 CA5) · a Base do acervo leva a data de corte: a decisão mais nova da base, não a entrada', async () => {
+    await banco.insert(processoAcervo).values([
+      { numeroCnj: '00000081220204036301', desfecho: 'improcedente', dataDecisao: '2024-03-11', fonte: 'raio_x', criadoEm: as('2026-10-14') },
+      { numeroCnj: '00000091220204036301', desfecho: 'procedente_total', dataDecisao: '2026-10-05', fonte: 'raio_x', criadoEm: as('2026-10-14') },
+      { numeroCnj: '00000101220204036301', fonte: 'raio_x', criadoEm: as('2026-10-14') },
+    ])
+    expect((await painelDeResultados(banco, PERIODO)).baseDoAcervo).toMatchObject({ processos: 3, dataDaBase: '2026-10-14', dataDeCorte: '2026-10-05' })
   })
 
   it('GGVP-55 CA3 · uma entrada nova soma à base: a anterior fica guardada, e a data da base passa a ser a da mais recente', async () => {
