@@ -16,12 +16,16 @@ async function fichaDoLead(page: Page, nome: string, telefone: string) {
   await page.goto(`/clientes/${(await r.json()).id}`)
 }
 
-test('CA1, CA2, CA4 e CA6 · as boas-vindas saem pelo Chatwoot e ficam no card com o status e no histórico', async ({ page }) => {
+test('CA1, CA2, CA4, CA6 e CA11 · a cobrança sai pelo Chatwoot e fica no card com o status e no histórico; as boas-vindas do lead sem caso ficam travadas', async ({ page }) => {
   await fichaDoLead(page, 'Rosa Mensagem Teste', '11933332222')
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Mensagem Teste' })
+  // CA11 (Pedro, 14/10): o lead ainda não tem caso, então "Seu caso começou" não sai.
   await janela.getByLabel('Modelo').selectOption('boas-vindas')
-  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Boas-vindas ao escritório GGV\./)
+  await expect(janela.getByRole('alert')).toHaveText('As boas-vindas saem quando o caso começa, depois do fechamento.')
+  await expect(janela.getByRole('textbox')).toHaveCount(0)
+  await janela.getByLabel('Modelo').selectOption('cobranca')
+  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Para seguir com o seu caso de LOAS Idoso, faltam documentos\./)
   const chatwoot = janela.getByRole('region', { name: 'Na central do Chatwoot' })
   await expect(chatwoot).toContainText('Contato: Rosa Mensagem Teste · (11) 93333-2222')
   await expect(chatwoot.getByRole('link', { name: 'Abrir a conversa' })).toHaveAttribute('href', /chatwoot\.mapech\.com\.br\/app\/accounts\/.+\/conversations\/33332222$/)
@@ -29,17 +33,17 @@ test('CA1, CA2, CA4 e CA6 · as boas-vindas saem pelo Chatwoot e ficam no card c
   await expect(janela.getByText(/✓ Simulado no Chatwoot às \d\d:\d\d/)).toBeVisible()
   await janela.getByRole('button', { name: 'Fechar', exact: true }).last().click()
   await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText(/Chatwoot · \d\d:\d\d · envio não confirmado/)
-  await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText('Boas-vindas ao escritório GGV.')
-  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Registro de mensagem no Chatwoot «Boas-vindas» (envio não confirmado)')
+  await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText('Para seguir com o seu caso de LOAS Idoso, faltam documentos.')
+  await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Registro de mensagem no Chatwoot «Cobrança de documentos» (envio não confirmado)')
 })
 
 test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situação ou pede a senha não sai', async ({ page }) => {
   await fichaDoLead(page, 'Rosa Portao Teste', '11933331111')
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Portao Teste' })
-  await janela.getByLabel('Modelo').selectOption('boas-vindas')
+  await janela.getByLabel('Modelo').selectOption('cobranca')
   // O modelo chega do servidor e troca o texto: escrever antes dele perde o que foi escrito (falhava com a CI lenta).
-  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Boas-vindas ao escritório GGV\./)
+  await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Para seguir com o seu caso/)
   await janela.getByRole('textbox').fill('O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.')
   await expect(janela.getByRole('list', { name: 'A IA aponta' })).toContainText('Termo jurídico "indeferido": diga "negado".')
   await expect(janela.getByText('Nunca oriente a esconder ou mudar a situação real (G11).')).toBeVisible()
@@ -49,7 +53,7 @@ test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situ
   await expect(janela.getByRole('button', { name: 'Enviar pelo Chatwoot' })).toBeDisabled()
   // O servidor barra de novo, para quem tentar sem a tela.
   const id = new URL(page.url()).pathname.split('/').at(-1)
-  const r = await page.request.post(`/api/fichas/${id}/mensagens`, { data: { modelo: 'boas-vindas', texto: 'Mande a sua senha do gov.br por aqui.', conversa: 33331111 } })
+  const r = await page.request.post(`/api/fichas/${id}/mensagens`, { data: { modelo: 'cobranca', texto: 'Mande a sua senha do gov.br por aqui.', conversa: 33331111 } })
   expect([r.status(), (await r.json()).erro]).toEqual([400, 'O escritório nunca pede a senha do gov.br por mensagem (G9).'])
 })
 

@@ -78,7 +78,8 @@ test('CA4 · a mensagem ao cliente termina dizendo que o escritório nunca pede 
   await fichaDoLead(page, 'Rosa Senha Teste', '11922228888')
   await page.getByRole('button', { name: 'Mensagem ao cliente' }).click()
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Senha Teste' })
-  await janela.getByLabel('Modelo').selectOption('boas-vindas')
+  // O lead não tem caso: as boas-vindas ficam travadas (GGVP-102 CA11); a cobrança mostra o fim do texto.
+  await janela.getByLabel('Modelo').selectOption('cobranca')
   // A frase vira regex com todo caractere especial escapado, e não só o ponto (alerta do CodeQL, GGVP-158).
   await expect(janela.getByRole('textbox')).toHaveValue(new RegExp(`${NUNCA_PEDIMOS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`))
 })

@@ -36,6 +36,12 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     expect((await obterFicha('maria-exemplo'))!.contatos.at(-1)?.canal).toBe('Chatwoot · 14:32 · entregue')
   })
 
+  it('CA11 (Pedro, 14/10) · o selo diz que o portal preencheu: os modelos são do código, sem IA', async () => {
+    await abrir('maria-exemplo', 'pericia-orientacao')
+    expect(screen.getByText(/^O portal preencheu com os dados do cliente e do caso/)).toBeTruthy()
+    expect(screen.queryByText(/A IA preencheu/)).toBeNull()
+  })
+
   it('CA3, CA9 e G9 · a IA aponta o termo jurídico; o que esconde a situação ou pede a senha não sai', async () => {
     await abrir('maria-exemplo', 'pericia-orientacao')
     fireEvent.change(texto(), { target: { value: 'O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.' } })

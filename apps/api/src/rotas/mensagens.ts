@@ -18,13 +18,12 @@ import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
 import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
 import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
-import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../../../web/src/regras/agenda.ts'
 import { CANAIS, RESULTADOS, cobrancaDoCaso, type Cobranca } from '../../../web/src/regras/cobranca.ts'
 import { complementoNaTela, doProcesso, type Complemento } from '../../../web/src/regras/complemento.ts'
 import { mensagemDaConfirmacao } from '../../../web/src/regras/confirmacao.ts'
-import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, ordenarConversas, problemasDaMensagem } from '../../../web/src/regras/mensagens.ts'
+import { MODELOS_DE_MENSAGEM, beneficioParaOCliente, comAvisoDaSenha, ordenarConversas, problemasDaMensagem } from '../../../web/src/regras/mensagens.ts'
 import { camposDoProcessoEmVigor } from './conversa.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { TITULO_AVISO } from './prestacao.ts'
@@ -38,6 +37,8 @@ export const MSG_SIMULADO = 'simulado, não saiu: o Chatwoot não está ligado n
 export const MSG_FAVORAVEL_PELO_FINANCEIRO = `O aviso de resultado favorável sai pela tela «${TITULO_AVISO}», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).`
 export const MSG_SEM_TEXTO_APROVADO = 'Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.'
 export const MSG_SEM_COMPLEMENTO_ABERTO = 'Sem pedido de complemento aberto no processo.'
+/** GGVP-102 CA11 (Pedro, 14/10): o lead sem caso não recebe "Seu caso começou". */
+export const MSG_BOAS_VINDAS_SEM_CASO = 'As boas-vindas saem quando o caso começa, depois do fechamento.'
 export const MSG_A_ADVOGADA_FALA = 'A advogada decidiu falar ela mesma com o cliente sobre o resultado: o aviso sai só por ela.'
 const STATUS_FALADO: Record<MensagemAoCliente['status'], string> = { enviada: 'enviada', entregue: 'entregue', lida: 'lida', falhou: 'não saiu' }
 
@@ -111,7 +112,9 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   async function textoDoModelo(ficha: Ficha, modelo: IdDoModelo, processoId?: string, usuarioId?: string): Promise<Pronta> {
     const processo = ficha.processos.find((p) => p.id === processoId) ?? ficha.processos[0]
     const primeiro = ficha.nome.split(' ')[0]
-    const beneficio = nomeBeneficio(processo?.beneficio ?? ficha.beneficioInteresse) || 'benefício'
+    // CA11 (Pedro, 14/10): o benefício só quando é conhecido; "Não sei ainda" nunca vai ao cliente.
+    const beneficio = beneficioParaOCliente(processo?.beneficio ?? ficha.beneficioInteresse)
+    const doCaso = beneficio ? ` de ${beneficio}` : ''
     const pronto = (texto: string, editavel = true): Pronta => ({ texto, editavel, trava: null })
     const travado = (trava: string): Pronta => ({ texto: '', editavel: false, trava })
     const entrevista = ficha.agendamentos
@@ -136,15 +139,16 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
       case 'complemento': {
         const atual = processo && doProcesso((await lerParte<Complemento[]>(processo.id, 'complemento')) ?? [], processo.id)
         if (!processo || !atual || atual.encerrado) return travado(MSG_SEM_COMPLEMENTO_ABERTO)
-        const tela = complementoNaTela(atual, { ficha, processo, beneficio, hoje: hoje() })
+        const tela = complementoNaTela(atual, { ficha, processo, beneficio: beneficio || 'benefício', hoje: hoje() })
         return tela.motivoParado ? travado(tela.motivoParado) : pronto(tela.mensagem)
       }
       case 'boas-vindas':
-        return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso de ${beneficio} começou. Qualquer dúvida, fale com a gente por aqui.`)
+        if (!processo) return travado(MSG_BOAS_VINDAS_SEM_CASO)
+        return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso${doCaso} começou. Qualquer dúvida, fale com a gente por aqui.`)
       case 'cobranca': {
         const parada = processo && UUID.test(processo.id) ? await cobrancaParada(processo.id) : null
         if (parada) return travado(parada)
-        return pronto(`Olá, ${primeiro}! Para seguir com o seu caso de ${beneficio}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
+        return pronto(`Olá, ${primeiro}! Para seguir com o seu caso${doCaso}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
       }
       // CA7: o favorável sai com o texto da prestação de contas (G8), pela tela do Financeiro, que registra o aviso, o
       // recebimento e a baixa; o resumo da GGVP-22 é o do caso perdido e não serve para ele.

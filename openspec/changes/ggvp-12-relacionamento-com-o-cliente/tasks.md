@@ -54,10 +54,10 @@
 - [x] 5.4 Janela "Mensagem ao cliente" (`src/componentes/MensagemAoCliente.tsx`) e o cliente no Chatwoot (`src/componentes/ConversaNoChatwoot.tsx`); "Mensagem ao cliente" no card; a janela do convite, da confirmação, da cobrança e do complemento (`ConviteChatwoot.tsx`) com o mesmo envio. Teste em `MensagemAoCliente.test.tsx`, `ConviteChatwoot.test.tsx` e `FichaCliente.test.tsx` (CA1 a CA10). Verifica com `pnpm vitest run src/componentes src/paginas/FichaCliente.test.tsx`.
 - [x] 5.5 Playwright `e2e/mensagens.e2e.ts`: a orientação da perícia da Maria pelo Chatwoot, com o registro no card; a falha da Nair na tela e no histórico; o aviso favorável da Lúcia com o texto aprovado e o do Antônio travado (G8); o convite pela central (CA1 a CA10); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5187 pnpm exec playwright test mensagens --workers=1`.
 - [ ] 5.6 Ligar no Chatwoot: as chamadas da tabela "Ponta para ligar no Chatwoot" da design, com a conta, a caixa e o token da configuração do ambiente, e o webhook `message_updated` para o status. Depende do token que o Pedro manda. **Fica aberta nesta história.**
-- [ ] 5.7 CA11 · `beneficioParaOCliente` e `problemasDaMensagem` com "de Não sei ainda" (regra pura), com teste em `src/regras/mensagens.test.ts`; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 5.8 CA11 · Servidor (`apps/api/src/rotas/mensagens.ts`) e o servidor falso dos testes: as boas-vindas travadas sem caso e a cobrança sem o benefício em aberto; o envio recusa o texto com ele. Teste em `rotas/mensagens.test.ts`; verifica com `pnpm --filter @ggv/api test`.
-- [ ] 5.9 CA11 · O selo da janela "O portal preencheu"; teste da janela; verifica com `pnpm --filter @ggv/web test`.
-- [ ] 5.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 5.7 CA11 · `beneficioParaOCliente` e `problemasDaMensagem` com "de Não sei ainda" (regra pura), com teste em `src/regras/mensagens.test.ts`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.8 CA11 · Servidor (`apps/api/src/rotas/mensagens.ts`) e o servidor falso dos testes: as boas-vindas travadas sem caso e a cobrança sem o benefício em aberto; o envio recusa o texto com ele. Teste em `rotas/mensagens.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.9 CA11 · O selo da janela "O portal preencheu"; teste da janela; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-111 · Terceiro não se passa pelo cliente
 

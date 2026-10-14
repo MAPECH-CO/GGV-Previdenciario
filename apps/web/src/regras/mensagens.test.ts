@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comAvisoDaSenha, MODELOS_DE_MENSAGEM, NUNCA_PEDIMOS_A_SENHA, ordenarConversas, problemasDaMensagem } from './mensagens.ts'
+import { beneficioParaOCliente, comAvisoDaSenha, MODELOS_DE_MENSAGEM, MSG_DADO_EM_ABERTO, NUNCA_PEDIMOS_A_SENHA, ordenarConversas, problemasDaMensagem } from './mensagens.ts'
 
 describe('Mensagens ao cliente (GGVP-102)', () => {
   it('CA1, CA7, CA8 e CA9 · o catálogo único dos modelos, com as travas do resultado e a perícia do Jurídico administrativo', () => {
@@ -63,5 +63,19 @@ describe('A frase da senha (GGVP-111)', () => {
     expect(comAvisoDaSenha('Olá, Maria! ')).toBe(`Olá, Maria! ${NUNCA_PEDIMOS_A_SENHA}`)
     expect(comAvisoDaSenha(comAvisoDaSenha('Olá, Maria!'))).toBe(`Olá, Maria! ${NUNCA_PEDIMOS_A_SENHA}`)
     expect(comAvisoDaSenha('')).toBe('')
+  })
+})
+
+describe('Nenhum dado em aberto no texto ao cliente (GGVP-102 CA11, Pedro 14/10)', () => {
+  it('o nome do benefício só quando ele é conhecido; "Não sei ainda" e o vazio viram nada', () => {
+    expect(beneficioParaOCliente('loas-idoso')).toBe('LOAS Idoso')
+    expect(beneficioParaOCliente('nao-sei')).toBe('')
+    expect(beneficioParaOCliente(undefined)).toBe('')
+    expect(beneficioParaOCliente('id-que-nao-existe')).toBe('')
+  })
+
+  it('o envio recusa o benefício em aberto; "Não sei ainda" no começo da frase passa', () => {
+    expect(problemasDaMensagem('Olá, Pedro! Seu caso de Não sei ainda começou.').bloqueia).toEqual([MSG_DADO_EM_ABERTO])
+    expect(problemasDaMensagem('Olá, Pedro! Não sei ainda a data. Aviso amanhã.').bloqueia).toEqual([])
   })
 })
