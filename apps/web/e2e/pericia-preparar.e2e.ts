@@ -71,7 +71,8 @@ test('CA5 · a ligação registrada; o comprovante novo troca a data e a orienta
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/casos/maria-exemplo-1/pericia/marcar')
   await page.getByRole('radio', { name: 'Sim, marcado' }).click()
-  await page.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf('comprovante_maria.pdf')])
+  // A data no nome: sem ela, a leitura de exemplo dá hoje + 14 dias, que em 14/10 cai no mesmo 28/10 do comprovante novo.
+  await page.getByLabel(/Comprovante do INSS \(PDF\)/).setInputFiles([pdf('comprovante_maria_2026-10-27.pdf')])
   await page.getByRole('radio', { name: 'Não: seguir para ligar e orientar' }).click()
   await page.getByRole('button', { name: 'Registrar a perícia' }).click()
   await expect(page.getByRole('heading', { name: '✓ Perícia registrada' })).toBeVisible()
