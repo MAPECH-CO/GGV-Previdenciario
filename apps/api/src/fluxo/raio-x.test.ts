@@ -7,6 +7,8 @@ const A = '5000101-36.2023.4.03.6301'
 const B = '5000202-73.2023.4.03.6301'
 const C = '5000303-67.2021.4.03.6338'
 const D = '5000404-21.2021.4.03.6301'
+const E = '5000505-24.2022.4.03.6301'
+const F = '5000606-61.2022.4.03.6301'
 const digitos = (cnj: string) => cnj.replace(/\D/g, '')
 
 const PLANILHA = [
@@ -69,6 +71,15 @@ describe('GGVP-158 P7.7 · a leitura da planilha do Raio-X', () => {
     expect([analise.novos.map((p) => [p.numeroCnj, p.desfecho, p.laudoFavoravel]), analise.jaNoAcervo]).toEqual([[[digitos(D), 'acordo', true]], 0])
     expect(analisarRaioX(`cnj,desfecho\n${A},procedente`, new Set([digitos(A)]))).toMatchObject({ novos: [], jaNoAcervo: 1, erros: [] })
     expect(analisarRaioX('numero,desfecho\n1,procedente', new Set()).erros).toEqual([{ linha: 1, motivo: 'Falta a coluna: cnj.' }])
+  })
+})
+
+describe('GGVP-158 P7.7 · as palavras de desfecho do Raio-X (tarefa 7.16)', () => {
+  it('Êxito, Acordo, Perdido(s) no mérito e Extinto(s) sem mérito viram o desfecho do acervo; Em andamento entra sem desfecho', () => {
+    const planilha = ['cnj;desfecho', `${A};Êxito`, `${B};Acordo`, `${C};Perdido no mérito`, `${D};Perdidos no mérito`, `${E};Extintos sem mérito`, `${F};Em andamento`].join('\n')
+    const analise = analisarRaioX(planilha, new Set())
+    expect(analise.erros).toEqual([])
+    expect(analise.novos.map((p) => p.desfecho)).toEqual(['procedente_total', 'acordo', 'improcedente', 'improcedente', 'extinto_sem_merito', null])
   })
 })
 
