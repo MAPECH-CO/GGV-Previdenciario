@@ -65,6 +65,22 @@ describe('GGVP-133 · transcrever (OpenAI)', () => {
     expect((await banco.select().from(chamadaIa)).map((c) => c.situacao).sort()).toEqual(['desligada', 'recusada'])
   })
 
+  it('GGVP-158 P8.3 · a senha dita (G9) sai do registro: a fala que cita a senha e a resposta logo depois; as falas voltam como vieram', async () => {
+    const DITA = {
+      usage: { type: 'duration', seconds: 30 },
+      segments: [
+        { speaker: 'A', start: 0, end: 2, text: 'Qual a senha do gov.br?' },
+        { speaker: 'B', start: 2, end: 4, text: 'Girassol2024' },
+        { speaker: 'A', start: 4, end: 6, text: 'Obrigada. E a dor nas costas?' },
+      ],
+    }
+    const r = await criarIa({ banco, ambiente: CHAVES, fetch: servico(DITA) }).transcrever({ ...PEDIDO, quem })
+    expect(r?.falas.map((f) => f.texto)).toEqual(['Qual a senha do gov.br?', 'Girassol2024', 'Obrigada. E a dor nas costas?'])
+    const [c] = await banco.select().from(chamadaIa)
+    expect(c.saida).not.toContain('Girassol2024')
+    expect(c.saida!.split('\n')).toEqual(['A: Qual a senha do gov.br?', 'B: [senha retirada: vai ao cofre]', 'A: Obrigada. E a dor nas costas?'])
+  })
+
   it('CA8 · o serviço falha: nulo e o registro diz o status, sem a chave', async () => {
     const r = await criarIa({ banco, ambiente: CHAVES, fetch: servico({ error: 'x' }, 500) }).transcrever({ ...PEDIDO, quem })
     expect(r).toBeNull()
