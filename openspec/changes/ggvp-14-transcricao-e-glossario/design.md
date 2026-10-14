@@ -123,5 +123,5 @@ No Atendimento, o player da "Ligação · cliente" abria em 0:00 / 0:00. Consult
 
 - **O player sai da seção da transcrição pronta** (`Transcricoes.tsx`): com `g.audio.documentos`, "Abrir áudio" mostra o player com qualquer situação da transcrição. Hoje ele só existe dentro da transcrição pronta, e com a transcrição falhada o botão não mostrava nada.
 - **`preload="metadata"`**: o player só nasce depois do clique em "Abrir áudio", então carregar a duração nessa hora não pesa a tela.
-- **Formato que não toca**: o `onError` de cada `<audio>` troca aquele player pelo aviso "Este navegador não toca este formato" e pelo link "Baixar o áudio" (o mesmo endereço, com `download`).
+- **Áudio que não toca**: o `onError` de cada `<audio>` troca aquele player pelo aviso "Não deu para tocar este áudio aqui" e pelo link "Baixar o áudio" (o mesmo endereço, com `download`). A frase não fala em formato porque o navegador dá o mesmo erro para o formato que não toca e para o arquivo que não veio (recusa ou falta no armazenamento).
 - Nada muda no servidor.
