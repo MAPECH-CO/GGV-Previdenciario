@@ -240,3 +240,9 @@ Mateus de 14/10 deixa o processo com o Jurídico e o Sócio.
 - Quem tem `caso.ver` sem `processo.abrir` ainda lê, pelas rotas de cada passo, o que a tarefa precisa. A regra é sobre a
   página, a lista, a busca e o histórico do processo, não sobre os dados de cada passo.
 - O chat do Atendimento responde com menos: só o que a ficha mostra e as tarefas da pessoa.
+- Supera o cenário "O resumo sem números" do P5.14 (change ggvp-158-fechamento), em que o Atendimento abria o resumo do
+  processo com a vara, o juiz e o perito: agora o resumo é de quem abre o processo. Ao arquivar a ggvp-158, levar esta
+  nota ao cenário.
+- O botão do evento da perícia na Agenda leva à página da perícia: para quem não abre o processo, ele diz "Abrir a
+  perícia" no lugar de "Abrir o processo". O "Ajustar o caso" ganhou o id da pessoa no `CasoParaLiberacao`, para levar à
+  ficha.
