@@ -47,12 +47,17 @@ Confirmado o "Insuficiente", SHALL nascer a pendência para pedir o complemento 
 - **Então** nasce a pendência para pedir o complemento (GGVP-29)
 
 ### Requirement: CA6 · Laudo novo: resumo, comparação e "Laudo novo" até a conferência
-Para o laudo novo que o Atendimento sobe no card, a advogada SHALL ver o resumo e a comparação da IA, confirmar o laudo e manter ou refazer o parecer. Até a conferência dela, a ficha do cliente e o processo SHALL mostrar "Laudo novo".
+Para o laudo novo que o Atendimento sobe no card, a advogada SHALL ver o resumo e a comparação da IA, confirmar o laudo e manter ou refazer o parecer. Até a conferência dela, a ficha do cliente e o processo SHALL mostrar "Laudo novo". A tela do laudo novo é de leitura e SHALL dizer como segue: no parecer, a advogada confere o laudo e mantém ou refaz. O registro do parecer SHALL concluir "Analisar laudo novo" e tirar a marca "Laudo novo" da ficha e do processo, também no servidor (Pedro, 14/10); a Central MUST NOT mostrar duas linhas "Analisar laudo novo" para o mesmo cliente.
 
 #### Scenario: CA6 · Laudo novo
 - **Dado** um laudo novo que o Atendimento sobe no card do cliente (`D1.02`)
 - **Quando** a IA lê, compara com o que já está no processo e resume (`D1.21M`)
 - **Então** eu vejo o resumo e a comparação, confirmo o laudo e mantenho ou refaço o parecer; até a minha conferência, a ficha do cliente e o processo mostram "Laudo novo"
+
+#### Scenario: CA6 · O parecer fecha o laudo novo (Pedro, 14/10)
+- **Dado** um laudo novo que chegou num caso do servidor, com "Analisar laudo novo" na Central e "Laudo novo" na ficha
+- **Quando** a advogada registra o parecer
+- **Então** a tarefa sai da Central e a marca sai da ficha e do processo; antes disso, a Central mostra uma linha só
 
 ### Requirement: CA7 · A IA só compara o que está nos documentos
 O resumo e a comparação MUST conter só o que está nos documentos, sem sugerir CID, grau nem conclusão; o parecer só muda com a confirmação da advogada.
