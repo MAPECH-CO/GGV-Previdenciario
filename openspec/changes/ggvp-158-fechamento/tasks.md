@@ -746,22 +746,28 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
 
 **O código**
 
-- [ ] 9.1 A produção sem variável de teste (P9.1, decisão 80): a largada recusa `GOOGLE_DRIVE_SO_LEITURA=sim` e `RELACIONAMENTO_SIMULADO` diferente de `nao` com `AMBIENTE=producao`, com a mensagem de qual variável sobrou.
+- [x] 9.1 A produção sem variável de teste (P9.1, decisão 80): a largada recusa `GOOGLE_DRIVE_SO_LEITURA=sim` e `RELACIONAMENTO_SIMULADO` diferente de `nao` com `AMBIENTE=producao`, com a mensagem de qual variável sobrou.
   - Verifica com teste:
     - cada variável de teste recusa em produção;
     - a homologação e a máquina seguem subindo.
-- [ ] 9.2 O aviso da cópia no Drive (P9.4, decisão 83): a regra do envio numa função só; a conta dos prontos há mais de 2 dias sem cópia; um aviso por dia, na rodada do Drive.
+
+  Verificado em 14/10: `servidor.test.ts` (2 novos) e `variaveis.test.ts`, 23/23. Em produção, o Drive só leitura e a conversa simulada recusam, e a mensagem diz qual sobrou; a homologação e a máquina seguem subindo com elas; os nomes já estavam na lista das variáveis.
+- [x] 9.2 O aviso da cópia no Drive (P9.4, decisão 83): a regra do envio numa função só; a conta dos prontos há mais de 2 dias sem cópia; um aviso por dia, na rodada do Drive.
   - Verifica com teste:
     - o aviso sai uma vez no dia, com as contagens e sem nome;
     - o pacote da petição e o exemplo ficam de fora;
     - sem atraso, nada sai.
-- [ ] 9.3 O monitor do /saude (P9.5, decisão 84): `apps/api/src/monitor.ts` e o comando `monitor`.
+
+  Verificado em 14/10: `fluxo/arquivar.test.ts` (2 novos) e `fluxo/scanner.test.ts`, 17/17; typecheck da API sem erro. O pronto há mais de 2 dias sem cópia avisa uma vez no dia, com as contagens (3 prontos, 1 esperando a conferência) e sem nome; o pacote da petição, o exemplo, o recente e o que já tem cópia não contam. A regra do envio virou uma função só, usada pela rodada e pelo aviso.
+- [x] 9.3 O monitor do /saude (P9.5, decisão 84): `apps/api/src/monitor.ts` e o comando `monitor`.
   - Verifica com teste, com o /saude e o suporte de mentira:
     - uma falha só não avisa;
     - duas seguidas avisam o motivo;
     - a volta avisa o tempo fora;
     - o aviso não leva dado de cliente.
-- [ ] 9.4 O roteiro da produção (decisões 80 a 85): `docs/infra/producao.md`. Leva:
+
+  Verificado em 14/10: `monitor.test.ts` (3 novos), com `suporte.test.ts` e `variaveis.test.ts`, 11/11; typecheck e lint da API sem erro. O /saude com 200 e "ok" é bom, e o outro status, o banco fora ou a falta de resposta dão o motivo; uma falha só não avisa; duas seguidas avisam a queda uma vez, a volta avisa os minutos fora, e o aviso não leva nada além do endereço, do motivo e do tempo. Sem endereço, o comando `monitor` mostra o uso e sai com 2. Nenhuma variável nova: o endereço vai no comando.
+- [x] 9.4 O roteiro da produção (decisões 80 a 85): `docs/infra/producao.md`. Leva:
   - o app;
   - as variáveis, só os nomes;
   - liberar e voltar uma versão;
@@ -769,7 +775,11 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
   - o backup, a restauração e a chave do cofre;
   - a limpeza do PrevGGVLucas;
   - a mudança da homologação.
-- [ ] 9.5 Rodar typecheck, lint, testes e Playwright; colar a saída; pedido para a main.
+
+  Feito em 14/10: `docs/infra/producao.md` (novo), com a ordem, a mudança da homologação (as três opções), o backup e o ensaio no projeto temporário, a chave nova do cofre, a limpeza (os comandos e a conferência), o app, liberar e voltar uma versão, o monitor em docker compose, a cópia no Drive e o que espera o Lucas e o Pedro. A homologação aponta para ele. Na escrita: o registro dos modelos do Word fica no banco, então o depósito sai inteiro e os modelos sobem de novo (decisão 81 e P9.2 ajustadas). `variaveis.test.ts` 4/4 com a doc mexida.
+- [x] 9.5 Rodar typecheck, lint, testes e Playwright; colar a saída; pedido para a main.
+
+  Verificado em 14/10, na branch da parte 9 (em cima do #82): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674 (a primeira rodada, junto com uma instalação em outra pasta, deixou 21 arquivos sem subir o processo de teste; repetida sozinha, passou inteira); API 1014 de 1017 na suíte inteira (3 pulados), sem falha; Playwright 262/262; `openspec validate --all --strict` 16/16.
 
 **Fora do código, com o Mateus**
 

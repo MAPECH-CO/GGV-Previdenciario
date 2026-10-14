@@ -539,7 +539,7 @@ Decisões do Mateus em 14/10:
       - um Postgres no Coolify, com pgvector, e os arquivos numa pasta do servidor (sem custo novo).
     - A limpeza deixa o banco como novo:
       - os esquemas do portal (`public` e `drizzle`) saem inteiros, e a largada roda todas as migrações de novo. Assim volta junto o que as migrações põem, como o catálogo dos benefícios, e a largada põe os feriados, os padrões do protocolo e o modelo da ida ao banco;
-      - os arquivos de teste do depósito `documentos` saem, menos os modelos do Word.
+      - o depósito `documentos` fica vazio. Os modelos do Word sobem de novo pelo `modelos:subir`, com o login de uma Sênior da produção, porque o registro deles (a tabela `modelo`) sai com o banco (14/10, na implementação).
 
       O roteiro traz os comandos, ensaiados antes no projeto temporário da restauração (decisão 82). Quem roda a limpeza é o Mateus; daqui, só nomes e contagens.
     - A produção sobe vazia. Os usuários reais esperam a lista do Lucas (GGVP-126 CA6).
