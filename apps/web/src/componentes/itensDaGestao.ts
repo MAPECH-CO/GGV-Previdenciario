@@ -22,9 +22,10 @@ export const ITENS_DAS_BASES: ItemNavegacao[] = [
 /**
  * No Figma, Clientes e Processos são do líder do Atendimento, da Advogada, da Sênior e do Financeiro; o Atendimento só tem
  * a Agenda. A matriz manda: o Financeiro não vê o caso (`caso.ver`) e fica sem os dois até ela mudar, e Processos é só de
- * quem abre o processo (`processo.abrir`, GGVP-162): a líder do Atendimento fica com Clientes.
+ * quem abre o processo (`processo.abrir`, GGVP-162): a líder do Atendimento fica com Clientes. O Sócio lê tudo (Lucas,
+ * 07/10) e tem as duas, como o Jurídico (GGVP-162 CA8).
  */
-const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro']
+const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro', 'socio']
 
 /** O painel Financeiro (GGVP-78, Figma 1930:4), para quem vê os totais em dinheiro: o Financeiro e o Sócio. */
 export const ITEM_DO_FINANCEIRO: ItemNavegacao = { id: 'financeiro', rotulo: 'Financeiro', href: '/financeiro' }

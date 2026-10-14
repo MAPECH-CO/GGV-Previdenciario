@@ -145,6 +145,16 @@ const CABECALHOS_DE_SEGURANCA = {
 export const MSG_ERRO_INESPERADO = 'Algo deu errado.'
 export const MSG_LEITURA_SO_NO_TESTE = 'A leitura de exemplo (LEITURA_SIMULADA) é só dos testes de tela: na homologação e na produção, o portal não sobe com ela.'
 
+/** GGVP-158 P9.1: as variáveis de teste que sobram em produção (o app copiado da homologação no Coolify traria). */
+export function variaveisDeTeste(ambiente: Record<string, string | undefined>): string[] {
+  if (ambiente.AMBIENTE !== 'producao') return []
+  return [
+    ...(ambiente.GOOGLE_DRIVE_SO_LEITURA === 'sim' ? ['GOOGLE_DRIVE_SO_LEITURA'] : []),
+    ...(ambiente.RELACIONAMENTO_SIMULADO !== undefined && ambiente.RELACIONAMENTO_SIMULADO !== 'nao' ? ['RELACIONAMENTO_SIMULADO'] : []),
+  ]
+}
+export const msgVariavelDeTeste = (nomes: string[]) => `Em produção, o portal não sobe com variável de teste: ${nomes.join(', ')}. Tire do app da produção no Coolify.`
+
 /**
  * GGVP-158: o que o log guarda de um erro: o código e o tipo, nunca a mensagem. O erro do banco traz o SQL e os parâmetros
  * (dado do cliente) na mensagem e nos campos dele; o do Google, o nome do arquivo.
@@ -174,6 +184,8 @@ export function criarServidor({
 }: Opcoes = {}) {
   // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo.
   if (leituraSimulada && !aceitaGanchoDeTeste(process.env)) throw new Error(MSG_LEITURA_SO_NO_TESTE)
+  const deTeste = variaveisDeTeste(process.env)
+  if (deTeste.length) throw new Error(msgVariavelDeTeste(deTeste))
   // GGVP-158: o log nunca leva o cookie da sessão nem a autorização, mesmo num registro que traga os cabeçalhos.
   const app = Fastify({ logger: logger && { redact: ['req.headers.cookie', 'req.headers.authorization', 'res.headers["set-cookie"]'] } })
   // GGVP-158: o erro inesperado responde a mensagem genérica e registra só a rota, o código e o tipo. O 4xx (validação,
