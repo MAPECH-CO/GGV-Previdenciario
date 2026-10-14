@@ -124,6 +124,12 @@ describe('Conferir documento · tela do passo', () => {
     expect(within(laudo as HTMLElement).queryByRole('link', { name: /Abrir/ })).toBeNull()
   })
 
+  it('GGVP-81 CA17 · "Abrir" nunca leva à ficha; o arquivo da ficha de exemplo não está no portal, e a tela diz isso', async () => {
+    await abrir()
+    expect(lidos().queryAllByRole('link', { name: /^Abrir/ })).toHaveLength(0)
+    expect(lidos().getAllByText('sem arquivo no portal').length).toBeGreaterThan(0)
+  })
+
   it('GGVP-95 CA2 · reclassificar o laudo mostra o que a IA sugeriu, e a correção vai para o histórico', async () => {
     await abrir()
     fireEvent.click(screen.getByRole('button', { name: 'Reclassificar' }))

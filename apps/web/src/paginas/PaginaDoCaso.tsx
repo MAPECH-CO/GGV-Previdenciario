@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { AbrirDocumento } from '../componentes/AbrirDocumento.tsx'
 import { ComplementosDoProcesso } from '../componentes/ComplementosDoProcesso.tsx'
 import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
 import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
@@ -632,9 +633,9 @@ function Documento({ doc, caso, hoje, aoFechar }: { doc: DocumentoDoCaso; caso: 
         <p className={base.nota}>O arquivo abre no Drive do cliente (simulado).</p>
       ) : (
         !d.aviso && (
-          <a className={proprio.secundario} href={doc.href} target="_blank" rel="noreferrer">
+          <AbrirDocumento href={doc.href} nome="o arquivo" className={proprio.secundario}>
             Abrir o arquivo
-          </a>
+          </AbrirDocumento>
         )
       )}
     </dialog>

@@ -103,6 +103,8 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect(screen.queryByText(/não há para este caso/)).toBeNull()
     // GGVP-120 CA11: o benefício pelo nome do catálogo, não pelo código.
     expect(screen.getByText('Antônia Lima (exemplo) · Pensão por Morte')).toBeTruthy()
+    // GGVP-81 CA17 (Pedro, 14/10): a Sênior abre cada documento, o próprio arquivo, numa janela.
+    expect(screen.getByRole('link', { name: 'Abrir RG e CPF.pdf' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/11111111-1111-4111-8111-111111111111`)
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar' }))
     expect((await screen.findByRole('status')).textContent).toContain('protocolo e a decisão de perícia foram abertos')
     expect(fetch).toHaveBeenLastCalledWith(`/api/casos/${CASO}/conferencia`, expect.objectContaining({ body: JSON.stringify({ decisao: 'aprovar' }) }))

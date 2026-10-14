@@ -108,14 +108,14 @@
 
 **Ajustes do Pedro, segundo PDF (14/10): abrir o próprio documento** (`fix/GGVP-18-abrir-documento`; GGVP-18 CA8, GGVP-81 CA17, GGVP-27 CA8; design, decisão 5)
 
-- [ ] 11.7 Servidor: o arquivo do scanner (chave `drive:<id>`) é lido do Drive em `rotas/documentos.ts`, com o Drive passado em `servidor.ts`; sem Drive, 404 com mensagem clara; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
-- [ ] 11.8 Servidor: `GET /api/pessoas/:id/documentos/:hash` pela mesma função de servir, com `caso.ver`, peça, saúde e `acesso_dado_sensivel`; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
-- [ ] 11.9 Tela: `componentes/AbrirDocumento.tsx` (janela do navegador; sem arquivo, diz isso) e o endereço do arquivo da ficha pela pessoa e pelo hash; teste em `AbrirDocumento.test.tsx` (GGVP-81 CA17).
-- [ ] 11.10 Liberar ao Jurídico: cada documento abre o próprio arquivo; a entrevista diz "o conteúdo fica com o Jurídico", sem botão; teste em `LiberarCaso.test.tsx` (CA8).
-- [ ] 11.11 Conferir documento e a lista da perícia: "Abrir" pelo arquivo; testes em `ConferirDocumentos.test.tsx` e `ProcessoPericia.test.tsx` (GGVP-81 CA17).
-- [ ] 11.12 Conferir antes do INSS, Protocolar e a página do processo: "Abrir" na janela pela rota do caso; testes em `Conferencia.test.tsx`, `Protocolar.test.tsx` e no da página do processo (GGVP-81 CA17).
-- [ ] 11.13 Playwright: a Documentação abre na liberação e na conferência um documento que chegou pelo card e vê o arquivo na janela; o laudo segue só com o Jurídico.
-- [ ] 11.14 Rodar typecheck, lint e testes; colar a saída; relatório final.
+- [x] 11.7 Servidor: o arquivo do scanner (chave `drive:<id>`) é lido do Drive em `rotas/documentos.ts`, com o Drive passado em `servidor.ts`; sem Drive, 404 com mensagem clara; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
+- [x] 11.8 Servidor: `GET /api/pessoas/:id/documentos/:hash` pela mesma função de servir, com `caso.ver`, peça, saúde e `acesso_dado_sensivel`; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
+- [x] 11.9 Tela: `componentes/AbrirDocumento.tsx` (janela do navegador; sem arquivo, diz isso) e o endereço do arquivo da ficha pela pessoa e pelo hash; teste em `AbrirDocumento.test.tsx` (GGVP-81 CA17).
+- [x] 11.10 Liberar ao Jurídico: cada documento abre o próprio arquivo; a entrevista diz "o conteúdo fica com o Jurídico", sem botão; teste em `LiberarCaso.test.tsx` (CA8).
+- [x] 11.11 Conferir documento e a lista da perícia: "Abrir" pelo arquivo; testes em `ConferirDocumentos.test.tsx` e `MarcarPericia.test.tsx` (que abre a página da perícia) (GGVP-81 CA17).
+- [x] 11.12 Conferir antes do INSS, Protocolar e a página do processo: "Abrir" na janela pela rota do caso; testes em `Conferencia.test.tsx`, `Passos.test.tsx` (o protocolo) e `PaginaDoCaso.test.tsx` (GGVP-81 CA17).
+- [x] 11.13 Playwright: a Documentação abre na liberação e na conferência um documento que chegou pelo card e vê o arquivo na janela; o laudo segue só com o Jurídico.
+- [x] 11.14 Rodar typecheck, lint e testes; colar a saída; relatório final.
 
 <!-- Fim do grupo documentos. -->
 

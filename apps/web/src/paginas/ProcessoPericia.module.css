@@ -321,3 +321,8 @@
   background-image: none;
   text-decoration: underline;
 }
+
+/* GGVP-81 CA17: o "Abrir" de cada documento fica à direita. */
+.documentos li > a {
+  margin-left: auto;
+}
