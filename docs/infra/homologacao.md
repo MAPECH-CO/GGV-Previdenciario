@@ -2,6 +2,8 @@
 
 O GitHub monta a imagem (o `Dockerfile` da raiz) e publica no GHCR; o Coolify só baixa e roda. O banco é o Supabase, projeto "PrevGGVLucas", em São Paulo (sa-east-1), na mesma região da VPS. A API serve a tela montada na mesma URL.
 
+**O PrevGGVLucas vai para a produção** (GGVP-158, parte 9, decisão do Mateus em 14/10). Antes, a homologação muda de banco: os passos e as opções estão em `docs/infra/producao.md`, seção 2.
+
 **Troca de 13/10 (Oregon → São Paulo).** Até 13/10, o banco era o projeto "Portal Operacional", em Oregon (us-west-2). Cada consulta levava menos de 1 ms no banco, mas a ida e volta entre a VPS e Oregon levava de 150 a 180 ms, e uma tela faz dezenas de consultas em sequência. O PrevGGVLucas guardava o portal antigo: o app dele foi parado (não apagado) e o banco dele foi limpo, sem backup, por decisão do Mateus. Os schemas `public` e `drizzle` foram copiados com `pg_dump`/`pg_restore` (Docker `postgres:17`), e os 5 modelos do depósito `documentos`, pela API do Storage, nos mesmos caminhos.
 
 **Medição depois da troca (13/10, 22h, Chrome do Mateus, perfil Sênior; tempo de cada chamada à API):**
