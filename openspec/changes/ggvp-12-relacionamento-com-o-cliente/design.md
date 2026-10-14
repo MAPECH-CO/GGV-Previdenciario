@@ -401,7 +401,10 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
    com a verificação marcada na conferência. Na ficha, mudar telefone ou e-mail pede a verificação. O servidor recusa sem.
    Completar o telefone ou o e-mail que estava em branco (a ficha que o scanner criou) não é mudança: não pede a verificação.
 3. **Dados bancários** (CA2, CA5): a mudança nasce como pedido, com a verificação; outra pessoa (Atendimento líder, advogada
-   ou Sênior) confirma; a confirmação avisa o contato anterior pelo Chatwoot e, com o caso perto da prestação de contas
+   ou Sênior) confirma. Desde 14/10 (decisão do Mateus, opção B; o Lucas confirma), a confirmação não manda mensagem: abre
+   para o Atendimento a tarefa "Avisar o cliente da mudança bancária" (D3b.02, uma aberta por ficha, que volta a abrir na
+   próxima mudança), com o link `/clientes/:id?mensagem=aviso-de-mudanca`, que abre a "Mensagem ao cliente" com o aviso
+   pronto; o envio do aviso que sai (status diferente de `falhou`) fecha a tarefa. Com o caso perto da prestação de contas
    (sentença procedente, RPV ou benefício deferido), alerta a advogada e o Financeiro. A Central do Financeiro não existe
    ainda: o alerta dele fica guardado para ela.
 4. **Retorno pelo contato cadastrado** (CA3, CA6): na tela da conversa por ligação, ou com quem não é o cliente, o roteiro
