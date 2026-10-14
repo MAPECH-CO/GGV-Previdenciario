@@ -739,3 +739,53 @@ O aviso do áudio gravado fora (8.6) vai na branch `feat/GGVP-158-parte-8-aviso`
 - [x] 8.8 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
 
   Verificado em 14/10, na branch da parte 8 (em cima do #81): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674; API 1007 de 1010 na suíte inteira (3 pulados), sem falha; Playwright 262/262; `openspec validate --all --strict` 16/16.
+
+## GGVP-158 · Parte 9 · Produção, a parte que não depende do Lucas (14/10)
+
+O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, sem migração. O que é fora do código (Coolify, Supabase e DNS) é feito com o Mateus, passo a passo e só com o pedido dele. Os valores nunca passam por aqui.
+
+**O código**
+
+- [ ] 9.1 A produção sem variável de teste (P9.1, decisão 80): a largada recusa `GOOGLE_DRIVE_SO_LEITURA=sim` e `RELACIONAMENTO_SIMULADO` diferente de `nao` com `AMBIENTE=producao`, com a mensagem de qual variável sobrou.
+  - Verifica com teste:
+    - cada variável de teste recusa em produção;
+    - a homologação e a máquina seguem subindo.
+- [ ] 9.2 O aviso da cópia no Drive (P9.4, decisão 83): a regra do envio numa função só; a conta dos prontos há mais de 2 dias sem cópia; um aviso por dia, na rodada do Drive.
+  - Verifica com teste:
+    - o aviso sai uma vez no dia, com as contagens e sem nome;
+    - o pacote da petição e o exemplo ficam de fora;
+    - sem atraso, nada sai.
+- [ ] 9.3 O monitor do /saude (P9.5, decisão 84): `apps/api/src/monitor.ts` e o comando `monitor`.
+  - Verifica com teste, com o /saude e o suporte de mentira:
+    - uma falha só não avisa;
+    - duas seguidas avisam o motivo;
+    - a volta avisa o tempo fora;
+    - o aviso não leva dado de cliente.
+- [ ] 9.4 O roteiro da produção (decisões 80 a 85): `docs/infra/producao.md`. Leva:
+  - o app;
+  - as variáveis, só os nomes;
+  - liberar e voltar uma versão;
+  - o monitor em docker compose;
+  - o backup, a restauração e a chave do cofre;
+  - a limpeza do PrevGGVLucas;
+  - a mudança da homologação.
+- [ ] 9.5 Rodar typecheck, lint, testes e Playwright; colar a saída; pedido para a main.
+
+**Fora do código, com o Mateus**
+
+- [ ] 9.6 A homologação muda de banco (P9.2, decisão 81), na escolha do Mateus na hora. Depois vêm as variáveis novas no app dela, o deploy e o `homologacao:preparar`, com as senhas entregues por ele.
+- [ ] 9.7 O backup e o ensaio (P9.3, decisão 82):
+  - conferir o backup diário do PrevGGVLucas pelo painel;
+  - restaurar o mais novo num projeto temporário, conferindo as migrações e as contagens;
+  - ensaiar ali a limpeza do roteiro.
+
+  O Mateus apaga o projeto temporário.
+- [ ] 9.8 O PrevGGVLucas limpo do teste (P9.2): o Mateus roda a limpeza do roteiro, e eu confiro só nomes e contagens.
+- [ ] 9.9 O app da produção no Coolify (P9.1):
+  - o domínio com https, com o registro no DNS;
+  - as variáveis, com os valores pelo Mateus;
+  - a `COFRE_CHAVE` nova, com uma cópia no cofre de senhas dele;
+  - a imagem pela tag do commit da homologação;
+  - o /saude conferido.
+- [ ] 9.10 O monitor no Coolify (P9.5): o docker compose com o comando, as variáveis `ALARME_*` e o healthcheck desligado. O teste é uma queda com o Mateus: o canal e o Jira recebem "caiu" e "voltou".
+- [ ] 9.11 Relatório final ao Mateus.
