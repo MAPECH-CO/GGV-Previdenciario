@@ -162,7 +162,8 @@ describe('Épico IA · a minuta da petição inicial', () => {
   beforeEach(() => {
     pedidos = []
     const fetch = async (_url: unknown, init?: RequestInit) => {
-      pedidos.push(String(init?.body))
+      // Só as chamadas da minuta contam: a rodada também prepara outras sugestões do caso (a estratégia, GGVP-158 P7.1).
+      if (String(init?.body).includes('minuta da petição inicial')) pedidos.push(String(init?.body))
       return new Response(JSON.stringify({ choices: [{ message: { content: MINUTA } }] }))
     }
     app = criarServidor({ banco, agora: () => AGORA, armazenamento: arquivos, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
