@@ -41,7 +41,21 @@ export type AnaliseDoRaioX = { novos: ProcessoDoRaioX[]; jaNoAcervo: number; err
 
 /** O id ou o rótulo da lista, sem acento nem caixa: "Procedente em parte" e "procedente_parcial" são o mesmo. */
 const pelaLista = <T extends string>(ids: readonly T[], rotulos: Record<T, string>) => new Map(ids.flatMap((i) => [[chave(i), i] as const, [chave(rotulos[i]), i] as const]))
-const DESFECHO = pelaLista(DESFECHOS_DO_ACERVO, ROTULO_DESFECHO_DO_ACERVO)
+/**
+ * As palavras de desfecho do Raio-X, como o protótipo e o resumo de 30/09 escrevem. "Êxito" é procedente, porque o Raio-X
+ * não separa o procedente em parte; "Em andamento" entra sem desfecho. "Acordo" e "Extinto sem mérito" já são nomes do portal.
+ */
+const DO_RAIO_X: [string, DesfechoDoAcervo | null][] = [
+  ['Êxito', 'procedente_total'],
+  ['Perdido no mérito', 'improcedente'],
+  ['Perdidos no mérito', 'improcedente'],
+  ['Extintos sem mérito', 'extinto_sem_merito'],
+  ['Em andamento', null],
+]
+const DESFECHO = new Map<string, DesfechoDoAcervo | null>([
+  ...pelaLista(DESFECHOS_DO_ACERVO, ROTULO_DESFECHO_DO_ACERVO),
+  ...DO_RAIO_X.map(([palavra, desfecho]) => [chave(palavra), desfecho] as const),
+])
 const RECURSO = pelaLista(RESULTADOS_DO_RECURSO, ROTULO_RESULTADO_DO_RECURSO)
 const SIM = new Set(['sim', 's', 'x', '1', 'true', 'verdadeiro'])
 const NAO = new Set(['nao', 'n', '0', 'false', 'falso'])
