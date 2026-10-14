@@ -1194,3 +1194,56 @@ A justificativa em texto livre da dispensa do parecer e da nova tentativa do com
 - **Dado** a Sênior decidiu a nova tentativa com a justificativa
 - **Quando** a Atendimento abre o complemento
 - **Então** vê o prazo novo, sem a justificativa
+
+### Requirement: P9.1 · A produção sobe pela versão que passou na homologação, sem variável de teste
+A produção SHALL rodar com `AMBIENTE=producao`, num domínio próprio com https, e com a imagem pela tag do commit que passou na homologação. Nunca roda pela tag `main`, e liberar ou voltar uma versão é trocar a tag. Em produção, o servidor MUST NOT subir com variável de teste:
+- `LEITURA_SIMULADA`;
+- `GOOGLE_DRIVE_SO_LEITURA=sim`;
+- `RELACIONAMENTO_SIMULADO` com valor diferente de `nao`.
+
+Na recusa, a mensagem diz qual variável sobrou.
+
+#### Scenario: P9.1 · O app copiado da homologação
+- **Dado** `AMBIENTE=producao` com `GOOGLE_DRIVE_SO_LEITURA=sim`
+- **Quando** o servidor sobe
+- **Então** a largada para com a mensagem de que a variável é de teste
+
+#### Scenario: P9.1 · Liberar uma versão
+- **Dado** a versão que o /saude da homologação mostra
+- **Quando** o Mateus põe essa tag no app da produção e faz o deploy
+- **Então** o /saude da produção mostra a mesma versão
+
+### Requirement: P9.2 · O banco da produção é o PrevGGVLucas, sem dado de teste
+O banco da produção SHALL ser o PrevGGVLucas (São Paulo). A homologação MUST mudar para outro banco antes de a produção subir, para os dois apps nunca gravarem no mesmo. O PrevGGVLucas SHALL ficar limpo do teste antes da produção: os esquemas do portal saem, a largada roda todas as migrações de novo, e o depósito de arquivos fica vazio. Os modelos do Word sobem de novo, porque o registro deles sai com o banco. Quem roda a limpeza é o Mateus.
+
+#### Scenario: P9.2 · A produção sobe vazia
+- **Dado** o PrevGGVLucas limpo e a homologação em outro banco
+- **Quando** a produção sobe
+- **Então** as migrações rodam do zero, e não há usuário, caso nem documento de teste
+
+### Requirement: P9.3 · O backup do banco, a restauração testada e a chave do cofre guardada
+O backup diário do Supabase do banco da produção SHALL estar ligado e conferido. A restauração MUST ter sido testada num projeto temporário, com as migrações e as contagens conferidas. A `COFRE_CHAVE` da produção SHALL ser nova e ter uma cópia fora do servidor, no cofre de senhas do Mateus. O valor nunca passa pelo chat nem pelo repositório.
+
+#### Scenario: P9.3 · A restauração
+- **Dado** o backup mais novo do banco da produção
+- **Quando** ele é restaurado num projeto temporário
+- **Então** as migrações e as contagens batem com as da produção, e o Mateus apaga o temporário depois
+
+### Requirement: P9.4 · Os arquivos com cópia no Drive, e o aviso quando ela atrasa
+A cópia dos arquivos do portal SHALL ser a do Drive do escritório. Quando um documento pronto para o Drive passa de 2 dias sem cópia, o suporte MUST receber um aviso por dia, pelo canal e pelo Jira do alarme. O aviso diz quantos estão assim e quantos esperam a conferência, e nunca leva o nome do cliente nem o do arquivo. Com o Drive desligado ou só leitura, não há aviso.
+
+#### Scenario: P9.4 · O Drive parou de receber
+- **Dado** três documentos prontos para o Drive, sem cópia há 3 dias
+- **Quando** a rodada do Drive roda duas vezes no mesmo dia
+- **Então** o suporte recebe um aviso só, com a contagem e sem nome
+
+### Requirement: P9.5 · O monitor do /saude avisa quando a produção cai e quando volta
+O monitor SHALL olhar o `/saude` da produção a cada minuto, de um container à parte. Duas falhas seguidas MUST avisar o suporte de que o portal caiu, com o motivo: sem resposta em 10 segundos, resposta diferente de 200 ou `ok` diferente de `true`. A primeira resposta boa depois SHALL avisar que voltou, com quanto tempo ficou fora. O aviso vai pelo canal e pelo Jira do alarme da vigília.
+
+#### Scenario: P9.5 · Uma falha só, no deploy
+- **Dado** o /saude falhou uma vez e respondeu bem no minuto seguinte
+- **Então** nenhum aviso sai
+
+#### Scenario: P9.5 · A produção caiu e voltou
+- **Dado** o /saude falhou duas vezes seguidas e voltou cinco minutos depois
+- **Então** o suporte recebe "O portal caiu", com o motivo, e depois "O portal voltou", com o tempo fora
