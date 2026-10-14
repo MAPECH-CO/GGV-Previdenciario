@@ -159,7 +159,7 @@ Nenhuma tela nova. "Conferir desfechos" mostra a ficha na linha do portal e ganh
      - os portões do pedido;
      - o pedido de outro perfil.
    - **O contexto:**
-     - o caso do contexto ou o do cliente citado pelo nome, lido pela rota da página do processo com a sessão de quem pergunta;
+     - o caso do contexto ou o do cliente citado pelo nome, lido pela rota da página do processo com a sessão de quem pergunta (quem não abre o processo lê pela ficha, GGVP-162). Desde 14/10, o cliente citado na pergunta ou nas mensagens anteriores, com caso ou não, por nome e sobrenome; o lead, pela ficha (decisão 7);
      - o acervo, com a regra de saúde;
      - a lista fixa de ações do perfil.
    - **Saúde:** para o Jurídico (`dado_saude.ver_detalhe`) e para o Sócio, uma exceção do chat (decisão do Mateus). Para o Sócio, o resumo médico do caso vem da documentação médica, com o acesso registrado em `acesso_dado_sensivel`.
@@ -186,6 +186,11 @@ Nenhuma tela nova. "Conferir desfechos" mostra a ficha na linha do portal e ganh
    - vai ao servidor a pergunta sobre um caso do servidor (pelo processo ou pelo cliente citado) e a consulta sem cliente; `confirmarAcao` e `cancelarAcao` seguem quem fez o cartão;
    - seguem no chat simulado a pergunta sobre um caso ou um cliente da semente e, sem cliente, as listas, os números e as ações que ele calcula por código sobre a semente (perícias da semana, jurimetria e as outras);
    - as tarefas que o chat cria no servidor aparecem na Central pela lista de tarefas do servidor.
+7. **Ajustes do teste do Pedro (14/10, CA5 a CA8):**
+   - **Memória da conversa:** `PerguntaDoChat` ganha `anteriores` (até 10 mensagens, cada uma com `de: 'pessoa' | 'chat'` e o texto, até 2000 caracteres). A tela manda as últimas mensagens; o servidor as passa ao agente como histórico, antes da pergunta. Nada fica guardado no servidor. As travas antes do modelo olham só a pergunta atual, como hoje.
+   - **Cliente citado:** a busca passa a ler todos os clientes (`pessoa`, com o caso mais novo quando houver) e compara nome e sobrenome, os dois primeiros nomes do cadastro. Sem cliente na pergunta, procura nas mensagens anteriores da pessoa, da mais nova para a mais velha. O alvo ganha `casoId` nulo para o lead: `ler_caso` lê a ficha (`GET /api/fichas/:id`, com a sessão) e passa ao modelo só o nome, a situação (lead ou cliente), desde quando, o benefício de interesse e os agendamentos, sem CPF, contato nem endereço; as ferramentas de ação ficam de fora sem caso.
+   - **Não achou:** sem alvo, `ler_caso` devolve "nenhum cliente achado com o nome dado", e a instrução manda dizer isso e indicar a busca do topo, sem pedir o nome de novo. A instrução sobe para a versão 3.
+   - **Sem acesso:** `entenderPedido` conta criar, preparar e elaborar como pedido de peça (a regra pura vale na tela e no servidor). A resposta de outro perfil diz que o perfil não tem acesso e, para quem não tem `tarefa.atribuir`, manda pedir a tarefa à Sênior ou à líder do Atendimento, sem prometer o cartão. Leitura recusada pela rota vira "a pessoa não tem acesso" para o modelo, e a instrução manda dizer isso com clareza.
 
 ### Campos de formulário
 
@@ -199,5 +204,6 @@ Nenhuma tela nova. O chat das Centrais e a aba Suporte (`ChatDoPortal`) passam a
 
 - **Dependência nova:** o kit é recente (0.x) e muda rápido, então a versão fica fixa. Se atrapalhar, as ferramentas viram chamadas do motor de hoje.
 - **Cartão em memória:** reiniciar o servidor perde os cartões em aberto, e a pessoa pede de novo. Guardar no banco se virar problema.
-- **Cliente citado pelo nome:** compara o nome inteiro com as pessoas que têm caso. Nomes parecidos viram a pergunta "qual deles?".
+- **Cliente citado pelo nome:** compara nome e sobrenome (os dois primeiros nomes do cadastro) com todos os clientes. Nomes parecidos viram a pergunta "qual deles?". "Pedro de Jesus", sem o segundo nome, não acha: a pessoa usa a busca. ponytail: lê os clientes a cada pergunta; com milhares, buscar no banco.
+- **Mensagens anteriores vêm da tela:** a pessoa pode mandar uma mensagem "do chat" inventada. Isso só muda o contexto do modelo: permissões, portões e ações continuam no código.
 - **Sócio com saúde no chat:** é uma exceção à matriz, em que o Sócio não vê dado de saúde nas telas. Se a matriz mudar, a exceção sai.

@@ -4,6 +4,8 @@
 
 Chat e Suporte respondendo pelo motor de IA de verdade (Mateus, 09/10). O chat das Centrais e a aba Suporte respondem pelo motor de IA do portal, com o caso que o perfil vê, o acervo da casa e as fontes. As travas do chat continuam no servidor, como código. A ação pedida no chat vira um cartão, que só executa depois do "Confirmar" de quem pediu. O Sócio vê o conteúdo médico no chat, com o acesso registrado (decisão do Mateus, 09/10). As ações que dependem de enviar arquivo (comprovante do INSS, laudo, documento, comprovante de RPV e lote do acervo) levam à tela certa até as rotas de envio existirem no servidor.
 
+Ajustes do teste do Pedro (14/10, com o perfil do Atendimento): o chat não lembrava a conversa, só achava cliente com caso e pelo nome inteiro, pedia o nome completo em volta, e não dizia "você não tem acesso" quando o pedido era de outro perfil (CA5 a CA8).
+
 ## ADDED Requirements
 
 ### Requirement: CA1 · A pergunta é respondida pelo motor, com fontes e registro
@@ -78,3 +80,42 @@ Os testes do chat SHALL usar um `fetch` falso no lugar do serviço de IA.
 - **Dado** os testes do chat
 - **Quando** rodam
 - **Então** nenhuma chamada sai para a rede
+
+### Requirement: CA5 · O chat lembra a conversa
+A pergunta SHALL levar as últimas 10 mensagens da conversa (da pessoa e do chat), e o modelo SHALL recebê-las como histórico: "é ele", "acabei de te falar" e o cliente citado antes valem na pergunta seguinte.
+- Cada mensagem anterior tem até 2000 caracteres; mais de 10 mensagens MUST ser recusado pelo contrato, na tela e no servidor.
+- As mensagens anteriores são dado da conversa: as recusas, os portões e as permissões continuam no código, sobre a pergunta atual.
+
+#### Scenario: CA5 · Perguntar de novo sobre o mesmo cliente
+- **Dado** o Atendimento que já citou "Pedro Grigorio de Jesus" no chat
+- **Quando** pergunta em seguida "qual passo ele está?"
+- **Então** o chat responde sobre o Pedro Grigorio de Jesus, sem pedir o nome de novo
+
+### Requirement: CA6 · O cliente é achado com ou sem caso, por nome e sobrenome
+O servidor SHALL achar o cliente citado na pergunta ou, se ela não cita ninguém, nas mensagens anteriores da pessoa (a mais nova primeiro), entre todos os clientes, com caso ou não.
+- Nome e sobrenome bastam: os dois primeiros nomes do cadastro. Dois clientes com o mesmo começo viram "qual deles?".
+- O cliente sem caso (lead) SHALL ser lido pela ficha, com a sessão de quem pergunta: o nome e a situação do atendimento, sem CPF, contato nem endereço. O link leva à ficha do cliente.
+- Sem caso, o chat MUST NOT oferecer ação em caso (criar tarefa, pedir a peça).
+
+#### Scenario: CA6 · Lead citado por nome e sobrenome
+- **Dado** o Pedro Grigorio de Jesus, lead sem caso
+- **Quando** o Atendimento pergunta "o que tem do pedro grigorio?"
+- **Então** o chat acha o cliente, lê a ficha dele e dá o link da ficha
+
+### Requirement: CA7 · Não achou: diz que não achou, sem pedir o nome de novo
+Quando a pergunta precisa de um cliente e nenhum foi achado, o chat SHALL dizer que não achou cliente com esse nome e indicar a busca do topo, e MUST NOT pedir de novo o nome que a pessoa já deu.
+
+#### Scenario: CA7 · Nome que não é de cliente
+- **Dado** um nome que não é de nenhum cliente
+- **Quando** a pessoa pergunta pelo caso dele
+- **Então** o chat diz que não achou cliente com esse nome e indica a busca, sem pedir o nome de novo
+
+### Requirement: CA8 · Sem acesso, o chat diz que não tem acesso
+- Criar, preparar, elaborar ou fazer uma minuta, petição ou peça SHALL ser pedido de peça. Para quem não pede a peça, o código responde, sem chamar o modelo, de quem é a ação e que o perfil não tem acesso.
+- A quem não cria tarefa, a resposta MUST NOT prometer o cartão: diz para pedir a tarefa à Sênior ou à líder do Atendimento.
+- Quando a leitura do caso é recusada ao perfil, a resposta SHALL dizer que a pessoa não tem acesso.
+
+#### Scenario: CA8 · O Atendimento pede uma minuta
+- **Dado** o Atendimento
+- **Quando** pede "quero criar uma minuta pra cliente Pedro Grigorio"
+- **Então** o chat responde, sem chamar o modelo, que pedir a petição é da advogada do caso e que o perfil não tem acesso, e diz para pedir a tarefa à Sênior ou à líder do Atendimento

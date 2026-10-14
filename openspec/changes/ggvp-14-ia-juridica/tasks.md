@@ -147,3 +147,12 @@
 - [x] 18.8 Tela: com o servidor ligado, `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor. Teste Vitest com `fetch` falso; verifica com `pnpm --filter @ggv/web test`.
 - [x] 18.9 Playwright do chat no servidor: a recusa do G17 sem modelo e a resposta sem a chave da IA, com o link do caso; verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 18.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+
+## GGVP-142 · Ajustes do teste do Pedro no chat (14/10)
+
+- [ ] 18.11 Contrato: `anteriores` em `PerguntaDoChat` (até 10 mensagens, `de: 'pessoa' | 'chat'`, texto até 2000 caracteres, padrão vazio). Teste do contrato; verifica com `pnpm --filter @ggv/contratos test`.
+- [ ] 18.12 CA5 · O agente recebe as mensagens anteriores como histórico, antes da pergunta; a tela manda as últimas 10 do chat. Teste com `fetch` falso (o corpo que vai ao modelo traz o histórico) e Vitest na tela; verifica com `pnpm --filter @ggv/api test` e `pnpm --filter @ggv/web test`.
+- [ ] 18.13 CA6 · O cliente citado: todos os clientes, com caso ou não, por nome e sobrenome, na pergunta e, sem ninguém nela, nas anteriores da pessoa; o lead lido pela ficha, sem CPF, contato nem endereço, com o link da ficha e sem ferramenta de ação. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 18.14 CA7 · Sem cliente achado: a ferramenta e a instrução (versão 3) dizem que não achou e indicam a busca, sem pedir o nome de novo. Teste; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 18.15 CA8 · Criar, preparar e elaborar minuta, petição ou peça viram pedido de peça (regra pura); a resposta de outro perfil diz que o perfil não tem acesso e, para quem não cria tarefa, manda pedir à Sênior ou à líder do Atendimento; a leitura recusada vira "sem acesso". Teste na regra e na rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
+- [ ] 18.16 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
