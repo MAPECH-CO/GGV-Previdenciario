@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, decisao, etapa, exigencia, parecerMedico, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, etapa, exigencia, parecerMedico, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -120,5 +120,28 @@ describe('GGVP-38 · recomendação sobre a perícia', () => {
     expect(daRecomendacao.map((c) => [c.situacao, c.erro])).toEqual([['falhou', 'saída fora do formato']])
     expect(await abertas()).toEqual(['juridico_adm · Marcar perícia médica e avaliação social'])
     expect((await chamar('gabi', 'POST', `/api/pericias/${doInss}/recomendacao/sugestao`)).json().motivo).toBe('A IA não respondeu agora: escreva a recomendação pela sua leitura.')
+  })
+})
+
+describe('GGVP-158 P8.1 · quem abre a recomendação fica registrado', () => {
+  const leituras = async () => (await banco.select().from(acessoDadoSensivel)).map((a) => [a.perfil, a.casoId, a.recurso])
+
+  it('a recomendação da IA e as perícias com a recomendação aprovada registram a leitura, com o caso', async () => {
+    // Sem recomendação aprovada, as perícias do caso não levam conteúdo médico: nada a registrar.
+    await chamar('gabi', 'GET', `/api/casos/${casoId}/pericias`)
+    expect(await leituras()).toEqual([])
+    await app.prepararSugestoes()
+    const s = (await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao/sugestao`)).json()
+    expect(await leituras()).toEqual([['advogada', casoId, `recomendacao:${doJuiz}`]])
+    const corpo = { oQueLevar: ['Relatório do médico assistente'], quesitos: [], assistenteTecnico: false, chamadaIaId: s.sugestao.chamadaId }
+    expect((await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao`, corpo)).statusCode).toBe(201)
+    await chamar('igor', 'GET', `/api/casos/${casoId}/pericias`)
+    expect((await leituras()).at(-1)).toEqual(['juridico_adm', casoId, `pericias:${casoId}`])
+  })
+
+  it('a sugestão sem recomendação (a IA fora do formato) não registra', async () => {
+    comIa({ oQueLevar: [] })
+    expect((await chamar('gabi', 'POST', `/api/pericias/${doInss}/recomendacao/sugestao`)).json().recomendacao).toBeNull()
+    expect(await leituras()).toEqual([])
   })
 })

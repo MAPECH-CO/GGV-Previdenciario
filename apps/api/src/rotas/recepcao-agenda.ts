@@ -20,7 +20,7 @@ import {
   type Perfil,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, boasVindas, compromissoInterno, contratoRecepcao, fichaRecepcao, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
 import { EQUIPE, MOTIVOS_DE_NAO_FECHAR, TIPOS_DE_ENTREVISTA, nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
 import type {
@@ -194,15 +194,19 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   }
 
   // A cópia das telas: as fichas da Recepção, as tarefas abertas, os compromissos internos e as gravações, ao abrir cada
-  // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a).
+  // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a). GGVP-158 P8.1: quando vai,
+  // a leitura fica registrada, uma linha por abertura (a lista leva as gravações de todos).
   app.get('/api/recepcao', ver, async (pedido) => {
     const todas = await fichasDaRecepcao()
     const checklists = await checklistsDas(todas)
+    const lista = await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe'))
+    if (lista.some((g) => g.soJuridico))
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: null, recurso: 'recepcao:gravacoes', quando: agora() })
     return {
       fichas: todas,
       tarefas: await tarefas(),
       internos: await internos(),
-      gravacoes: await gravacoes(pode(pedido.perfilAtivo, 'dado_saude.ver_detalhe')),
+      gravacoes: lista,
       contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
       // Bloco 5b: as leituras dos documentos, para a conferência e as tarefas da Documentação.
       leituras: await leiturasDe(),

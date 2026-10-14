@@ -89,6 +89,15 @@ describe('confiança dos dados', () => {
     await recusa(sql`delete from acesso_dado_sensivel`, /não pode ser alterado/)
   })
 
+  it('GGVP-158 P8.2 · o registro das chamadas da IA também só cresce; registrar uma nova segue', async () => {
+    const nova = sql`insert into chamada_ia (finalidade, fornecedor, modelo, versao_instrucao, entrada_tamanho, entrada_hash, situacao) values ('teste', 'openai', 'm', 1, 0, 'h', 'ok')`
+    await db.execute(nova)
+    await recusa(sql`update chamada_ia set saida = 'outra'`, /não pode ser alterado/)
+    await recusa(sql`delete from chamada_ia`, /não pode ser alterado/)
+    await db.execute(nova)
+    expect((await db.execute<{ n: number }>(sql`select count(*)::int as n from chamada_ia`)).rows[0].n).toBe(2)
+  })
+
   it('estado fora da lista é recusado pelo banco', async () => {
     await recusa(sql`insert into pessoa (nome, situacao) values ('Ana', 'inventado')`, /pessoa_situacao/)
   })

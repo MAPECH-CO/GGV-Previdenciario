@@ -25,7 +25,7 @@ import type { Drive, PastasDoDrive } from '../drive.ts'
 import { pastaDoTitulo } from '../fluxo/arquivar.ts'
 import { pastasDoCliente } from '../../../web/src/regras/pasta.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, credencialGovbr, documento, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, credencialGovbr, documento, eventoAuditoria, fichaRecepcao, gravacaoRecepcao, leituraDocumento, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import type { Cofre } from '../cofre.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { guardarNoCofre } from './cofre.ts'
@@ -57,6 +57,7 @@ import { buscar, emAberto, etapaDaFicha } from '../../../web/src/regras/busca.ts
 import { confirmada } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { fichaComCpf, fichasParecidas } from '../../../web/src/regras/duplicidade.ts'
+import { tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 import { ROTULOS_DA_FICHA, camposEmBranco, envioValido, type CampoDaFicha } from '../../../web/src/regras/fichaAtendimento.ts'
 import type { Contrato } from '../../../web/src/regras/contratoDoCaso.ts'
 import { IDADE_MAXIMA } from '../../../web/src/regras/formularios.ts'
@@ -249,6 +250,28 @@ export function criarFichario(banco: Banco, agora: () => Date) {
 
   const resumo = (f: Ficha): FichaResumo => ({ id: f.id, nome: f.nome, situacao: f.situacao, etapa: etapaDaFicha(f, hoje()), telefone: f.telefone })
 
+  /**
+   * GGVP-158 P8.4: cada linha nova do histórico da ficha vai também ao histórico de auditoria, que não se altera, com a
+   * hora dela e a senha mascarada (G9). A linha guarda o nome de quem fez: com exatamente um usuário desse nome, é ele;
+   * senão (o scanner, "Sistema", um homônimo), é o sistema, com o nome no detalhe. ponytail: pelo nome, sem levar o pedido
+   * às chamadas de `guardar`; passar o id quando houver homônimo.
+   */
+  async function auditar(pessoaId: string, novas: EventoHistorico[]) {
+    if (!novas.length) return
+    const usuarios = await banco.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.nome, [...new Set(novas.map((e) => e.quem))]))
+    const quemE = (nome: string) => {
+      const achados = usuarios.filter((u) => u.nome === nome)
+      return achados.length === 1 ? achados[0].id : null
+    }
+    await banco.insert(eventoAuditoria).values(
+      novas.map((e) => {
+        const id = quemE(e.quem)
+        const texto = tirarSenhas([{ aos: 0, quem: e.quem, papel: 'cliente', texto: e.oQue }])[0].texto
+        return { quem: id ?? 'sistema', acao: 'historico_da_ficha', alvo: `ficha:${pessoaId}`, quando: new Date(e.quando), detalhe: id ? { texto } : { texto, por: e.quem } }
+      }),
+    )
+  }
+
   /** Grava a ficha e o que o resto do portal lê da pessoa (sem senha: G9). A situação (lead, cliente) não muda aqui. */
   async function guardar(f: Ficha) {
     const [cidade, uf] = (f.cidadeUf ?? '').split('/').map((x) => x.trim())
@@ -270,10 +293,15 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       })
       .where(eq(pessoa.id, f.id))
     const { processos: _, ...documento } = f
+    const [guardada] = await banco
+      .select({ linhas: sql<number>`jsonb_array_length(coalesce(${fichaRecepcao.documento}->'historico', '[]'::jsonb))` })
+      .from(fichaRecepcao)
+      .where(eq(fichaRecepcao.pessoaId, f.id))
     await banco
       .insert(fichaRecepcao)
       .values({ pessoaId: f.id, documento })
       .onConflictDoUpdate({ target: fichaRecepcao.pessoaId, set: { documento, atualizadoEm: agora() } })
+    await auditar(f.id, f.historico.slice(guardada?.linhas ?? 0))
     // GGVP-158 P7.2: as tarefas da Recepção da pessoa acompanham a ficha. Falhou, a rodada de 5 minutos acerta.
     await sincronizarRecepcao(banco, agora, { pessoaId: f.id }).catch((e: unknown) =>
       console.error('[recepção] as tarefas não sincronizaram', e instanceof Error ? e.message : e),

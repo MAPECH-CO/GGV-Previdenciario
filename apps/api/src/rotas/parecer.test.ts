@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, parecerMedico, pessoa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, fichaRecepcao, parecerMedico, pessoa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -317,5 +317,17 @@ describe('GGVP-132 · a dispensa do parecer por duas Sêniores no servidor (GGVP
     const { analise } = (await ver('gabi', casoId)).json().juridico
     await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: analise.quando, conferidos: conforme(analise), decisao: 'suficiente' })
     expect((await postar('helena', dispensa(casoId), { justificativa: JUSTIFICATIVA })).statusCode).toBe(409)
+  })
+
+  it('GGVP-158 P8.6 · a justificativa só para quem vê dado de saúde: fora do histórico da ficha e vazia para o Atendimento', async () => {
+    const casoId = await novoCaso('bpc_loas_deficiente')
+    await postar('helena', dispensa(casoId), { justificativa: JUSTIFICATIVA })
+    const daAtendimento = (await ver('ana', casoId)).json()
+    expect([daAtendimento.dispensa.pedidaPor, daAtendimento.dispensa.justificativa]).toEqual(['Helena', ''])
+    expect(JSON.stringify(daAtendimento)).not.toContain('laudo do SUS')
+    expect((await ver('gabi', casoId)).json().dispensa.justificativa).toBe(JUSTIFICATIVA)
+    const [ficha] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, pessoaId))
+    expect(JSON.stringify(ficha.documento)).not.toContain('laudo do SUS')
+    expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)')
   })
 })

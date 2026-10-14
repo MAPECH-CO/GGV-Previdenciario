@@ -229,7 +229,9 @@ export function criarParecerDoCaso({ banco, agora = () => new Date(), ia, armaze
 
   async function tela(c: CasoMedico, visao: Visao, ler: ComoLer = { semChamar: true }): Promise<ParecerNaTela> {
     const { p, laudoNovoEm, semRoteiro } = await emDia(c, ler)
-    return naTela({ ficha: c.ficha, processo: { ...c.processo, ...(laudoNovoEm && { laudoNovoEm }) }, p, visao, semRoteiro, ...(laudoNovoEm && { laudoNovoEm }), hoje: hojeEmBrasilia(agora()) })
+    const t = naTela({ ficha: c.ficha, processo: { ...c.processo, ...(laudoNovoEm && { laudoNovoEm }) }, p, visao, semRoteiro, ...(laudoNovoEm && { laudoNovoEm }), hoje: hojeEmBrasilia(agora()) })
+    // GGVP-158 P8.6: a justificativa da dispensa é texto livre e pode citar a doença: só quem vê dado de saúde lê.
+    return visao === 'juridico' || !t.dispensa ? t : { ...t, dispensa: { ...t.dispensa, justificativa: '' } }
   }
 
   return { emDia, tela, esperandoAnalise, lerParte, gravarParte }
@@ -352,7 +354,8 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
       perfil: pedido.perfilAtivo!,
       decididoEm: agora(),
     })
-    await anotar(c, `Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: ${entrada.data.justificativa}`, pedido)
+    // GGVP-158 P8.6: o histórico da ficha é de todos os perfis; a justificativa fica na decisão, para o Jurídico e o Sócio.
+    await anotar(c, 'Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)', pedido)
     await historico(quem, 'dispensa_parecer_pedida', pedido, `caso:${c.id}`)
     return resposta.code(201).send(await tela(c, 'juridico'))
   })

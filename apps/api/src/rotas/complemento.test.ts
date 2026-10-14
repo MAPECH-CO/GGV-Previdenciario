@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, documento, documentoMedico, eventoAuditoria, pessoa, usuario } from '../banco/esquema.ts'
+import { caso, documento, documentoMedico, eventoAuditoria, fichaRecepcao, pessoa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import { MSG_AINDA_NO_LIMITE, MSG_SEM_COMPLEMENTO } from './complemento.ts'
@@ -85,6 +85,21 @@ describe('GGVP-132 · o complemento ao médico no servidor (GGVP-29)', () => {
     expect([decidida.statusCode, decidida.json().situacao, decidida.json().proxima, decidida.json().complemento.decisoes[0].quem]).toEqual([201, 'aberto', '2026-10-20', 'Helena'])
     const acoes = (await banco.select().from(eventoAuditoria)).map((e) => e.acao)
     expect(acoes.filter((a) => a.startsWith('complemento_'))).toEqual(['complemento_tentativa_registrada', 'complemento_tentativa_registrada', 'complemento_decidido'])
+  })
+
+  it('GGVP-158 P8.6 · a justificativa da nova tentativa só para quem vê dado de saúde: fora do histórico da ficha e vazia para o Atendimento', async () => {
+    await tentar('ana')
+    dia('2026-10-11')
+    await tentar('ana')
+    const JUSTIFICATIVA = 'A cliente está internada para a cirurgia da coluna.'
+    const decidida = (await postar('helena', '/complemento/decisoes', { justificativa: JUSTIFICATIVA, prazo: '2026-10-20' })).json()
+    expect(decidida.complemento.decisoes[0].justificativa).toBe(JUSTIFICATIVA)
+    const daAtendimento = (await ver('ana')).json()
+    expect([daAtendimento.complemento.decisoes[0].prazo, daAtendimento.complemento.decisoes[0].justificativa]).toEqual(['2026-10-20', ''])
+    expect(JSON.stringify(daAtendimento)).not.toContain('internada')
+    const [ficha] = await banco.select().from(fichaRecepcao)
+    expect(JSON.stringify(ficha.documento)).not.toContain('internada')
+    expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('Complemento ao médico: a sênior decidiu nova tentativa até 20/10')
   })
 })
 

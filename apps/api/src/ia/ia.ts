@@ -6,6 +6,7 @@ import { CATALOGO_BENEFICIOS, type FonteDaIa, type SugestaoDaIa } from '@ggv/con
 import type { Banco } from '../banco/conexao.ts'
 import { chamadaIa, eventoAuditoria } from '../banco/esquema.ts'
 import { TIPOS_DE_DOCUMENTO } from '../../../web/src/dados/catalogos.ts'
+import { tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 
 type Ambiente = Record<string, string | undefined>
 type Situacao = 'ok' | 'desligada' | 'recusada' | 'falhou'
@@ -719,7 +720,10 @@ export function criarIa({ banco, ambiente = process.env, fetch = globalThis.fetc
       if (falas.length === 0) throw new Error('OpenAI respondeu sem texto')
       const segundos = Math.round(corpo.usage?.seconds ?? corpo.duration ?? Math.max(...falas.map((x) => x.fim)))
       const custoEstimado = Math.round((segundos / 60) * (DOLAR_POR_MINUTO[modeloTranscricao] ?? 0.006) * 10_000) / 10_000
-      const saida = falas.map((x) => `${x.falante}: ${x.texto}`).join('\n')
+      // GGVP-158 P8.3: a senha dita (G9) não fica no registro. As falas voltam como vieram: quem chama tira a senha antes de
+      // guardar (a entrevista), e mascarar duas vezes marcaria também a fala seguinte à marca.
+      const semSenha = tirarSenhas(falas.map((x) => ({ aos: x.inicio, quem: x.falante, papel: 'cliente' as const, texto: x.texto })))
+      const saida = semSenha.map((x) => `${x.quem}: ${x.texto}`).join('\n')
       const chamadaId = await registrar({ ...base, saida, situacao: 'ok', inicio, audioSegundos: segundos, custoEstimado })
       return { chamadaId, falas, segundos, custoEstimado, modelo: modeloTranscricao }
     } catch (e) {
