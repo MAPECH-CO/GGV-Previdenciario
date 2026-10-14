@@ -737,7 +737,9 @@ O aviso do áudio gravado fora (8.6) vai na branch `feat/GGVP-158-parte-8-aviso`
     - com ela, o áudio entra e o histórico diz que o aviso foi confirmado.
 
   Verificado em 14/10, na branch `feat/GGVP-158-parte-8-aviso`: `rotas/transcricao.test.ts` (1 novo), `rotas/recepcao-entrevista.test.ts` e `rotas/transcricao-conversa.test.ts`, 32/32; typecheck e lint da API sem erro. Sem a confirmação, 400 e nada no caso; com ela, o áudio entra e o histórico diz que o aviso foi confirmado. O teste de tela `transcricao-ligacao.e2e.ts` falha (1 de 3), como esperado: a tela da entrevista ainda não manda `avisoNaGravacao=sim`. O pedido fica em rascunho até a tela do Pedro.
-- [ ] 8.7 Avisar o Pedro: os dois pedidos listam o que muda para as telas (a caixa do aviso na entrevista; a justificativa vazia para quem não vê dado de saúde).
+- [x] 8.7 Avisar o Pedro: os dois pedidos listam o que muda para as telas (a caixa do aviso na entrevista; a justificativa vazia para quem não vê dado de saúde).
+
+  Feito em 14/10: o #82 lista o que muda para as telas (a justificativa vazia para quem não vê dado de saúde, as linhas novas do histórico da ficha e o modo de exemplo que ainda escreve a justificativa), e o #83 lista a caixa do aviso na entrevista e o campo `avisoNaGravacao=sim` no envio. Marcada no #83 para os dois pedidos não brigarem neste arquivo.
 - [x] 8.8 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
 
   Verificado em 14/10, na branch da parte 8 (em cima do #81): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674; API 1007 de 1010 na suíte inteira (3 pulados), sem falha; Playwright 262/262; `openspec validate --all --strict` 16/16.
