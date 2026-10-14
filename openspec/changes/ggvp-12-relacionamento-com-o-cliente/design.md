@@ -327,6 +327,12 @@ novo a trava do modelo e o texto.
    Chatwoot devolve; em "Últimos contatos", "Chatwoot · 14:32 · entregue". A falha aparece na tela em que a pessoa está e
    fica no histórico; nada é reenviado sozinho, e a mesma mensagem já entregue na mesma conversa não sai de novo.
 6. **Perícia** (CA9): os modelos da perícia usam a data da perícia em vigor no processo (a mesma que a conversa atualiza).
+7. **Nenhum dado em aberto** (CA11, teste do Pedro, 14/10): `beneficioParaOCliente` (`regras/mensagens.ts`) devolve o nome do
+   benefício só quando ele é conhecido; "nao-sei" e o vazio viram "", e a frase dos modelos (boas-vindas e cobrança) segue sem
+   o nome. As boas-vindas sem caso aberto ficam travadas ("As boas-vindas saem quando o caso começa, depois do fechamento."),
+   como o convite sem entrevista. `problemasDaMensagem` bloqueia "de Não sei ainda", na tela e no envio do servidor. O selo
+   da janela diz "O portal preencheu": os modelos são do código, sem IA. O servidor falso dos testes de tela
+   (`apps/web/src/test/relacionamento/mensagens.ts`) segue o mesmo texto.
 
 ### Ponta para ligar no Chatwoot (estudada na documentação da API, developers.chatwoot.com)
 
