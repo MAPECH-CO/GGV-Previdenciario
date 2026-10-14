@@ -3,7 +3,7 @@
 // do protocolo, para uma pasta dentro da do cliente. O Drive guarda arquivo; o motivo de indeferimento (D3.01) é dado e
 // fica só no banco, de onde o acervo lê (decisão do Mateus em 08/10).
 // Cada item leva a marca do portal: antes de criar, procura a marca, então reprocessar não duplica (CA3).
-import { and, asc, eq, inArray, isNotNull, isNull, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNotNull, isNull, lt, ne, not, notInArray, or, sql } from 'drizzle-orm'
 import { normalizarCpf } from '@ggv/campos'
 import { nomeTipo } from '../../../web/src/dados/catalogos.ts'
 import type { PastaDrive } from '../../../web/src/dados/tipos.ts'
@@ -11,12 +11,41 @@ import { nomeSemSobrescrever } from '../../../web/src/regras/arquivos.ts'
 import { pastasDoCliente } from '../../../web/src/regras/pasta.ts'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, documento, peticao, peticaoVersao, pessoa, tarefa } from '../banco/esquema.ts'
+import { caso, documento, eventoAuditoria, peticao, peticaoVersao, pessoa, tarefa } from '../banco/esquema.ts'
 import type { Drive, ItemDoDrive, PastasDoDrive } from '../drive.ts'
+import { criarSuporte, type Suporte } from '../suporte.ts'
 import type { ArquivoDoPacote } from './pacote.ts'
 
 export const PASSO_DO_DRIVE = 'D1.18'
 export const TITULO_DA_FALHA = 'Arquivo não foi para o Drive (o portal tenta de novo sozinho)'
+
+// CA1, CA2, CA7, CA8: todo documento do caso vai ao Drive, venha de onde vier (balcão, card, chat), menos o PDF do pacote
+// e o dado de exemplo, que nunca vai para o Drive do escritório. GGVP-158 P4.7: o que chegou pelo card ou pelo chat
+// espera a conferência da Documentação; antes dela, o tipo e o dono ainda são só o que a pessoa anunciou.
+const semCopia = () => and(eq(documento.drivePendente, true), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao'), ne(documento.origem, 'exemplo'))
+const conferidoSeDaRecepcao = () => or(notInArray(documento.origem, ['card', 'chat']), eq(documento.situacao, 'conferido'))
+
+export const DIAS_SEM_COPIA = 2
+
+/**
+ * GGVP-158 P9.4: a cópia dos arquivos é a do Drive (o backup do Supabase não leva o depósito). O documento pronto para o
+ * Drive há mais de 2 dias sem cópia diz que o Drive não está recebendo: um aviso por dia ao suporte (ADR-018), com as
+ * contagens e nunca o nome do cliente nem o do arquivo.
+ */
+export async function avisarSemCopia(banco: Banco, agora: Date, suporte: Suporte = criarSuporte()) {
+  const antigos = and(semCopia(), lt(documento.criadoEm, new Date(agora.getTime() - DIAS_SEM_COPIA * 86_400_000)))
+  const [{ prontos }] = await banco.select({ prontos: count() }).from(documento).where(and(antigos, conferidoSeDaRecepcao()))
+  if (!prontos) return null
+  const alvo = `drive:sem-copia:${dataDeBrasilia(agora)}`
+  const [ja] = await banco.select({ id: eventoAuditoria.id }).from(eventoAuditoria).where(and(eq(eventoAuditoria.acao, 'alarme_suporte'), eq(eventoAuditoria.alvo, alvo))).limit(1)
+  if (ja) return null
+  const [{ esperando }] = await banco.select({ esperando: count() }).from(documento).where(and(antigos, not(conferidoSeDaRecepcao()!)))
+  const outros = esperando ? ` Há também ${esperando} esperando a conferência da Documentação.` : ''
+  const texto = `${prontos} documento(s) pronto(s) para o Drive sem cópia há mais de ${DIAS_SEM_COPIA} dias: o Drive não está recebendo.${outros}`
+  const entregas = await suporte({ titulo: 'Arquivos do portal sem cópia no Drive', texto })
+  await banco.insert(eventoAuditoria).values({ quem: 'sistema', acao: 'alarme_suporte', alvo, quando: agora, detalhe: { prontos, esperando, ...entregas } })
+  return { prontos, esperando, ...entregas }
+}
 
 /** "AAAA-MM-DD" no horário de Brasília (sem horário de verão desde 2019). */
 export const dataDeBrasilia = (quando: Date) => new Date(quando.getTime() - 3 * 3_600_000).toISOString().slice(0, 10)
@@ -84,16 +113,13 @@ export async function sincronizarDrive(banco: Banco, drive: Drive, pastas: Pasta
     return id
   }
 
-  // CA1, CA2, CA7, CA8: todo documento do caso, venha de onde vier (balcão, card, chat), menos o PDF do pacote e o
-  // dado de exemplo, que nunca vai para o Drive do escritório. GGVP-158 P4.7: o que chegou pelo card ou pelo chat espera a
-  // conferência da Documentação; antes dela, o tipo e o dono ainda são só o que a pessoa anunciou.
-  const conferidoSeDaRecepcao = or(notInArray(documento.origem, ['card', 'chat']), eq(documento.situacao, 'conferido'))
+  // O que falta ir ao Drive, pela regra de cima (`semCopia` e `conferidoSeDaRecepcao`).
   const documentos = await banco
     .select({ d: documento, p: { id: pessoa.id, nome: pessoa.nome, cpf: pessoa.cpf, drivePastaId: pessoa.drivePastaId } })
     .from(documento)
     .leftJoin(caso, eq(documento.casoId, caso.id))
     .innerJoin(pessoa, eq(pessoa.id, sql`coalesce(${documento.pessoaId}, ${caso.pessoaId})`))
-    .where(and(eq(documento.drivePendente, true), isNull(documento.excluidoEm), ne(documento.tipo, 'pacote_peticao'), ne(documento.origem, 'exemplo'), conferidoSeDaRecepcao))
+    .where(and(semCopia(), conferidoSeDaRecepcao()))
     .orderBy(asc(documento.criadoEm))
   for (const { d, p } of documentos) {
     try {
