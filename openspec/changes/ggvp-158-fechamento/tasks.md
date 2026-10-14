@@ -675,4 +675,6 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
 
   Verificado em 13/10, em `fluxo/raio-x.test.ts` e `rotas/raio-x.test.ts`: cada indicador com o número de casos, no total e por safra; o cartório e o foro; a data da base; sem base, vazio; o Sócio lê e o Atendimento recebe 403.
 - [ ] 7.14 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
-- [ ] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+- [x] 7.15 Rodar typecheck, lint, testes e Playwright; colar a saída; relatório final ao Mateus.
+
+  Verificado em 13/10, com a main juntada (o #78): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674; API 989 de 996 na suíte inteira (3 pulados), com 4 falhas de testes que contavam todas as chamadas da IA na rodada (a estratégia também prepara), corrigidas e de novo 45/45; Playwright 262/262 na segunda rodada (a primeira achou o teste da jurimetria supondo o acervo parado, corrigido); `openspec validate --all --strict` 16/16.
