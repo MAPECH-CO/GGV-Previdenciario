@@ -674,6 +674,10 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - sem base, vazio.
 
   Verificado em 13/10, em `fluxo/raio-x.test.ts` e `rotas/raio-x.test.ts`: cada indicador com o número de casos, no total e por safra; o cartório e o foro; a data da base; sem base, vazio; o Sócio lê e o Atendimento recebe 403.
+
+  13/10, na revisão do #79: o "Onde julgam" é a taxa por juízo, jurimetria (GGVP-156 CA3, P5.13). Fora do `estudo.ver`, a
+  rota manda a lista vazia; o Financeiro e a líder do Atendimento seguem com os outros indicadores. Teste em
+  `rotas/raio-x.test.ts`.
 - [x] 7.14 Avisar o Pedro: o pedido lista o que muda para as telas, rota por rota.
 
   Feito em 13/10: o pedido #79 lista, rota por rota, o que muda para as telas ("Para o Pedro ligar nas telas"): a estratégia, os valores, a definição do benefício, a Central, o chat e o Raio-X.
