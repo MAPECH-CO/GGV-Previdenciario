@@ -240,9 +240,9 @@ aparece MUST ficar de fora, sem chegar à conferência da advogada.
 - **Quando** o portal monta os itens da entrevista
 - **Então** o telefone fica de fora
 
-### Requirement: A7 · A leitura fora do formato vira falha, não leitura vazia
-A leitura da IA de documento e de ficha em papel SHALL ser falha quando a resposta não é um objeto JSON ou traz tipo errado
-em "legível", "assinado" ou "data em branco". MUST NOT virar leitura "ok" vazia, guardada como pronta.
+### Requirement: A7 · A ficha em papel lida fora do formato vira falha, não leitura vazia
+A leitura da IA da ficha em papel (a de atendimento e a segunda ficha) SHALL ser falha quando a resposta não é um objeto
+JSON. MUST NOT virar leitura "ok" vazia, guardada como pronta, que impede ler a mesma ficha de novo.
 
 #### Scenario: A7 · A IA responde texto solto
 - **Dado** a IA que responde "Não consigo ler esta ficha."

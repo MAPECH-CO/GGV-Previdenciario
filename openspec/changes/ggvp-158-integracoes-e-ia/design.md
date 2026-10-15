@@ -72,10 +72,9 @@
 12. **Entrevista (A6).** O `apareceNaFala` da conversa vale para os dados da ficha. Ficam de fora dele:
     - o "desde", que a IA infere;
     - o documento citado.
-13. **Leitura (A7).**
-    - O `limpar` da ficha devolve vazio quando a resposta não é objeto, e a validação falha.
-    - No contrato `LidoPelaIa`, `legivel`, `assinado` e `dataEmBranco` deixam de trocar o valor errado por um padrão.
-      Ausente, vale o padrão; com tipo errado, é falha.
+13. **Leitura (A7).** O `limpar` da ficha em papel devolve vazio quando a resposta não é objeto, e a validação falha.
+    Assim a chamada fica como falha, e a mesma ficha pode ser lida de novo. O contrato `LidoPelaIa` segue como a P4.1
+    decidiu (o tipo errado vira o padrão); mudar é decisão do Mateus (em "Travadas").
 14. **Leitura de exemplo (A8).** Com `NODE_ENV=production`, a trava vale, como para `AMBIENTE`.
 15. **Eval (A9).**
     - Fica em `apps/api/src/ia/eval/`:
@@ -94,7 +93,6 @@
   continua no servidor.
 - **[Entrevista mais estrita]** Um telefone ditado por extenso ("nove oito sete…") deixa de virar item → a advogada digita.
   A conversa já é assim.
-- **[Contrato da leitura]** A resposta com `legivel: "não"` passa a falhar → a pessoa classifica, como sem IA.
 
 ## Travadas (esperam decisão; não viram código aqui)
 
@@ -124,6 +122,8 @@
   - o download do scanner que falha sempre e segura a marca;
   - a publicação sem CNJ repetida entre DJEN e AASP;
   - a falha do vetor que aparece como "nada parecido no acervo";
-  - o segredo do webhook no log do proxy.
+  - o segredo do webhook no log do proxy;
+  - o contrato da leitura do balcão (`LidoPelaIa`): `legivel: "não"` vira `true` e `assinado: "não"` vira "não pede
+    assinatura", pela P4.1 ("o que vem fora do formato fica vazio"). Tornar o tipo errado uma falha muda essa decisão.
 - **Outra sessão (fluxo e permissões):** a Central mostra os alarmes da vigília a quase todos os perfis, e o link leva a
   `/vigilia`, que pede `vigilia.ver`.

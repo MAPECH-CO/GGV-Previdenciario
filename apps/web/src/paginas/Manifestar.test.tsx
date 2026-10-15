@@ -48,6 +48,16 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
     expect(aprovar.disabled).toBe(false)
   })
 
+  it('GGVP-158 A4 (G22) · a aprovação sem a leitura da IA mostra o aviso de conferir à mão o número de jurimetria', async () => {
+    const aviso = 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'
+    servidor({ ...base, versoes: [versao()] }, [201, { ok: true, aviso }])
+    render(<Manifestar casoId={CASO} />)
+    fireEvent.click(await screen.findByLabelText('Aprovei a versão da manifestação (G6)'))
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar a versão 1' }))
+    expect((await screen.findByRole('status')).textContent).toBe('Versão 1 aprovada.')
+    expect((await screen.findByRole('alert')).textContent).toBe(aviso)
+  })
+
   it('CA3 · protocolar pede o comprovante; com tudo, avisa a volta à vigília', async () => {
     servidor({ ...base, versoes: [versao({ aprovadaPor: 'Gabi', aprovadaEm: '2026-10-05T15:00:00.000Z' })], podeProtocolar: true }, [201, { ok: true, tipo: 'manifestacao' }])
     render(<Manifestar casoId={CASO} />)

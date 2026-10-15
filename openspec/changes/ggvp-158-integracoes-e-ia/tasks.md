@@ -36,18 +36,18 @@
 
 ## GGVP-158 · 5. IA
 
-- [ ] 5.1 A1 · Senha no chat: `apps/api/src/rotas/chat.ts` (a pergunta, as anteriores e a fala). Teste em `src/rotas/chat.test.ts`: o corpo que vai à IA de mentira não tem a senha; a fala transcrita volta sem ela.
-- [ ] 5.2 A2 · Senha no WhatsApp com a mensagem anterior: `apps/api/src/rotas/conversa.ts` (`receberDoWhatsapp`). Teste em `src/rotas/conversa.test.ts`.
-- [ ] 5.3 A3 · Senha no texto do OCR: `apps/api/src/ia/ia.ts` (`lerDocumento`). Teste em `src/ia/ia.test.ts`.
-- [ ] 5.4 A4 · O aviso de G22 na tela da manifestação: `apps/web/src/paginas/Manifestar.tsx`. Teste em `Manifestar.test.tsx`. Antes, conferir os PRs abertos.
-- [ ] 5.5 A5 · O anexo é dado: `REGRAS_DA_IA` em `apps/api/src/ia/ia.ts`. Teste em `src/ia/ia.test.ts`.
-- [ ] 5.6 A6 · A entrevista confere a fala: `apps/api/src/fluxo/transcricao.ts` (`lerEntrevista`). Teste novo em `src/fluxo/transcricao.test.ts`.
-- [ ] 5.7 A7 · A leitura fora do formato é falha: `packages/contratos/src/recepcao.ts` (`LidoPelaIa`) e `apps/api/src/fluxo/leitura.ts` (`semSenha`). Testes em `packages/contratos/src/recepcao.test.ts` e `src/fluxo/leitura.test.ts`.
-- [ ] 5.8 A8 · A leitura de exemplo não sobe em produção: `apps/api/src/servidor.ts`. Teste em `src/servidor.test.ts`.
+- [x] 5.1 A1 · Senha no chat: `apps/api/src/rotas/chat.ts` (a pergunta, as anteriores e a fala). Teste em `src/rotas/chat.test.ts`: o corpo que vai à IA de mentira não tem a senha; a fala transcrita volta sem ela.
+- [x] 5.2 A2 · Senha no WhatsApp com a mensagem anterior: `apps/api/src/rotas/conversa.ts` (`receberDoWhatsapp`). Teste em `src/rotas/conversa.test.ts`.
+- [x] 5.3 A3 · Senha no texto do OCR: `apps/api/src/ia/ia.ts` (`lerDocumento`). Teste em `src/ia/ia.test.ts`.
+- [x] 5.4 A4 · O aviso de G22 na tela da manifestação: `apps/web/src/paginas/Manifestar.tsx`. Teste em `Manifestar.test.tsx`. Antes, conferir os PRs abertos.
+- [x] 5.5 A5 · O anexo é dado: `REGRAS_DA_IA` em `apps/api/src/ia/ia.ts`. Teste em `src/ia/ia.test.ts`.
+- [x] 5.6 A6 · A entrevista confere a fala: `apps/api/src/fluxo/transcricao.ts` (`lerEntrevista`). Teste novo em `src/fluxo/transcricao.test.ts`.
+- [x] 5.7 A7 · A ficha em papel lida fora do formato é falha: `apps/api/src/fluxo/leitura.ts` (`semSenha` devolve vazio quando a resposta não é objeto, e a validação falha). Teste em `src/fluxo/leitura.test.ts`: a resposta solta fica como falha, e a mesma ficha é lida de novo. (O contrato `LidoPelaIa`, que troca o tipo errado por um padrão, ficou em "Travadas": é decisão da P4.1.)
+- [x] 5.8 A8 · A leitura de exemplo não sobe em produção: `apps/api/src/servidor.ts`. Teste em `src/servidor.test.ts`.
 
 ## GGVP-158 · 6. Eval da leitura
 
-- [ ] 6.1 A9 · O eval em `apps/api/src/ia/eval/`:
+- [x] 6.1 A9 · O eval em `apps/api/src/ia/eval/`:
   - `documentos.ts`: 14 documentos inventados com a resposta certa;
   - `leitura.ts`: a nota campo a campo;
   - `pdf-de-texto.ts`: o PDF de texto;

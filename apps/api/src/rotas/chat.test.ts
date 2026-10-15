@@ -7,6 +7,7 @@ import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, doc
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
 import { MODELO_DA_REGRA, MSG_CLIENTE_NAO_ACHADO, MSG_PECA_ANTES_DO_DESPACHO, MSG_SEM_ACESSO } from './chat.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -401,6 +402,37 @@ describe('12/10 · a fala do microfone vira texto (POST /api/chat/fala)', () => 
     const semSaude = await falar('gabi', formulario(Buffer.from([1])))
     expect(semSaude.statusCode).toBe(503)
     expect(semSaude.json().erro).toBe('A transcrição não funcionou: a IA não está autorizada a ler dado de saúde neste ambiente.')
+  })
+})
+
+describe('GGVP-158 A1 · a senha do gov.br sai antes da IA e da tela (G9)', () => {
+  it('a senha digitada na pergunta e a que veio no histórico não chegam ao modelo', async () => {
+    roteiro = [{ role: 'assistant', content: 'Não guarde a senha aqui: use o cofre.' }]
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/chat',
+      cookies: await cookieDe('ana'),
+      payload: { texto: 'a senha é Abc@2024, pode guardar?', anteriores: [{ de: 'pessoa', texto: 'qual a senha dela?' }, { de: 'pessoa', texto: 'Maria@1958' }] },
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    const enviado = JSON.stringify(chamadas.map((c) => c.corpo.messages))
+    expect(enviado).not.toContain('Abc@2024')
+    expect(enviado).not.toContain('Maria@1958')
+    expect(enviado).toContain(SENHA_RETIRADA)
+  })
+
+  it('a senha dita no microfone não volta na caixa de texto', async () => {
+    falaTranscrita = { text: 'a senha do gov é Girassol2024', segments: [{ speaker: 'A', start: 0, end: 2, text: 'a senha do gov é Girassol2024' }] }
+    const fronteira = '----fala'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${fronteira}\r\nContent-Disposition: form-data; name="audio"; filename="fala.webm"\r\nContent-Type: audio/webm\r\n\r\n`),
+      Buffer.from([1, 2, 3, 4]),
+      Buffer.from(`\r\n--${fronteira}--\r\n`),
+    ])
+    const r = await app.inject({ method: 'POST', url: '/api/chat/fala', cookies: await cookieDe('ana'), payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${fronteira}` } })
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json().texto).not.toContain('Girassol2024')
+    expect(r.json().texto).toContain(SENHA_RETIRADA)
   })
 })
 

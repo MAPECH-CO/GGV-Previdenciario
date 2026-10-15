@@ -13,6 +13,7 @@ import { termosDoGlossario } from './glossario.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha, Gravacao, InformacaoExtraida, Papel, Trecho } from '../../../web/src/dados/tipos.ts'
 import { documentosDaEntrevista, erroDaInformacao, relogio, temSenha, tirarSenhas, valorDaInformacao } from '../../../web/src/regras/entrevista.ts'
+import { apareceNaFala, type Mudanca } from '../../../web/src/regras/conversa.ts'
 
 export type Dependencias = { banco: Banco; ia: Ia; armazenamento: Armazenamento }
 
@@ -181,6 +182,9 @@ export async function lerEntrevista({ ia }: Pick<Dependencias, 'ia'>, g: Gravaca
     const campo = tipo === 'documento' || tipo === 'desde' ? undefined : tipo
     const id = `${tipo}-${n}`
     if (!t || temSenha(valor) || erroDaInformacao({ id, campo }, valor)) return []
+    // GGVP-158 A6 (G14): o dado da ficha só entra se aparece na fala que a IA cita, pela regra da conversa (P6.6). Ficam de
+    // fora da regra o documento citado e o "desde", que a IA escreve no formato do cálculo (mês/ano).
+    if (campo && !apareceNaFala(campo as Mudanca['campo'], valor, t.texto)) return []
     const destino = campo ? 'ficha' : tipo === 'documento' ? 'documentacao' : 'processo'
     return [{ id, rotulo: ROTULO_DO_ITEM[tipo], valor: valorDaInformacao({ campo }, valor), destino, ...(campo && { campo }), aos: t.aos, trecho: t.texto }]
   })

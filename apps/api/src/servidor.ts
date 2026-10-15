@@ -183,8 +183,9 @@ export function criarServidor({
   leituraSimulada = process.env.LEITURA_SIMULADA === 'sim',
   drive: driveDado,
 }: Opcoes = {}) {
-  // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo.
-  if (leituraSimulada && !aceitaGanchoDeTeste(process.env)) throw new Error(MSG_LEITURA_SO_NO_TESTE)
+  // GGVP-158 P4.10: a homologação e a produção nunca leem pelo nome do arquivo. A8: a imagem (NODE_ENV=production) também
+  // não, mesmo sem AMBIENTE: a leitura de exemplo nunca se passa por leitura da IA.
+  if (leituraSimulada && (!aceitaGanchoDeTeste(process.env) || process.env.NODE_ENV === 'production')) throw new Error(MSG_LEITURA_SO_NO_TESTE)
   const deTeste = variaveisDeTeste(process.env)
   if (deTeste.length) throw new Error(msgVariavelDeTeste(deTeste))
   // GGVP-158: o log nunca leva o cookie da sessão nem a autorização, mesmo num registro que traga os cabeçalhos.

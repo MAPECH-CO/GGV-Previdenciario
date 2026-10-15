@@ -47,7 +47,7 @@ import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { etapaDaFicha } from '../../../web/src/regras/busca.ts'
 import { recusaDoChat } from '../../../web/src/regras/parecer.ts'
 import { recusaDoChatNaPericia } from '../../../web/src/regras/pericia.ts'
-import { ehAudio } from '../../../web/src/regras/entrevista.ts'
+import { ehAudio, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 import { lerFormulario } from './formulario.ts'
 import { SETOR } from './processo.ts'
 import { UUID } from './recepcao.ts'
@@ -545,7 +545,11 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
     if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
-    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores: entrada.data.anteriores, hoje: x.hoje }, texto)
+    // GGVP-158 A1 (G9): a senha do gov.br sai da pergunta e do histórico antes da IA, pela regra da entrevista: a mensagem
+    // logo depois da que fala de senha também conta ("qual a senha?" e depois só a senha).
+    const limpas = tirarSenhas([...entrada.data.anteriores, { de: 'pessoa' as const, texto }].map((m, i) => ({ aos: i, quem: m.de, papel: 'cliente' as const, texto: m.texto })))
+    const anteriores = entrada.data.anteriores.map((m, i) => ({ ...m, texto: limpas[i].texto }))
+    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores, hoje: x.hoje }, limpas.at(-1)!.texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
       const cartao = await cartaoDaAprovacao(x, rodada.ferramenta, rodada.argumentos)
       if (cartao) {
@@ -599,6 +603,8 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
       const motivo = !ia.ligada ? MSG_IA_DESLIGADA : sensivel && !ia.saudeAutorizada ? MSG_IA_SEM_SAUDE : MSG_IA_SEM_RESPOSTA
       return negar(resposta, 503, `A transcrição não funcionou: ${motivo}.`)
     }
-    return { texto: feita.falas.map((f) => f.texto.trim()).join(' ').trim() } satisfies TextoDaFala
+    // GGVP-158 A1 (G9): a senha dita no microfone não volta para a caixa de texto (nem, dali, para a IA).
+    const falas = tirarSenhas(feita.falas.map((f) => ({ aos: f.inicio, quem: f.falante, papel: 'cliente' as const, texto: f.texto.trim() })))
+    return { texto: falas.map((f) => f.texto).join(' ').trim() } satisfies TextoDaFala
   })
 }

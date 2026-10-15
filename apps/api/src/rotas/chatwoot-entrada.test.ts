@@ -177,6 +177,16 @@ describe('GGVP-158 P6.5 · a mensagem vira conversa do WhatsApp', () => {
     expect(JSON.stringify(await banco.select().from(atendimento))).not.toContain('Exemplo@2026')
   })
 
+  it('GGVP-158 A2 · a pergunta numa mensagem e só a senha na seguinte: a senha sai do texto também (G9)', async () => {
+    montar()
+    await cliente()
+    await entrar(aviso({ id: 21, tipo: 'outgoing', content: 'Para o cofre: qual é a sua senha do gov.br?' }))
+    await entrar(aviso({ id: 22, content: 'Exemplo@2026' }))
+    const g = await gravacaoDa((await conversas())[0].c as { gravacaoId: string })
+    expect(g.trechos.map((t: { texto: string }) => t.texto)).toEqual(['Para o cofre: qual é a sua senha do gov.br?', SENHA_RETIRADA])
+    expect(JSON.stringify(await banco.select().from(atendimento))).not.toContain('Exemplo@2026')
+  })
+
   it('o telefone novo vira lead, com o nome do contato; a resposta do escritório a um número sem ficha não cria lead', async () => {
     montar()
     await entrar(aviso({ id: 41, tipo: 'outgoing', telefone: '+5511966665555', content: 'Olá!' }))
