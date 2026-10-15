@@ -18,3 +18,6 @@ Uma história só é "feita" quando TUDO abaixo é verdade:
 9. Nenhuma mudança de arquitetura sem ADR em `docs/decisoes/`.
 
 "Quase pronto" não existe. Se falta um item, a história não conta na sprint.
+
+Esta lista vale para cada história. O portal inteiro tem a sua definição de pronto na
+[história do sistema](historia-do-sistema.md): a Dona Maria do balcão ao dinheiro, com o login de cada perfil.

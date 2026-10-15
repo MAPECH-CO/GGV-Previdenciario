@@ -21,6 +21,7 @@ Uma parte por vez, na ordem. Cada parte ganha spec e tarefas quando chegar a vez
 7. Telas lidas do banco, acervo e importação. Ajuste do teste do Pedro (14/10): a confirmação da entrevista também vira linha da tabela de tarefas (P7.2).
 8. Auditoria.
 9. Produção, a parte que não depende do Lucas.
+10. A história do sistema: a definição de pronto do portal escrita no repositório, passo a passo por perfil (pedido do Mateus, 15/10).
 
 ## Fora do escopo
 

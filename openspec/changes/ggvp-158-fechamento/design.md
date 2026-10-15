@@ -567,6 +567,23 @@ Decisões do Mateus em 14/10:
     - o backup, a restauração e a chave do cofre;
     - a limpeza do PrevGGVLucas e a mudança da homologação.
 
+### Parte 10 · A história do sistema (pedido do Mateus, 15/10)
+
+Os cartões de fechamento de 11/10 dizem que o portal fica pronto "pela definição de pronto da história do sistema: a Dona Maria do balcão ao dinheiro, com o login de cada perfil". O texto dessa história não está no repositório nem no Jira, só esse resumo. Em 15/10, o Mateus pediu para escrevê-lo no repositório, passo a passo por perfil. Só documentação: sem código, sem migração e sem matriz nova.
+
+86. **A história do sistema fica em `docs/scrum/historia-do-sistema.md`** (P10.1).
+    - Fica ao lado da definição de pronto da história, que aponta para ela, e entra no resumo do Scrum.
+    - Segue o caminho do BPMN em capítulos: o balcão, a entrevista, o contrato e os documentos, o INSS, a perícia, a Justiça, o desfecho e o dinheiro, e o que vale ao longo do caminho.
+    - Cada passo diz:
+      - o perfil que faz, com o próprio login;
+      - o que acontece;
+      - o passo do BPMN, o portão e a fonte da regra.
+
+      Cada capítulo aponta as jornadas do roteiro do teste que o conferem.
+    - Abre com quando o portal está pronto. Fecha com o que fica fora hoje e com o que a produção pede além do código.
+    - Só junta o que já está decidido: os perfis, os portões, o BPMN, o roteiro, os cartões e as respostas do Lucas. Decisão nova não entra; muda primeiro no cartão.
+    - Sem andamento: ele fica no Jira e no roteiro.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.
