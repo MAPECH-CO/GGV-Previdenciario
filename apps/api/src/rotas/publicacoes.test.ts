@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, chamadaIa, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, eventoAuditoria, identificadorCaso, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MOTIVO_SEM_CNJ, casarPublicacoes } from '../vigilia/casar.ts'
@@ -332,6 +332,23 @@ describe('GGVP-74 e GGVP-34 · ler e classificar', () => {
       [`caso:${casoId}`, null],
       [`caso:${casoId}`, 'Dra. Exemplo'],
     ])
+  })
+
+  it('GGVP-158 E1 (15/10) · as publicações são de quem abre o processo: o Atendimento, a líder e a Documentação recebem 403 na publicação e na lista; a advogada lê a sentença, e a leitura fica registrada', async () => {
+    for (const [apelido, perfil] of [['ana', 'atendimento'], ['eva', 'atendimento_lider'], ['dora', 'documentacao'], ['igor', 'juridico_adm']] as const)
+      await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+    const { exigencia: sentenca } = await casar()
+    await banco.update(publicacao).set({ classe: 'merito', texto: 'Sentença: julgo improcedente. O laudo pericial não constatou incapacidade. (exemplo)' }).where(eq(publicacao.id, sentenca.id))
+    for (const apelido of ['ana', 'eva', 'dora']) {
+      expect((await chamar(apelido, 'GET', `/api/publicacoes/${sentenca.id}`)).statusCode, apelido).toBe(403)
+      expect((await chamar(apelido, 'GET', `/api/casos/${casoId}/publicacoes`)).statusCode, apelido).toBe(403)
+    }
+    expect((await banco.select().from(acessoDadoSensivel))).toHaveLength(0)
+    const lida = await chamar('gabi', 'GET', `/api/publicacoes/${sentenca.id}`)
+    expect([lida.statusCode, lida.json().texto]).toEqual([200, 'Sentença: julgo improcedente. O laudo pericial não constatou incapacidade. (exemplo)'])
+    expect((await chamar('igor', 'GET', `/api/casos/${casoId}/publicacoes`)).statusCode).toBe(200)
+    const registros = await banco.select({ perfil: acessoDadoSensivel.perfil, casoId: acessoDadoSensivel.casoId, recurso: acessoDadoSensivel.recurso }).from(acessoDadoSensivel)
+    expect(registros).toEqual([{ perfil: 'advogada', casoId, recurso: `publicacao:${sentenca.id}` }])
   })
 
   it('só quem pode classifica; o Financeiro nem abre', async () => {

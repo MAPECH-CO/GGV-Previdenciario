@@ -46,6 +46,7 @@ import { criarChecklist } from './recepcao-checklist.ts'
 import { criarCobranca } from './recepcao-cobranca.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
+export const MSG_CONFIRMACAO_NA_SENIOR = 'A confirmação passou do limite de tentativas e está com a advogada sênior (G15).'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
 export const MSG_DESISTENCIA = 'A desistência é do lead, na entrevista marcada.'
 
@@ -196,6 +197,11 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   // A cópia das telas: as fichas da Recepção, as tarefas abertas, os compromissos internos e as gravações, ao abrir cada
   // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a). GGVP-158 P8.1: quando vai,
   // a leitura fica registrada, uma linha por abertura (a lista leva as gravações de todos).
+  const semValores = (contrato: ContratoGuardado['contrato'], perfil: string | null): ContratoGuardado['contrato'] => {
+    if (pode(perfil, 'contrato.conduzir') || pode(perfil, 'valores.ver')) return contrato
+    const { percentualHonorarios: _percentual, acordo: _acordo, ...resto } = contrato
+    return resto
+  }
   app.get('/api/recepcao', ver, async (pedido) => {
     const todas = await fichasDaRecepcao()
     const checklists = await checklistsDas(todas)
@@ -207,7 +213,9 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       tarefas: await tarefas(),
       internos: await internos(),
       gravacoes: lista,
-      contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
+      // GGVP-158 E2 (15/10): o percentual de honorários e o acordo são valores (perfis.md): só quem conduz o contrato
+      // (Atendimento) ou vê valores (Financeiro e Sócio) os recebe; a Documentação, o Jurídico adm, a advogada e a Sênior, não.
+      contratos: (await banco.select().from(contratoRecepcao)).map((c) => semValores((c.dados as ContratoGuardado).contrato, pedido.perfilAtivo)),
       // Bloco 5b: as leituras dos documentos, para a conferência e as tarefas da Documentação.
       leituras: await leiturasDe(),
       // Bloco 5c: o checklist de cada caso, calculado no servidor (o kit do escritório, o acidente e a criança do banco), as
@@ -496,6 +504,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       return negar(resposta, 400, 'Esta entrevista não espera confirmação.')
     const proxima = a.confirmacao?.proximaEm
     if (r.resultado === 'sem-resposta' && proxima && proxima > hoje()) return negar(resposta, 400, `A próxima tentativa é em ${dataCurta(proxima, hoje())}.`)
+    // GGVP-158 E4 (15/10): passou do limite, a decisão é da Sênior (G15); o Atendimento não registra outra tentativa, como na cobrança.
+    if (r.resultado === 'sem-resposta' && a.confirmacao?.naSenior) return negar(resposta, 409, MSG_CONFIRMACAO_NA_SENIOR)
 
     const quem = await nomeDe(pedido)
     const confirmacao = (a.confirmacao ??= { tentativas: [] })

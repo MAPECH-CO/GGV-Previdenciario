@@ -165,8 +165,9 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/desfecho$/, tela: (id) => <Exige acao="caso.ver"><ConfirmarDesfecho casoId={id} /></Exige> },
   // GGVP-100: a Sênior decide se recorre; a advogada responsável e o Sócio só leem.
   { padrao: /^\/casos\/([0-9a-f-]{36})\/recurso$/, tela: (id) => <Exige acao="recurso.ver"><DecidirRecurso casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },
-  { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
+  // GGVP-158 E1 (15/10): as publicações são da página do processo (GGVP-162): o Jurídico e o Sócio; a sentença pode trazer laudo.
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="processo.abrir"><PublicacoesDoProcesso casoId={id} /></Exige> },
+  { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="processo.abrir"><LerPublicacao publicacaoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <Exige acao="caso.ver"><AnalisarExigenciaJuiz casoId={id} /></Exige> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <Exige acao="exigencia_juiz.cumprir"><CumprirExigenciaJuiz casoId={id} /></Exige> },
   // A manifestação é peça jurídica: só o Jurídico (GGVP-96; perfis.md, o Atendimento e a Documentação nunca veem petição).
@@ -241,6 +242,12 @@ const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
   [/^\/clientes\/[^/]+\/cadastro$/, 'entrevista.gravar'],
   // G15: a cobrança que passou do limite, a Sênior decide (a mesma decisão do complemento ao médico).
   [/^\/casos\/[^/]+\/cobranca\/decidir$/, 'complemento.decidir'],
+  // GGVP-158 E7 (15/10): a dispensa do parecer é da Sênior (G17); as outras telas de passo da documentação médica, do
+  // checklist, da liberação, da perícia do caso e dos roteiros abrem só para quem vê o caso (o Financeiro, não). O servidor
+  // segue decidindo o que cada perfil recebe nelas.
+  [/^\/casos\/[^/]+\/parecer\/dispensa$/, 'caso.aprovar_para_inss'],
+  [/^\/casos\/[^/]+\/(parecer|laudo-novo|complemento|deficiencia|checklist|liberar|pericia)$/, 'caso.ver'],
+  [/^\/roteiros(\/|$)/, 'caso.ver'],
   // Perícia (DP): as mesmas ações que o servidor exige em cada passo.
   [/^\/juridico-administrativo$/, 'pericia.marcar'],
   [/^\/casos\/[^/]+\/pericia\/aberta$/, 'pericia.decidir'],

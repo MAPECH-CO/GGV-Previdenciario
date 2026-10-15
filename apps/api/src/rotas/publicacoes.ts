@@ -3,7 +3,7 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { ClassificarPublicacao, LeituraDaPublicacaoPelaIa, PublicacaoParaLer, PublicacoesDoCaso, SugestaoDePublicacao, VincularPublicacao, pode, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, pessoa, prazo, publicacao, publicacaoReclassificacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, pessoa, prazo, publicacao, publicacaoReclassificacao, tarefa, usuario } from '../banco/esquema.ts'
 import { feriadosDoProcesso } from '../fluxo/prazo-judicial.ts'
 import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
@@ -87,11 +87,15 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
     return SugestaoDePublicacao.parse({ sugestao: { ...lida, chamadaId: s.chamadaId, modelo: s.modelo, alerta: s.alerta }, motivo: null })
   }
 
-  // GGVP-74 CA4 e GGVP-34 CA3: a publicação, a classificação e o prazo contado (com a regra e a versão).
-  app.get<{ Params: { id: string } }>('/api/publicacoes/:id', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+  // GGVP-74 CA4 e GGVP-34 CA3: a publicação, a classificação e o prazo contado (com a regra e a versão). GGVP-158 E1 (15/10): as
+  // publicações são da página do processo (GGVP-162), do Jurídico e do Sócio; a sentença pode trazer laudo ou CID, e a leitura
+  // de mérito fica registrada, como no desfecho.
+  app.get<{ Params: { id: string } }>('/api/publicacoes/:id', { preHandler: exigir(banco, 'processo.abrir', agora) }, async (pedido, resposta) => {
     const [p] = await banco.select().from(publicacao).where(eq(publicacao.id, pedido.params.id))
     if (!p || !p.casoId) return negar(resposta, 404, 'Publicação não encontrada.')
     const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, p.casoId))
+    if (p.classe === 'merito' || p.classeSugeridaIa === 'merito')
+      await banco.insert(acessoDadoSensivel).values({ usuarioId: pedido.usuario!.id, perfil: pedido.perfilAtivo!, casoId: p.casoId, recurso: `publicacao:${p.id}`, quando: agora() })
     return PublicacaoParaLer.parse({
       id: p.id,
       casoId: p.casoId,
@@ -160,8 +164,8 @@ export function registrarRotasPublicacoes(app: FastifyInstance, { banco, agora =
     },
   )
 
-  // GGVP-74 CA5, CA7: as publicações do processo, com a classificação, quem leu e o prazo.
-  app.get<{ Params: { id: string } }>('/api/casos/:id/publicacoes', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+  // GGVP-74 CA5, CA7: as publicações do processo, com a classificação, quem leu e o prazo. GGVP-158 E1: só quem abre o processo.
+  app.get<{ Params: { id: string } }>('/api/casos/:id/publicacoes', { preHandler: exigir(banco, 'processo.abrir', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const [c] = await banco.select({ nome: pessoa.nome }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')

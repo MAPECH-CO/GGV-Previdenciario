@@ -109,6 +109,16 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Rita Exemplo · Dar parecer médico' })).toBeTruthy()
   })
 
+  it('GGVP-158 E7 (15/10) · a dispensa do parecer é da Sênior: o Atendimento vê "Sem permissão"; a Sênior abre', async () => {
+    zerarExemplo()
+    render(<App caminho="/casos/rita-exemplo-1/parecer/dispensa" />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
+    cleanup()
+    servidorResponde(200, senior)
+    render(<App caminho="/casos/rita-exemplo-1/parecer/dispensa" />)
+    expect(await screen.findByRole('heading', { level: 1, name: /Dispensar o parecer/ })).toBeTruthy()
+  })
+
   it('GGVP-29 · em /casos/:id/complemento abre o pedido de complemento; sem pedido, avisa', async () => {
     zerarExemplo()
     render(<App caminho="/casos/rita-exemplo-1/complemento" />)
@@ -230,10 +240,11 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' })).toBeTruthy()
   })
 
-  it('GGVP-162 CA1 · o processo é do Jurídico e do Sócio: o Atendimento, a líder e a Documentação veem "Sem permissão" na página, na lista e no histórico', async () => {
+  it('GGVP-162 CA1 · o processo é do Jurídico e do Sócio: o Atendimento, a líder e a Documentação veem "Sem permissão" na página, na lista, no histórico e nas publicações (GGVP-158 E1)', async () => {
     zerarExemplo()
+    const id = '00000000-0000-4000-8000-000000000001'
     for (const perfil of ['atendimento', 'atendimento_lider', 'documentacao']) {
-      for (const caminho of ['/casos/antonio-exemplo-1', '/processos', '/casos/00000000-0000-4000-8000-000000000001/historico']) {
+      for (const caminho of ['/casos/antonio-exemplo-1', '/processos', `/casos/${id}/historico`, `/casos/${id}/publicacoes`, `/publicacoes/${id}`]) {
         servidorResponde(200, { ...usuario, perfis: [perfil], perfilAtivo: perfil })
         render(<App caminho={caminho} />)
         expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), `${perfil} em ${caminho}`).toBeTruthy()
@@ -296,7 +307,22 @@ describe('App', () => {
       cleanup()
     }
     soASessao('financeiro')
-    for (const caminho of ['/gestao/prazos', '/gestao/tentativas', '/gestao/cofre', '/configuracao']) {
+    // GGVP-158 E7 (15/10): as telas de passo sem trava também ficam no "Sem permissão" de quem não vê o caso.
+    for (const caminho of [
+      '/gestao/prazos',
+      '/gestao/tentativas',
+      '/gestao/cofre',
+      '/configuracao',
+      '/casos/rita-exemplo-1/checklist',
+      '/casos/rita-exemplo-1/parecer',
+      '/casos/rita-exemplo-1/parecer/dispensa',
+      '/casos/antonio-exemplo-1/laudo-novo',
+      '/casos/rita-exemplo-1/complemento',
+      '/casos/cleide-exemplo-1/deficiencia',
+      '/casos/sebastiao-exemplo-1/liberar',
+      '/casos/rita-exemplo-1/pericia',
+      '/roteiros',
+    ]) {
       render(<App caminho={caminho} />)
       expect(await screen.findByRole('heading', { level: 1, name: 'Sem permissão' }), caminho).toBeTruthy()
       cleanup()

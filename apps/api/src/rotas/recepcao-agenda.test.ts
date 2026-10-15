@@ -5,6 +5,7 @@ import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, configuracao, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { MSG_CONFIRMACAO_NA_SENIOR } from './recepcao-agenda.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -127,6 +128,27 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     // A sênior consegue falar com o lead: a tarefa dela sai.
     await json('helena', 'POST', url, { resultado: 'confirmou', canal: 'ligacao', jaPreencheuFicha: true })
     expect(await tarefasAbertas()).toEqual(['Preparar entrevista · Jurídico'])
+  })
+
+  it('GGVP-158 E3 e E4 (15/10) · a escalada da confirmação é tarefa da Sênior, na fila dela; depois de subir, o Atendimento não registra outra tentativa; confirmada, a linha some', async () => {
+    const joana = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(joana, { data: '2026-10-20' })
+    const url = `/api/agendamentos/${agendamento.id}/confirmacao`
+    const filaDaSenior = async () =>
+      (await json('helena', 'GET', '/api/tarefas')).map((t: { titulo: string; tela: string | null; urgente: boolean; cliente: { id: string } | null }) => [t.titulo, t.tela, t.urgente, t.cliente?.id])
+    await json('ana', 'POST', url, { resultado: 'sem-resposta', canal: 'mensagem' })
+    expect(await filaDaSenior()).toEqual([])
+    relogio = new Date('2026-10-11T15:00:00Z')
+    expect(await json('ana', 'POST', url, { resultado: 'sem-resposta', canal: 'ligacao' })).toMatchObject({ tentativa: 2, naSenior: true })
+    // E3: a Sênior vê a escalada na própria fila (G15), com a tela da agenda; a advogada, não.
+    expect(await filaDaSenior()).toEqual([['Confirmar agendamento', '/agenda?ver=lista', true, joana]])
+    expect((await json('gabi', 'GET', '/api/tarefas')).map((t: { titulo: string }) => t.titulo)).toEqual([])
+    // E4: depois de subir, o Atendimento não registra outra tentativa (409), como na cobrança.
+    const outra = await chamar('ana', 'POST', url, { resultado: 'sem-resposta', canal: 'mensagem' })
+    expect([outra.statusCode, outra.json().erro]).toEqual([409, MSG_CONFIRMACAO_NA_SENIOR])
+    // A Sênior confirma: a linha sai da fila dela.
+    await json('helena', 'POST', url, { resultado: 'confirmou', canal: 'ligacao', jaPreencheuFicha: true })
+    expect(await filaDaSenior()).toEqual([])
   })
 
   it('GGVP-158 P5.3 · a confirmação usa os limites da Configuração: com 3 tentativas a cada 2 dias, a segunda não sobe', async () => {
