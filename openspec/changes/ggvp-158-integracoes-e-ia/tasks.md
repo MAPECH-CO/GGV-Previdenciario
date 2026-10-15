@@ -69,4 +69,7 @@
     do projeto e dá "download" para todo `<a download>`, também numa página em branco, sem o portal. A CI instala o certo;
   - `openspec validate --all --strict`: esta change é válida; 15 de 17. As 2 que falham (ggvp-12 e ggvp-6, requisito sem
     SHALL na primeira linha) já vieram assim da `main` e são de outros épicos: ficam no relatório, sem mexer aqui.
-- [ ] 7.3 Trazer a `main` por merge, resolver conflitos e abrir o PR "GGVP-158: ..." com o template, sem mesclar.
+- [x] 7.3 Trazer a `main` por merge, resolver conflitos e abrir o PR "GGVP-158: ..." com o template, sem mesclar.
+
+  Feito em 15/10: a `main` (`e49d510`) já era a base, sem conflito; o PR é o #101, "GGVP-158: integrações e IA sem falso
+  sucesso", para o revisor revisar e mesclar.
