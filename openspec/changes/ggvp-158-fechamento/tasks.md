@@ -813,10 +813,16 @@ As tarefas 9.6 a 9.10 esperam o aceite do Lucas em todas as histórias (Mateus, 
 
 Pedido do Mateus em 15/10: escrever no repositório a definição de pronto do portal, que os cartões de fechamento citam, passo a passo por perfil. Só documentação, na branch `docs/GGVP-158-historia-do-sistema`.
 
-- [ ] 10.1 A história do sistema (P10.1, decisão 86): `docs/scrum/historia-do-sistema.md`.
+- [x] 10.1 A história do sistema (P10.1, decisão 86): `docs/scrum/historia-do-sistema.md`.
   - Confere:
     - cada passo tem o perfil, o passo do BPMN e a fonte da regra;
     - cada capítulo aponta as jornadas do roteiro;
     - nenhuma decisão nova e nenhum dado de cliente.
-- [ ] 10.2 Os links: a definição de pronto da história e o resumo do Scrum apontam para ela, e os links relativos do texto abrem.
-- [ ] 10.3 `openspec validate --all --strict`; pedido para a main; relatório ao Mateus.
+
+  Feito em 15/10: 8 capítulos e 51 passos, cada um com o perfil, o passo do BPMN, o portão e a fonte. Abre com quando o portal está pronto e quem é quem (os logins de teste); fecha com o que fica fora hoje e o que a produção pede. Conferido contra a main: a prestação é da Sênior (#96), a página do processo é do Jurídico e do Sócio (GGVP-162), e os títulos das tarefas são os do servidor ("Trazer a resposta do INSS", "Despachar caso", "Prestar contas", "Acompanhar pagamento", a ida ao banco). Os dados são só os de teste do roteiro.
+- [x] 10.2 Os links: a definição de pronto da história e o resumo do Scrum apontam para ela, e os links relativos do texto abrem.
+
+  Verificado em 15/10: os 10 links relativos da história e da definição de pronto da história abrem.
+- [x] 10.3 `openspec validate --all --strict`; pedido para a main; relatório ao Mateus.
+
+  Verificado em 15/10: `openspec validate --all --strict` 16/16.
