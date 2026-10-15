@@ -34,7 +34,7 @@ A barra do topo SHALL mostrar a marca "GGV Previdenciário", os botões da funç
 - **Então** vejo a marca "GGV Previdenciário", os botões da função com o da página atual aceso, a ação principal da função (no Atendimento, "+ Novo cliente"), os botões de tema e de fonte e o nome da função de quem está logado (Figma `11:2`)
 
 ### Requirement: CA4 · Linha da tarefa na fila
-Cada tarefa de uma fila SHALL mostrar o código do passo do BPMN, o nome do cliente (ou o contexto, quando não há cliente), a ação, o detalhe na linha de baixo e o prazo. A linha MUST abrir o passo e o nome MUST abrir a ficha, em links separados. Tarefa urgente MUST vir com a cor de ação e avisar o leitor de tela.
+Cada tarefa de uma fila SHALL mostrar o código do passo do BPMN, o nome do cliente (ou o contexto, quando não há cliente), a ação, o detalhe na linha de baixo e o prazo. A linha MUST abrir o passo e o nome MUST abrir a ficha, em links separados. Tarefa urgente MUST vir com a cor de ação e avisar o leitor de tela. Tarefa sem tela própria (Pedro, 14/10) SHALL abrir a ficha do cliente e, sem cliente, a linha MUST NOT virar link; nenhuma tarefa MUST levar à "tela não construída", na fila nem na busca. A fila MUST NOT trazer tarefa de exemplo fixa sem tela: a tarefa de verdade vem do servidor.
 
 #### Scenario: CA4 · Ver uma tarefa na fila
 - **Dado** uma tarefa numa fila
@@ -42,6 +42,11 @@ Cada tarefa de uma fila SHALL mostrar o código do passo do BPMN, o nome do clie
 - **Então** mostra o código do passo do BPMN, o nome do cliente (ou o contexto, quando não há cliente), a ação, o detalhe na linha de baixo e o prazo
 - **E** a linha abre o passo e o nome abre a ficha, em links separados
 - **E** tarefa urgente vem com a cor de ação e avisa o leitor de tela
+
+#### Scenario: CA4 · Tarefa sem tela própria (Pedro, 14/10)
+- **Dado** uma tarefa sem tela própria, como a que o chat cria sem processo
+- **Quando** clico na linha, na fila ou na busca
+- **Então** abre a ficha do cliente, e, sem cliente, a linha não é link; nunca a "tela não construída"
 
 ### Requirement: CA5 · Central do Atendimento como vitrine das peças
 A raiz `/` SHALL abrir a Central do Atendimento montada com as peças, como no Figma `11:2`, com dados fictícios: busca com nome acessível; chat "✦ Pergunte ou peça" com sugestões, em que clicar na sugestão MUST preencher o campo sem enviar e enviar sem servidor MUST avisar e manter o texto; abas "Minhas tarefas" e "Tarefas do setor", que trocam no clique e nas setas do teclado; a fila; a aba "✦ Suporte".
