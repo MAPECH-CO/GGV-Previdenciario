@@ -34,7 +34,7 @@ Este arquivo é o resumo. O guia completo, parte por parte, está em `guia-scrum
 - **Release 1**: D1 de ponta a ponta com a governança médica, e a conferência do sênior do D2. Data a fechar na abertura.
 
 ## Compromissos
-- Definition of Ready: `definition-of-ready.md`. Definition of Done: `definition-of-done.md`.
+- Definition of Ready: `definition-of-ready.md`. Definition of Done: `definition-of-done.md`. Definição de pronto do portal: `historia-do-sistema.md`.
 - Limite de WIP: cada dev tem no máximo duas histórias em andamento.
 - Métricas que o SM acompanha: histórias aceitas por sprint, PRs com revisão, tempo de PR aberto até merge, impedimentos abertos.
 

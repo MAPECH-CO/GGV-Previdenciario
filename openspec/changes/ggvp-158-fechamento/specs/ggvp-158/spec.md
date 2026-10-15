@@ -1252,3 +1252,15 @@ O monitor SHALL olhar o `/saude` da produção a cada minuto, de um container à
 #### Scenario: P9.5 · A produção caiu e voltou
 - **Dado** o /saude falhou duas vezes seguidas e voltou cinco minutos depois
 - **Então** o suporte recebe "O portal caiu", com o motivo, e depois "O portal voltou", com o tempo fora
+
+### Requirement: P10.1 · A definição de pronto do portal escrita, passo a passo por perfil
+O repositório SHALL ter a história do sistema em `docs/scrum/historia-do-sistema.md`: o caminho da Dona Maria do balcão ao dinheiro, em capítulos, com o perfil que faz cada passo com o próprio login, a regra ou o portão que vale e as jornadas do roteiro que conferem. A definição de pronto da história e o resumo do Scrum MUST apontar para ela. O texto MUST NOT trazer decisão nova: cada regra cita a fonte, e o que espera alguém aparece com quem decide.
+
+#### Scenario: P10.1 · Saber se o portal está pronto
+- **Dado** alguém da equipe quer saber se o portal está pronto
+- **Quando** abre a definição de pronto da história ou o resumo do Scrum
+- **Então** acha a história do sistema, e nela o caminho inteiro, com quem faz cada passo, a regra e como conferir
+
+#### Scenario: P10.1 · O que ficou para depois
+- **Dado** um passo que o Lucas deixou para depois, como o acompanhamento da RPV e do precatório
+- **Então** a história diz que ele fica fora hoje, com a data e quem decidiu
