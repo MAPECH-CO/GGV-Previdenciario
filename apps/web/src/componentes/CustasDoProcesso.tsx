@@ -26,7 +26,6 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
   const [erros, setErros] = useState<Record<string, string>>({})
   const [aviso, setAviso] = useState('')
   const [falha, setFalha] = useState('')
-  const [recusando, setRecusando] = useState<{ id: string; motivo: string; erro: string } | null>(null)
   const travado = useRef(false)
   const idArquivo = useId()
 
@@ -80,15 +79,6 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
       setForm({ ...VAZIO, data: form.data })
       setArquivo(null)
       setAviso(r.dados.situacao === 'aprovado' ? 'Custo lançado e já aprovado.' : 'Enviado ao Financeiro. Conta no lucro depois que ele aprovar.')
-      await carregar()
-    })
-
-  const decidir = (id: string, qual: 'aprovacao' | 'recusa', motivo?: string) =>
-    umaVez(async () => {
-      const r = await chamarApi(`/casos/${casoId}/custas/${id}/${qual}`, { method: 'POST', corpo: motivo === undefined ? {} : { motivo } })
-      if (!r.ok) return qual === 'recusa' && recusando ? setRecusando({ ...recusando, erro: r.erro }) : setFalha(r.erro)
-      setRecusando(null)
-      setAviso(qual === 'aprovacao' ? 'Custo aprovado: passa a contar no lucro.' : 'Custo recusado. Fica no histórico e não conta no lucro.')
       await carregar()
     })
 
@@ -162,31 +152,16 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
                   </td>
                   {custas.podeAprovar && (
                     <td>
-                      {l.situacao === 'esperando' &&
-                        (recusando?.id === l.id ? (
-                          <span className={styles.recusa}>
-                            <Campo id={`motivo-${l.id}`} rotulo="Motivo da recusa" valor={recusando.motivo} aoMudar={(motivo) => setRecusando({ ...recusando, motivo, erro: '' })} erro={recusando.erro} />
-                            <button
-                              type="button"
-                              className={passo.atalho}
-                              onClick={() => (recusando.motivo.trim() ? void decidir(l.id, 'recusa', recusando.motivo) : setRecusando({ ...recusando, erro: 'Diga o motivo da recusa.' }))}
-                            >
-                              Confirmar a recusa
-                            </button>
-                            <button type="button" className={base.link} onClick={() => setRecusando(null)}>
-                              Voltar
-                            </button>
-                          </span>
-                        ) : (
-                          <span className={styles.botoes}>
-                            <button type="button" className={passo.atalho} onClick={() => void decidir(l.id, 'aprovacao')}>
-                              Aprovar
-                            </button>
-                            <button type="button" className={passo.atalho} onClick={() => setRecusando({ id: l.id, motivo: '', erro: '' })}>
-                              Recusar com motivo
-                            </button>
-                          </span>
-                        ))}
+                      {l.situacao === 'esperando' && (
+                        <DecisaoDoCusto
+                          casoId={casoId}
+                          custoId={l.id}
+                          aoDecidir={(texto) => {
+                            setAviso(texto)
+                            void carregar()
+                          }}
+                        />
+                      )}
                     </td>
                   )}
                 </tr>
@@ -244,5 +219,67 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
       {aviso && <p role="status">{aviso}</p>}
       <p className={base.nota}>Só conta no lucro depois que o Financeiro aprova. O custo não entra na prestação de contas do cliente.</p>
     </section>
+  )
+}
+
+/** Aprovar, ou recusar com o motivo pedido antes de confirmar (CA3). Na tela de quem aprova: o card e a visão do Financeiro. */
+export function DecisaoDoCusto({ casoId, custoId, aoDecidir }: { casoId: string; custoId: string; aoDecidir: (aviso: string) => void }) {
+  const [motivo, setMotivo] = useState<string | null>(null)
+  const [erro, setErro] = useState('')
+  const travado = useRef(false)
+
+  async function decidir(qual: 'aprovacao' | 'recusa') {
+    if (travado.current) return
+    if (qual === 'recusa' && !motivo?.trim()) return setErro('Diga o motivo da recusa.')
+    travado.current = true
+    try {
+      const r = await chamarApi(`/casos/${casoId}/custas/${custoId}/${qual}`, { method: 'POST', corpo: qual === 'recusa' ? { motivo } : {} })
+      if (!r.ok) return setErro(r.erro)
+      setMotivo(null)
+      setErro('')
+      aoDecidir(qual === 'aprovacao' ? 'Custo aprovado: passa a contar no lucro.' : 'Custo recusado. Fica no histórico e não conta no lucro.')
+    } finally {
+      travado.current = false
+    }
+  }
+
+  if (motivo === null)
+    return (
+      <span className={styles.botoes}>
+        <button type="button" className={passo.atalho} onClick={() => void decidir('aprovacao')}>
+          Aprovar
+        </button>
+        <button type="button" className={passo.atalho} onClick={() => setMotivo('')}>
+          Recusar com motivo
+        </button>
+        {erro && <span className={styles.erroCampo}>{erro}</span>}
+      </span>
+    )
+  return (
+    <span className={styles.recusa}>
+      <Campo
+        id={`motivo-${custoId}`}
+        rotulo="Motivo da recusa"
+        valor={motivo}
+        aoMudar={(m) => {
+          setMotivo(m)
+          setErro('')
+        }}
+        erro={erro}
+      />
+      <button type="button" className={passo.atalho} onClick={() => void decidir('recusa')}>
+        Confirmar a recusa
+      </button>
+      <button
+        type="button"
+        className={base.link}
+        onClick={() => {
+          setMotivo(null)
+          setErro('')
+        }}
+      >
+        Voltar
+      </button>
+    </span>
   )
 }

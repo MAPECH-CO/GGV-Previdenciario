@@ -14,7 +14,7 @@ import { ChatDoPortal } from '../componentes/ChatDoPortal.tsx'
 import { baixarCsv, comTodos, plural } from '../dados/bases.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
-import { hojeIso } from '../regras/datas.ts'
+import { hojeIso, nomeDoMes, rotuloDoMes } from '../regras/datas.ts'
 import { usePode } from '../sessao.ts'
 import { CampoDaBusca, Etiqueta, Filtro, MolduraDaBase } from './Base.tsx'
 import bases from './Bases.module.css'
@@ -24,10 +24,6 @@ import styles from './Financeiro.module.css'
 // (GET /api/financeiro); a tela só desenha. O que o banco não guarda (mensalidades, RPV, precatório, honorários previstos
 // da safra, o "+ Lançamento" avulso) não aparece. O Sócio vê os totais; as linhas de cada cliente, só quem vê valores.
 
-const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
-const nomeDoMes = (mes: string) => MESES[Number(mes.slice(5, 7)) - 1]
-/** "2026-09" → "set/2026". */
-const rotuloDoMes = (mes: string) => `${nomeDoMes(mes).slice(0, 3)}/${mes.slice(0, 4)}`
 const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 const compacto = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })
 

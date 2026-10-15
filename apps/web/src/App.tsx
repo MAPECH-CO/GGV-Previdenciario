@@ -103,6 +103,7 @@ import { CentralSenior } from './paginas/CentralSenior.tsx'
 import { CentralFinanceiro } from './paginas/CentralFinanceiro.tsx'
 import { InicioDoSocio } from './paginas/InicioDoSocio.tsx'
 import { Financeiro } from './paginas/Financeiro.tsx'
+import { Custas } from './paginas/Custas.tsx'
 
 // Roteamento mínimo, com poucas telas. Entra um roteador de verdade junto com as telas de passo (GGVP-86).
 // Só "Entrar" e o guia de tokens (sem dado) abrem sem sessão; o resto confere a sessão no servidor primeiro (GGVP-117).
@@ -190,6 +191,9 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Exige acao="processo.abrir"><Historico casoId={id} /></Exige> },
   // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
   { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
+  // GGVP-157: as custas dos processos, para quem vê valores (o Financeiro e o Sócio), e o detalhe de um processo.
+  { padrao: /^\/custas$/, tela: () => <Exige acao="valores.ver"><Custas /></Exige> },
+  { padrao: /^\/custas\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="custas.ver"><Custas casoId={id} /></Exige> },
 ]
 
 function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; perfil: string }) {

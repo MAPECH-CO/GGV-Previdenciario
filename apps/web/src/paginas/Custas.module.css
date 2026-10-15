@@ -1,0 +1,46 @@
+/* Custas dos processos (GGVP-157): a visão do Financeiro e dos sócios. Só tokens de design/; a tabela é a das bases. */
+.secao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.titulo {
+  font-size: var(--fonte-15);
+  font-weight: 700;
+}
+
+.nota {
+  display: block;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.positivo {
+  color: var(--cor-ok);
+}
+
+.negativo {
+  color: var(--cor-erro);
+}
+
+.esperando {
+  color: var(--cor-alerta);
+}
+
+.total th,
+.total td {
+  border-top: 2px solid var(--cor-linha);
+  font-weight: 700;
+  text-align: left;
+}
+
+.total td {
+  text-align: right;
+}
