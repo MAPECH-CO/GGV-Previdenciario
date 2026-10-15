@@ -21,7 +21,7 @@ export type DocumentacaoMedicaDoServidor = { fichas: Ficha[]; tarefas: Tarefa[];
 
 export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: Opcoes) {
   const { banco, agora = () => new Date() } = opcoes
-  const { acharCaso } = criarCasoMedico(banco, agora)
+  const { acharCaso, tarefas: daRecepcao } = criarCasoMedico(banco, agora)
   const { emDia } = criarParecerDoCaso(opcoes)
   const { montar } = criarComplementoDoCaso(opcoes)
 
@@ -41,12 +41,14 @@ export function registrarRotasDocumentacaoMedica(app: FastifyInstance, opcoes: O
     const fichas = new Map<string, Ficha>()
     const tarefas: Tarefa[] = []
     const portoes: Record<string, Parecer> = {}
+    // CA6 (Pedro, 14/10): o "Analisar laudo novo" que nasceu com o laudo, na Recepção, vale; a segunda linha não nasce aqui.
+    const abertas = new Set((await daRecepcao()).map((t) => t.id))
     for (const id of await casosComDocumentacao()) {
       const c = await acharCaso(id)
       if (!c) continue
       fichas.set(c.ficha.id, c.ficha)
       const { p, laudoNovoEm } = await emDia(c, { semChamar: true })
-      tarefas.push(...tarefasDoCaso({ ficha: c.ficha, processo: c.processo, p, ...(laudoNovoEm && { laudoNovoEm }), hoje }))
+      tarefas.push(...tarefasDoCaso({ ficha: c.ficha, processo: c.processo, p, ...(laudoNovoEm && { laudoNovoEm }), hoje, cardJaAbriu: abertas.has(`laudo-${c.ficha.id}`) }))
       const portao = parecerDoPortao(p)
       // GGVP-158 P8.6: a justificativa da dispensa é texto livre e pode citar a doença: só quem vê dado de saúde lê.
       if (portao) portoes[id] = veSaude ? portao : { ...portao, justificativa: undefined }

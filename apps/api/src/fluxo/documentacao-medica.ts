@@ -4,8 +4,8 @@
 import { and, eq } from 'drizzle-orm'
 import type { FastifyRequest } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, documentacaoMedica, type PARTES_DOCUMENTACAO_MEDICA } from '../banco/esquema.ts'
-import { UUID, criarFichario } from '../rotas/recepcao.ts'
+import { caso, contratoRecepcao, documentacaoMedica, type PARTES_DOCUMENTACAO_MEDICA } from '../banco/esquema.ts'
+import { UUID, criarFichario, type ContratoGuardado } from '../rotas/recepcao.ts'
 import type { Ficha, Processo } from '../../../web/src/dados/tipos.ts'
 
 export const MSG_CASO_NAO_ENCONTRADO = 'Caso não encontrado.'
@@ -34,6 +34,25 @@ export function criarCasoMedico(banco: Banco, agora: () => Date) {
     await fichario.guardar(ficha)
   }
 
+  /**
+   * CA6 (Pedro, 14/10): o parecer registrado conferiu o laudo novo. Conclui "Analisar laudo novo", que nasceu com o laudo
+   * (uma por ficha), e limpa a marca "Laudo novo" da ficha e do processo no contrato da Recepção. Sem laudo novo, nada muda.
+   */
+  async function laudoConferido(c: CasoMedico) {
+    await fichario.concluirTarefas(c.pessoaId, 'Analisar laudo novo', `laudo-${c.ficha.id}`)
+    const [ficha] = await fichario.fichas([c.pessoaId])
+    if (ficha?.laudoNovoEm) {
+      delete ficha.laudoNovoEm
+      await fichario.guardar(ficha)
+    }
+    const [linha] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, c.id))
+    const g = linha?.dados as ContratoGuardado | undefined
+    if (g?.processo.laudoNovoEm) {
+      const { laudoNovoEm: _, ...processo } = g.processo
+      await banco.update(contratoRecepcao).set({ dados: { ...g, processo }, atualizadoEm: agora() }).where(eq(contratoRecepcao.casoId, c.id))
+    }
+  }
+
   async function lerParte<T>(casoId: string, parte: Parte): Promise<T | undefined> {
     const [l] = await banco
       .select({ documento: documentacaoMedica.documento })
@@ -49,5 +68,5 @@ export function criarCasoMedico(banco: Banco, agora: () => Date) {
       .onConflictDoUpdate({ target: [documentacaoMedica.casoId, documentacaoMedica.parte], set: { documento, atualizadoEm: agora() } })
   }
 
-  return { acharCaso, anotar, nomeDe: fichario.nomeDe, fichas: fichario.fichas, lerParte, gravarParte }
+  return { acharCaso, anotar, laudoConferido, nomeDe: fichario.nomeDe, fichas: fichario.fichas, tarefas: fichario.tarefas, lerParte, gravarParte }
 }

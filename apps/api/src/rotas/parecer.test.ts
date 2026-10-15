@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, fichaRecepcao, parecerMedico, pessoa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, fichaRecepcao, parecerMedico, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -182,6 +182,32 @@ describe('GGVP-132 · o parecer no servidor (GGVP-20)', () => {
     // O Suficiente encerra o complemento que estava aberto.
     const [complemento] = await banco.select().from(documentacaoMedica).where(eq(documentacaoMedica.parte, 'complemento'))
     expect((complemento.documento as { encerrado?: { porque: string } }[])[0].encerrado?.porque).toBe('parecer-suficiente')
+  })
+
+  it('CA6 (Pedro, 14/10) · o laudo que chega abre "Analisar laudo novo" uma vez só; o registro do parecer fecha a tarefa e tira a marca da ficha', async () => {
+    const casoId = await novoCaso('bpc_loas_deficiente')
+    await laudo(casoId, RITA, '2026-08-20')
+    let { analise } = (await ver('gabi', casoId)).json().juridico
+    await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: analise.quando, conferidos: conforme(analise), decisao: 'insuficiente', abordar: 'Qual a previsão de duração do quadro?' })
+    // O laudo novo chega como a Recepção registra (avisarLaudoNovo): a marca na ficha e a tarefa do Jurídico.
+    agora = new Date('2026-10-09T13:00:00Z')
+    await laudo(casoId, TUDO_DO_LOAS, '2026-10-01')
+    const [linha] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, pessoaId))
+    await banco.update(fichaRecepcao).set({ documento: { ...(linha.documento as object), laudoNovoEm: '2026-10-09' } }).where(eq(fichaRecepcao.pessoaId, pessoaId))
+    const tarefa = { id: `laudo-${pessoaId}`, codigo: 'D1.21M', cliente: { id: pessoaId, nome: 'Rita Exemplo' }, acao: 'Analisar laudo novo', detalhe: '', href: `/casos/${casoId}/laudo-novo`, processoId: casoId, setor: 'Jurídico' }
+    await banco.insert(tarefaRecepcao).values({ id: tarefa.id, pessoaId, setor: 'Jurídico', dados: tarefa })
+    const doCaso = async () =>
+      ((await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('gabi') })).json().tarefas as { id: string; acao: string }[]).filter((t) => t.acao === 'Analisar laudo novo')
+    // Uma linha só: a da Recepção vale, e a do caso não nasce em dobro.
+    expect(await doCaso()).toEqual([])
+
+    ;({ analise } = (await ver('gabi', casoId)).json().juridico)
+    await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: analise.quando, conferidos: conforme(analise), decisao: 'suficiente' })
+    const [fechada] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, tarefa.id))
+    expect(fechada.concluidaEm).not.toBeNull()
+    const [ficha] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, pessoaId))
+    expect((ficha.documento as { laudoNovoEm?: string }).laudoNovoEm).toBeUndefined()
+    expect(await doCaso()).toEqual([])
   })
 
   it('régua documental (sem laudo) não entra no parecer médico', async () => {
