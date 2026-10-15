@@ -977,7 +977,8 @@ Estas tarefas, que a Central do Atendimento calcula no navegador, SHALL ser linh
 - "Cobrar documento" e "Decidir cobrança" (D1.23);
 - "Conferir checklist" (D1.21);
 - "Reenviar boas-vindas" (D1.22);
-- as do fechamento (D1.14).
+- as do fechamento (D1.14);
+- "Confirmar se a entrevista aconteceu" (D1.03): o compromisso da ficha cujo dia passou sem registro (realizado, falta ou desistência), uma linha por pessoa, com o prazo no dia do mais antigo (teste do Pedro, 14/10: a tarefa só existia na tela, e o chat não a via).
 
 O servidor MUST abrir e fechar cada linha a cada mudança do que a origina, com a pessoa e o caso, quando há. A Central geral SHALL mostrar também a tarefa da pessoa que ainda não tem caso.
 
@@ -995,6 +996,16 @@ O servidor MUST abrir e fechar cada linha a cada mudança do que a origina, com 
 - **Dado** o lead entrevistado, ainda sem caso
 - **Quando** a entrevista termina sem o fechamento registrado
 - **Então** a tarefa do fechamento aparece na Central do Atendimento, da pessoa, sem caso
+
+#### Scenario: P7.2 · A entrevista que passou sem registro
+- **Dado** o lead com a entrevista de 08/10, sem "realizado" nem "faltou"
+- **Quando** o dia 09/10 chega
+- **Então** nasce a linha "Confirmar se a entrevista aconteceu" do Atendimento, da pessoa, com o prazo em 08/10, e a Central não a repete pela conta da tela
+
+#### Scenario: P7.2 · A entrevista marcada como realizada
+- **Dado** a linha "Confirmar se a entrevista aconteceu" aberta
+- **Quando** o Atendimento marca a entrevista como realizada ou como falta
+- **Então** a linha fecha
 
 ### Requirement: P7.3 · O chat só cria tarefa e só pede a peça quando pode
 Criar tarefa pelo chat SHALL ser só de quem tem `tarefa.atribuir` (a Sênior e o líder do Atendimento). Pedir a peça pelo chat MUST esperar o despacho da Sênior:

@@ -35,6 +35,8 @@ describe('Terceiro não se passa pelo cliente (GGVP-111)', () => {
     expect(erroDosDadosBancarios({ banco: 'Banco Exemplo', agencia: '1', conta: '12345-6' })).toMatch(/^Agência/)
     expect(erroDosDadosBancarios({ banco: 'Banco Exemplo', agencia: '0001', conta: '123456' })).toMatch(/^Conta/)
     expect(erroDosDadosBancarios({ banco: '', agencia: '0001', conta: '12345-6' })).toBe('Escreva o banco.')
+    // CA9 (Pedro, 14/10): pela biblioteca de campos, com o dígito da agência e o X da conta.
+    expect(erroDosDadosBancarios({ banco: 'Banco Exemplo', agencia: '0001-9', conta: '1234-X' })).toBeNull()
     expect(podeConfirmarSegunda('atendimento-lider', 'Carla (exemplo)', 'Ana (exemplo)')).toBeNull()
     expect(podeConfirmarSegunda('advogada', 'Dra. Paula (exemplo)', 'Ana (exemplo)')).toBeNull()
     expect(podeConfirmarSegunda('atendimento', 'Ana (exemplo)', 'Ana (exemplo)')).toBe('A segunda confirmação é de outra pessoa, não de quem pediu.')

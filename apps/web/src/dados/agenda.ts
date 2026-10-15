@@ -109,8 +109,9 @@ export async function eventosDaAgenda(de: string, ate: string): Promise<EventoDa
 /** Entrevista que passou sem registro: a Central do Atendimento lembra de confirmar se aconteceu (CA8). */
 export function tarefasDeConfirmar(): Tarefa[] {
   return eventosDoBanco(ler(), hojeIso(agora()))
-    // A perícia que passou é do Jurídico administrativo (o comparecimento, GGVP-66), não do Atendimento.
-    .filter((e) => e.estado === 'confirmar' && e.fichaId && e.categoria !== 'pericias')
+    // A perícia que passou é do Jurídico administrativo (o comparecimento, GGVP-66), não do Atendimento. A ficha do
+    // servidor já vem na Central pela linha do servidor (GGVP-158 P7.2, teste do Pedro de 14/10): não repete aqui.
+    .filter((e) => e.estado === 'confirmar' && e.fichaId && e.categoria !== 'pericias' && !doServidor(e.fichaId))
     .map((e) => ({
       id: `confirmar-${e.id}`,
       codigo: 'D1.03',

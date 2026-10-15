@@ -1,6 +1,7 @@
 import type { Agendamento } from '../dados/tipos.ts'
 import { emAberto } from '../regras/busca.ts'
 import { dataCurta } from '../regras/datas.ts'
+import { usePode } from '../sessao.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './Reunioes.module.css'
 
@@ -13,15 +14,19 @@ function proximaReuniao(agendamentos: Agendamento[], hoje: string): string {
   return `Próxima: ${quando} · ${proxima.oQue}${proxima.com ? ` com ${proxima.com}` : ''}.`
 }
 
-/** "Reuniões" (Figma 73:366): a próxima e o botão de reunião com transcrição. */
-export function Reunioes({ agendamentos, hoje }: { agendamentos: Agendamento[]; hoje: string }) {
+/** "Reuniões" (Figma 73:366): a próxima e o botão de marcar a reunião com transcrição. */
+export function Reunioes({ fichaId, agendamentos, hoje }: { fichaId: string; agendamentos: Agendamento[]; hoje: string }) {
+  // GGVP-123 CA10 (Pedro, 14/10): o botão leva à marcação, a mesma do "Marcar entrevista" (no Figma, "Marcar reunião"), com
+  // a opção de gravar e transcrever; só para quem marca. Iniciar na hora segue em "Iniciar conversa" e na tela da entrevista.
+  const marca = usePode('ficha.editar')
   return (
     <Cartao titulo="Reuniões">
       <p className={styles.proxima}>{proximaReuniao(agendamentos, hoje)}</p>
-      {/* Reunião com transcrição é de outra história: avisa que está indisponível. */}
-      <button type="button" className={styles.botao} aria-disabled="true">
-        Marcar e iniciar reunião (com transcrição)
-      </button>
+      {marca && (
+        <a className={styles.botao} href={`/agenda/marcar/${fichaId}`}>
+          Marcar reunião (com transcrição)
+        </a>
+      )}
     </Cartao>
   )
 }

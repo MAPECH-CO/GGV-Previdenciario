@@ -1,5 +1,12 @@
 // As mensagens ao cliente (GGVP-102): o catálogo de modelos e o que o texto não pode ter. Regra, não IA.
+import { nomeBeneficio } from '../dados/catalogos.ts'
 import { problemaG20 } from './parecer.ts'
+
+/** CA11 (Pedro, 14/10): o nome do benefício só quando ele é conhecido; "Não sei ainda" nunca vai ao cliente. */
+export const beneficioParaOCliente = (id: string | undefined) => (id && id !== 'nao-sei' ? nomeBeneficio(id) : '')
+export const MSG_DADO_EM_ABERTO = 'O texto tem «Não sei ainda» no lugar do benefício: tire antes de enviar.'
+/** O benefício em aberto no meio da frase ("Seu caso de Não sei ainda"); "Não sei ainda" começando a frase é fala de gente. */
+const DADO_EM_ABERTO = /\bde Não sei ainda\b/
 
 export type IdDoModelo =
   | 'convite'
@@ -73,6 +80,7 @@ export function problemasDaMensagem(texto: string): { bloqueia: string[]; avisa:
     PEDE_SENHA.test(texto) && 'O escritório nunca pede a senha do gov.br por mensagem (G9).',
     G11.test(texto) && 'Nunca oriente a esconder ou mudar a situação real (G11).',
     problemaG20(texto),
+    DADO_EM_ABERTO.test(texto) && MSG_DADO_EM_ABERTO,
   ].filter((x): x is string => Boolean(x))
   const longas = texto.split(/[.!?]+/).filter((f) => f.trim().split(/\s+/).length > PALAVRAS_POR_FRASE).length
   const avisa = [
