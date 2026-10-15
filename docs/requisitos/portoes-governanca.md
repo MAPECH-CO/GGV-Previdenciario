@@ -11,7 +11,7 @@ Cada portão abaixo vira critério de aceite nas histórias indicadas. Nenhum po
 | G5 | Quem analisa a exigência do juiz e define o setor são os advogados, não a IA | D3a, atenção | GGVP-79 |
 | G6 | A advogada assina o conteúdo da petição; se não está boa, a IA faz outra versão | D3 | GGVP-67 |
 | G7 | Três travas antes de protocolar na Justiça: Tema 350, pacote completo e CPF conferido | D3, atenção | GGVP-71 |
-| G8 | O aviso ao cliente só nasce depois do OK da advogada na prestação de contas | D3b, dica | GGVP-92, GGVP-98 |
+| G8 | O aviso ao cliente só nasce depois do OK da Sênior na prestação de contas (Mateus, 14/10; antes, da advogada) | D3b, dica | GGVP-92, GGVP-98, GGVP-44 |
 | G9 | A senha do gov.br vai para o cofre; nunca fica em texto transcrito nem em campo de texto | D1 e D5 | GGVP-40, GGVP-103 |
 | G10 | A conversa gravada começa com o aviso de gravação | D5, atenção | GGVP-76 |
 | G11 | A orientação da perícia social nunca orienta a esconder ou mudar a situação real da casa | DP, atenção | GGVP-61 |

@@ -79,3 +79,9 @@
 - [x] 7.9 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 - [x] 7.10 CA13 (orquestrador, 09/10) · `GET` e `POST /api/casos/:id/prestacao`: com `caso.advogadaResponsavelId`, só a advogada responsável vê e dá o OK; outra advogada recebe 403 e a recusa vai ao histórico; o Financeiro e o caso sem responsável seguem como estão; teste em `prestacao.test.ts`; verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/prestacao.test.ts`.
 - [x] 7.11 Rodar typecheck, lint e testes; colar a saída.
+- [ ] 7.12 CA13 (Mateus, 14/10) · Matriz: `prestacao.ver` = Financeiro, Sênior e Sócio; `prestacao.dar_ok` = Sênior; `VERSAO_MATRIZ` 33 e a impressão digital no `permissoes.test.ts`.
+- [ ] 7.13 CA13 · Servidor: as tarefas do D2.06 nascem para a Sênior (`vigilia.ts`, `prestacao.ts`, semente em `exemplo.ts`); o Financeiro espera o OK da Sênior (`financeiro.ts`); sai a regra da advogada responsável (`deOutraAdvogada`); a Sênior vê os valores da prestação enquanto o caso está nela (`podeVerValor`, `valores.ts`, `processo.ts`); testes em `prestacao.test.ts`, `financeiro.test.ts`, `valores.test.ts`, `processo.test.ts`, `vigilia.test.ts` e `regras/caso.test.ts`.
+- [ ] 7.14 CA13 · Textos do G8 e da prestação: "OK da Sênior" na mensagem do G8, no chat, nas telas da prestação, do Financeiro, da vigília e do recebimento; testes que conferem esses textos.
+- [ ] 7.15 Playwright: a Sênior conclui a prestação, onde antes era a advogada (`via-administrativa.e2e.ts` e os outros que fazem a prestação).
+- [ ] 7.16 Homologação: as tarefas do D2.06 abertas com a advogada passam para a Sênior, por um update pontual só com o ok do Mateus (serviço externo). **Fica aberta.**
+- [ ] 7.17 Rodar typecheck, lint e testes; colar a saída; relatório final.
