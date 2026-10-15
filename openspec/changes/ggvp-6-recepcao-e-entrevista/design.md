@@ -161,6 +161,8 @@ A tela normaliza ao digitar (letra não entra em CPF, telefone e idade), valida 
 
 O "Entregar documento" do balcão deixa de navegar: encaminha, e a Documentação recebe a tarefa na Central do Atendimento, que abre a tela do passo.
 
+**A pasta no card (CA16, teste do Pedro, 14/10).** O cadastro, o scanner (`fluxo/scanner.ts`) e o arquivamento (`fluxo/arquivar.ts`) gravam a pasta em `pessoa.drive_pasta_id`; a ficha (`fichas()`, `rotas/recepcao.ts`) passa a ler dali, com a da ficha guardada como reserva. O cartão "Documentos pessoais" diz se há pasta, para todos; o link "Abrir a pasta no Drive" (`https://drive.google.com/drive/folders/:id`, em outra aba) só aparece para quem tem `dado_saude.ver_detalhe` (o Jurídico), porque a pasta guarda os laudos (CA9). Decisão do Mateus em 14/10. Abrir cada documento é da sessão "Ajuste X2 PDF" (componente único); quando chegar à main, os itens do cartão passam a usá-lo.
+
 ### Contrato (Zod, vai para `packages/contratos/documentos.ts`)
 
 ```ts

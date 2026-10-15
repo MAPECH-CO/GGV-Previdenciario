@@ -9,7 +9,7 @@ A pessoa chega ao escritório, é reconhecida no balcão, marca e faz a entrevis
 Uma história por vez, nesta ordem (fluxo D1 do Miro, decisão do Pedro em 05/10, revista no mesmo dia, no lugar da lista de `kit/entrega-09-10.md`). Antes de cada uma, reler o cartão: se o cartão e o Figma divergirem, vale o cartão. As que mexem com senha começam numa sessão nova.
 
 1. GGVP-16 · Reconhecer quem chegou e para quê
-2. GGVP-17 · Receber documento entregue no balcão
+2. GGVP-17 · Receber documento entregue no balcão. Ajuste do teste do Pedro (14/10): o card diz se há pasta no Drive, e o Jurídico entra nela (CA16).
 3. GGVP-123 · Marcar a entrevista e a agenda. Ajuste do teste do Pedro (14/10): o botão do cartão "Reuniões" da ficha leva à marcação (CA10).
 4. GGVP-21 · Confirmar o agendamento do lead
 5. GGVP-24 · Preencher a ficha de atendimento · mexe com senha: sessão nova

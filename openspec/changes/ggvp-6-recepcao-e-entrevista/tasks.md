@@ -26,6 +26,9 @@
 - [x] 2.10 Playwright `e2e/receber-documento.e2e.ts`: do balcão à tarefa, papel no scanner simulado e "Registrar" (CA1, CA2, CA5, CA10), lote em revisão (CA4), laudo pela ficha e pelo chat até "aguarda a análise" (CA6, CA8, CA9), mesmo nome vira "(2)" (CA13), tema escuro e fonte grande na tela do passo e na janela. Verifica com `npm run e2e`.
 - [ ] 2.11 Ligar no servidor: trocar o corpo das funções novas de `src/dados/servidor.ts` por `fetch` nos endpoints da `design.md`, receber o aviso do n8n e gravar no Drive de verdade. Depende do GGVP-118, do banco do Mateus e da GGVP-107 (Fernando). **Fica aberta nesta história.**
 - [x] 2.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 2.13 CA16 (teste do Pedro, 14/10) · Servidor: a ficha traz a pasta do cadastro da pessoa (`pessoa.drive_pasta_id`), onde o cadastro, o scanner e o arquivamento gravam. Teste da rota da ficha; verifica com `pnpm --filter @ggv/api test`.
+- [ ] 2.14 CA16 · O cartão "Documentos pessoais" diz se há pasta no Drive, para todos, e mostra "Abrir a pasta no Drive" só a quem tem `dado_saude.ver_detalhe`. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 2.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-123 · Marcar a entrevista e a agenda
 

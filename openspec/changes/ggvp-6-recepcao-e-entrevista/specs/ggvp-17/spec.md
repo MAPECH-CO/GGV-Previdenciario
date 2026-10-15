@@ -129,3 +129,19 @@ Ficha criada pela automação do scanner chega sem telefone, porque o scanner n�
 - **Dado** uma ficha criada pela automação do scanner
 - **Quando** ela chega sem telefone (o scanner não lê telefone)
 - **Então** o portal aceita e mostra "completar telefone" para o Atendimento
+
+### Requirement: CA16 · O card diz se o cliente tem pasta no Drive e o Jurídico entra nela
+Teste do Pedro (14/10): no card do cliente não dava para saber se havia pasta no Google Drive, nem entrar nela; a pasta criada pelo scanner ou pelo arquivamento nem chegava à ficha.
+- O cartão "Documentos pessoais" SHALL dizer, para todos que veem a ficha, se o cliente tem pasta no Drive ("Pasta no Drive: ligada" ou "Sem pasta no Drive ainda").
+- O link "Abrir a pasta no Drive" SHALL aparecer só para quem vê dado de saúde (o Jurídico), porque a pasta guarda os laudos (CA9; decisão do Mateus em 14/10).
+- A ficha SHALL trazer a pasta que o cadastro, o scanner ou o arquivamento ligou ao cliente.
+
+#### Scenario: CA16 · A pasta criada pelo scanner
+- **Dado** o cliente cuja pasta o scanner criou
+- **Quando** o Atendimento abre a ficha
+- **Então** o cartão diz "Pasta no Drive: ligada", sem o link
+
+#### Scenario: CA16 · A advogada entra na pasta
+- **Dado** o cliente com pasta no Drive
+- **Quando** a advogada abre a ficha
+- **Então** o cartão tem "Abrir a pasta no Drive", que abre a pasta do cliente em outra aba
