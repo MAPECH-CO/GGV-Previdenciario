@@ -37,6 +37,7 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from '.
 export const MSG_GRAVACAO_NAO_ENCONTRADA = 'Gravação não encontrada.'
 export const MSG_ENTREVISTA_NAO_ENCONTRADA = 'Entrevista não encontrada.'
 export const MSG_SEM_AVISO = 'Avise o cliente que a conversa será gravada antes de gravar (G10).'
+export const MSG_SEM_AVISO_DE_FORA = 'Confirme que a gravação começou com o aviso de gravação (G10).'
 const CANAIS_DA_CONVERSA = ['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']
 
 const ESTADO_DEPOIS: Partial<Record<AcaoNaGravacao['acao'], Gravacao['estado']>> = {
@@ -240,7 +241,8 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     return salvar(g, ficha, tarefa)
   })
 
-  // CA9, CA10: o áudio gravado fora do portal, de qualquer formato e tamanho, vai para a transcrição.
+  // CA9, CA10: o áudio gravado fora do portal, de qualquer formato e tamanho, vai para a transcrição. GGVP-158 P8.5: só com a
+  // confirmação de que a gravação começou com o aviso ao cliente (G10), como a ligação da conversa.
   app.post<{ Params: { id: string } }>('/api/entrevistas/:id/audio', gravar, async (pedido, resposta) => {
     // GGVP-133 CA2: o arquivo de verdade (a gravação da ligação baixada da conversa do Chatwoot, ou outro áudio de fora)
     // vira documento na pasta do cliente e vai para a transcrição. O portal não busca nada no Chatwoot.
@@ -248,8 +250,9 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       if (!real) return negar(resposta, 503, MSG_SEM_ARMAZENAMENTO)
       const formulario = await lerFormulario(pedido)
       if (!formulario) return negar(resposta, 400, MSG_AUDIO_GRANDE)
-      const arquivo = formulario.arquivo
+      const { arquivo, campos } = formulario
       if (!arquivo || !ehAudio({ nome: arquivo.nome, tipo: arquivo.mime })) return negar(resposta, 400, 'Esse arquivo não é de áudio.')
+      if (campos.avisoNaGravacao !== 'sim') return negar(resposta, 400, MSG_SEM_AVISO_DE_FORA)
       const achadoDeFora = await acharAgendamento(pedido.params.id)
       if (!achadoDeFora) return negar(resposta, 404, MSG_ENTREVISTA_NAO_ENCONTRADA)
       const { ficha, agendamento } = achadoDeFora
@@ -259,7 +262,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       g.audio = { nome: arquivo.nome, formato: formatoDo(arquivo.nome), tamanho: arquivo.conteudo.length, partes: 1, documentos: [{ id, inicio: 0 }] }
       acao(g, 'subiu-arquivo', 0)
       const tarefa = await fecharEntrevista(ficha, agendamento, g)
-      ficha.historico.push(evento(`Subiu o áudio da entrevista gravado fora do portal (${arquivo.nome}); foi para a transcrição`, await nomeDe(pedido)))
+      ficha.historico.push(evento(`Subiu o áudio da entrevista gravado fora do portal (${arquivo.nome}), com o aviso de gravação confirmado (G10); foi para a transcrição`, await nomeDe(pedido)))
       return salvar(g, ficha, tarefa)
     }
     // Só o nome do arquivo não é áudio guardado: sem o arquivo, nada fica no caso (nada de áudio de mentira).
