@@ -11,12 +11,13 @@
 - **G22:** `FORMATOS_DA_JURIMETRIA` (`packages/contratos/src/ia.ts`) não casa "dos/das".
 - **Perícia:** `ProcessoPericia.tsx` decide o conteúdo médico por uma lista fixa (`JURIDICO`) sem o Sócio; o servidor decide por `dado_saude.ver_detalhe`.
 - **Checklist e leitura:** `POST /api/processos/:id/checklist/conferencia` e as decisões da leitura (`rotas/recepcao-documentos.ts`) usam `ficha.editar`; `ConferirChecklist.tsx` mostra "Concluir a conferência" a quem abre; o e2e das boas-vindas confere como Atendimento num caso da semente.
+- **Papel assinado do servidor:** `dados/anexoEmPapel.ts` manda o contrato pela rota genérica da pasta (`POST /api/fichas/:id/arquivos` + `conteudo`), que não liga o arquivo à assinatura; `ColherAssinatura.tsx` desliga "Concluir a assinatura" no caso do servidor ("aguarda a vinculação"). A rota `POST /api/processos/:id/contrato/digitalizacao` (multipart, desde 14/10, P4.4) guarda o arquivo como documento do caso e o liga à assinatura; `assinatura-em-papel` conclui.
 
 ## Goals / Non-Goals
 
 **Goals:** cada erro da spec corrigido no servidor (a trava é dele), a tela refletindo, com o teste que falhava antes; a matriz muda uma vez (v35), por último, sobre a main mais nova.
 
-**Non-Goals:** regra de negócio nova; a assinatura em papel do caso do servidor (tela do Pedro); o botão "Olhei, sem novidade" na tela; o modo misto da cópia das telas; Chatwoot, Drive, IA e acervo.
+**Non-Goals:** regra de negócio nova; o botão "Olhei, sem novidade" na tela; o modo misto da cópia das telas; Chatwoot, Drive, IA e acervo.
 
 ## Decisions
 
@@ -30,10 +31,12 @@
 8. **E8: o padrão aceita "dos/das"** nos dois lugares (depois do % e entre o número e a unidade), mais "% dos casos" sem contagem. "25% dos honorários" e "acréscimo de 25%" seguem passando (a unidade não é da lista).
 9. **E9: `pode(perfil, 'dado_saude.ver_detalhe')`** no lugar da lista fixa, pela sessão.
 10. **E10: duas ações novas na matriz** (`checklist.conferir`, `documento.conferir`: `['documentacao']`), versão 35, com a impressão digital nova no teste. A tela do checklist esconde o botão por `usePerfil` (o padrão sem sessão segue Documentação, como os testes de unidade esperam). O e2e das boas-vindas entra como Documentação para conferir e volta ao Atendimento para a mensagem.
+11. **E11: a tela usa a rota do contrato que já existe.** `anexarPapel` com `tipo: 'contrato'` manda o arquivo em FormData para `/processos/:id/contrato/digitalizacao`; a ficha de atendimento segue pelas duas rotas da pasta. `AnexarPapel` ganha `aoGuardar`, e a tela recarrega o contrato: o anexo aparece ligado e "Concluir a assinatura" habilita, chamando `assinatura-em-papel` como no exemplo. Sem rota nova: a regra (G1, só conclui com o arquivo) já é do servidor.
 
 ## Risks / Trade-offs
 
 - [E1 tira a publicação de quem tinha `caso.ver` e precisava?] → ninguém: a leitura (D3a.01) é da advogada; a exigência do juiz vai aos setores pela própria exigência, não pela publicação.
 - [E3 duas linhas para a mesma escalada no quadro do setor] → o quadro já junta por id; a linha nova tem id `confirmar-senior-<pessoa>`, diferente da da tabela da Recepção (`confirmar-senior-<agendamento>`); a Sênior vê as duas só no quadro, uma na fila.
 - [E10 quebra teste que confere como Atendimento] → só o e2e das boas-vindas (dois testes) e nenhum teste do servidor (todos usam a Documentação); os dois trocam de login.
+- [E11 mexe em tela do Pedro] → só o ramo do servidor de três arquivos fora de qualquer PR aberto (conferido em 15/10); o e2e do kit de verdade, que afirmava o botão desligado, passa a concluir.
 - [Matriz v35 e outra sessão] → a versão sobe por último, depois de trazer a main; conflito resolvido no merge.

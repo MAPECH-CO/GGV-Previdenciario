@@ -90,3 +90,11 @@ A conferência do checklist (D1.21) e as decisões da conferência da leitura (a
 - **Dado** o Atendimento no checklist de um caso
 - **Quando** chama a rota da conferência ou abre a tela
 - **Então** a API responde 403, e a tela não mostra o botão de concluir; a Documentação conclui e o histórico diz quem
+
+### Requirement: E11 · O papel assinado do caso do servidor conclui a assinatura na tela
+No contrato do caso do servidor, a tela de colher assinatura SHALL mandar o contrato assinado digitalizado pela rota do contrato (`POST /api/processos/:id/contrato/digitalizacao`), que guarda o arquivo como documento do caso e o liga à assinatura. Com o arquivo ligado, "Concluir a assinatura" SHALL habilitar e concluir pela rota da assinatura em papel; sem o arquivo, segue desligado (G1).
+
+#### Scenario: E11 · O Atendimento guarda o papel assinado e conclui
+- **Dado** o contrato de um caso do servidor com o kit impresso
+- **Quando** o Atendimento guarda o PDF ou a foto do contrato assinado e clica "Concluir a assinatura"
+- **Então** o arquivo fica na pasta do cliente, ligado à assinatura, e o contrato segue para a leitura

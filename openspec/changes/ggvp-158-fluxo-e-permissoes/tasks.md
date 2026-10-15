@@ -1,6 +1,6 @@
 # Tasks
 
-<!-- Uma história (GGVP-158), um requisito por erro (E1 a E10), na ordem: contrato → teste → servidor → tela → Playwright.
+<!-- Uma história (GGVP-158), um requisito por erro (E1 a E11), na ordem: contrato → teste → servidor → tela → Playwright.
      A matriz (E10) muda por último, sobre a main mais nova. O Mateus autorizou seguir sem esperar o "ok" (15/10). -->
 
 ## GGVP-158 · Fluxo de ponta a ponta e permissões por perfil (15/10)
@@ -18,4 +18,7 @@
 - [x] 1.11 E10 · Trazer a main; `packages/contratos/src/permissoes.ts` versão 35 com `checklist.conferir` e `documento.conferir` (`['documentacao']`); digital nova em `permissoes.test.ts`. Verifica com `pnpm --filter @ggv/contratos exec vitest run src/permissoes.test.ts`.
 - [x] 1.12 E10 · `apps/api/src/rotas/recepcao-checklist.ts` e `recepcao-documentos.ts`: as rotas com as ações novas. Testes em `recepcao-checklist.test.ts` e `recepcao-documentos.test.ts` (Atendimento 403; Documentação segue). Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/recepcao-checklist.test.ts src/rotas/recepcao-documentos.test.ts`.
 - [x] 1.13 E10 · `apps/web/src/paginas/ConferirChecklist.tsx`: o botão só para a Documentação, com a nota para os outros. Teste em `ConferirChecklist.test.tsx` (o Atendimento não vê o botão). Playwright: `apps/web/e2e/boas-vindas.e2e.ts` confere como Documentação e manda as boas-vindas como Atendimento. Verifica com `pnpm --filter @ggv/web exec vitest run src/paginas/ConferirChecklist.test.tsx` e `pnpm --filter @ggv/web exec playwright test e2e/boas-vindas.e2e.ts e2e/checklist.e2e.ts`.
-- [ ] 1.14 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 1.14 E11 · `apps/web/src/dados/anexoEmPapel.ts`: o contrato assinado vai por `POST /api/processos/:id/contrato/digitalizacao` (multipart, campo `arquivo`); `AnexarPapel` avisa a tela ao guardar (`aoGuardar`); `ColherAssinatura.tsx` habilita "Concluir a assinatura" com o arquivo ligado. Teste em `apps/web/src/dados/anexoEmPapel.test.ts` (o contrato pela rota do contrato, em FormData; a ficha de atendimento pelas duas rotas da pasta). Playwright: `apps/web/e2e/kit-de-verdade.e2e.ts` (guardar o papel assinado e concluir). Verifica com `pnpm --filter @ggv/web exec vitest run src/dados/anexoEmPapel.test.ts` e `pnpm --filter @ggv/web exec playwright test e2e/kit-de-verdade.e2e.ts e2e/anexo-em-papel.e2e.ts e2e/colher-assinatura.e2e.ts`.
+
+  Verificado em 15/10: `anexoEmPapel.test.ts` 5/5 (com `ColherAssinatura`, `ColherAssinaturaKit` e `FichaAtendimento`, 30/30 nos quatro arquivos); typecheck e lint da tela sem erro novo. Playwright: `anexo-em-papel` e `colher-assinatura` 6/6. `kit-de-verdade` falha neste contêiner antes de chegar à assinatura, no nome do arquivo baixado ("download" em vez de "Kit do contrato - versão 1.docx"), também sem estas mudanças: é o Chromium 141 pré-instalado no lugar do build 1243 que o Playwright 1.63 pede. Numa cópia temporária do teste, tolerante só a esse nome, passa inteiro: guarda o papel, o anexo aparece ligado e "Concluir a assinatura" conclui. O CI, com o Chromium certo, roda o teste de verdade.
+- [ ] 1.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".

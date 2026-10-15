@@ -2,15 +2,21 @@ import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/a
 import { doServidor, noBanco, receber } from './servidor.ts'
 import type { Ficha } from './tipos.ts'
 
-/** Usa as duas rotas existentes: metadados e conteúdo. Sucesso só depois de guardar os bytes. */
+/**
+ * O papel digitalizado sobe para o servidor. O contrato assinado vai pela rota do contrato (GGVP-158 E11), que guarda o
+ * arquivo como documento do caso e o liga à assinatura, para "Concluir a assinatura" habilitar. A ficha de atendimento
+ * usa as duas rotas da pasta: metadados e conteúdo. Sucesso só depois de guardar os bytes.
+ */
 export async function anexarPapel(fichaId: string, arquivo: File, tipo: 'contrato' | 'ficha-atendimento', processoId?: string): Promise<void> {
   if (!doServidor(fichaId)) throw new Error('O envio de arquivo está disponível somente para fichas do servidor.')
   const problema = problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size })
   if (problema) throw new Error(problema)
-  // A rota atual escolhe o primeiro caso. Não mandar contrato se a vinculação puder ser ambígua.
-  const ficha = await noBanco<Ficha>(`/fichas/${fichaId}`)
-  if (tipo === 'contrato' && (ficha.processos.length !== 1 || ficha.processos[0].id !== processoId)) {
-    throw new Error('Envio indisponível: o servidor ainda não permite escolher o caso deste contrato.')
+  if (tipo === 'contrato') {
+    if (!processoId) throw new Error('Envio indisponível: o contrato não tem caso.')
+    const corpo = new FormData()
+    corpo.set('arquivo', arquivo)
+    receber(await noBanco<Parameters<typeof receber>[0]>(`/processos/${processoId}/contrato/digitalizacao`, { method: 'POST', corpo }))
+    return
   }
   const hash = await hashDoConteudo(await arquivo.arrayBuffer())
   const r = await noBanco<{ ficha: Ficha }>(`/fichas/${fichaId}/arquivos`, {

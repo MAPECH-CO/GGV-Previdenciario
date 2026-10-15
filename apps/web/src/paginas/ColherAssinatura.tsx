@@ -43,7 +43,8 @@ import proprio from './ColherAssinatura.module.css'
 // desenho. O ZapSign e o Chatwoot são simulados (GGVP-72), e o scanner do papel também (GGVP-77). Com o ZapSign contratado, papel
 // só aparece quando a entrevista foi presencial; sem ele, a opção do celular não aparece e o papel vale para qualquer entrevista
 // (GGVP-136, CA8). No contrato do servidor, "Imprimir o kit" abre o PDF do kit do escritório na impressão do navegador, ou baixa
-// o Word preenchido quando o servidor não converte (CA5); no contrato de exemplo, a impressora segue simulada.
+// o Word preenchido quando o servidor não converte (CA5); no contrato de exemplo, a impressora segue simulada. O papel assinado
+// do caso do servidor sobe pela rota do contrato, que o liga à assinatura (GGVP-158 E11).
 
 type Janela = { mensagem: string; lembrete: boolean }
 /** O kit que acabou de sair: o endereço do arquivo na memória do navegador, para abrir ou baixar de novo sem chamar o servidor. */
@@ -170,7 +171,6 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
 
   const concluirPapel = () =>
     agir(async () => {
-      if (doServidor(processoId)) throw new Error('Confirmação da assinatura indisponível: aguarda a vinculação do arquivo pelo servidor.')
       await concluirAssinaturaEmPapel(processoId)
       await recarregar()
     })
@@ -392,20 +392,20 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                     </button>
                   )}
                   <p>Colha a assinatura do cliente e passe o contrato assinado no scanner do balcão.</p>
-                  {doServidor(processoId) ? <AnexarPapel fichaId={ficha.id} processoId={processoId} tipo="contrato" /> : !assinatura.arquivo && (
-                    <button type="button" className={styles.atalho} disabled={ocupado} onClick={digitalizar}>
-                      Digitalizar o contrato assinado (scanner simulado)
-                    </button>
-                  )}
+                  {!assinatura.arquivo &&
+                    (doServidor(processoId) ? (
+                      <AnexarPapel fichaId={ficha.id} processoId={processoId} tipo="contrato" aoGuardar={recarregar} />
+                    ) : (
+                      <button type="button" className={styles.atalho} disabled={ocupado} onClick={digitalizar}>
+                        Digitalizar o contrato assinado (scanner simulado)
+                      </button>
+                    ))}
                 </>
               )}
-              {doServidor(processoId) ? <p className={styles.motivo}>
-                Confira os arquivos guardados na <a href={`/clientes/${ficha.id}`}>pasta do cliente</a>.
-                A vinculação do arquivo à assinatura ainda não está disponível.
-              </p> : <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
+              <p className={proprio.anexo} data-ok={assinatura?.arquivo !== undefined}>
                 Anexo: digitalização do contrato assinado *{' '}
-                {assinatura?.arquivo ? `· ✓ ${assinatura.arquivo}, PDF pesquisável na pasta do cliente` : '· falta'}
-              </p>}
+                {assinatura?.arquivo ? `· ✓ ${assinatura.arquivo}, ${doServidor(processoId) ? 'na' : 'PDF pesquisável na'} pasta do cliente` : '· falta'}
+              </p>
             </section>
           )}
 
@@ -444,7 +444,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
             </section>
           ) : papel ? (
             <div className={styles.rodape}>
-              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado || doServidor(processoId)} onClick={concluirPapel}>
+              <button type="button" className={styles.principalBotao} disabled={!assinatura?.arquivo || ocupado} onClick={concluirPapel}>
                 {ocupado ? 'salvando…' : 'Concluir a assinatura'}
               </button>
               {!assinatura?.arquivo && <p className={styles.motivo}>Anexe a digitalização do contrato assinado.</p>}

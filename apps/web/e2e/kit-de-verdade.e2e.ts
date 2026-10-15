@@ -90,11 +90,14 @@ test('a Sênior sobe e troca o modelo; a Atendimento vê o que falta na ficha, g
   await expect(page.getByText('O kit saiu em Word: abra o arquivo e imprima por ele.')).toBeVisible()
   await expect(page.getByText(/^Impresso em .*\.$/)).toBeVisible()
 
-  // O arquivo é real. A confirmação da assinatura espera a vinculação no servidor.
+  // GGVP-158 E11 · O arquivo é real: sobe pela rota do contrato, fica ligado à assinatura, e "Concluir a assinatura" habilita.
+  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
   await page.getByLabel('PDF ou foto do contrato assinado').setInputFiles({ name: 'kit-assinado-teste.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 kit inventado no teste') })
   await page.getByRole('button', { name: 'Guardar arquivo', exact: true }).click()
-  await expect(page.getByText('Arquivo guardado no servidor.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
+  await expect(page.getByText(/✓ Contrato assinado - Lia Kit Teste - \d{4}-\d{2}-\d{2} \(papel\)\.pdf, na pasta do cliente/)).toBeVisible()
+  await page.getByRole('button', { name: 'Concluir a assinatura' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Contrato assinado em papel' })).toBeVisible()
+  await expect(page.getByText(/A digitalização do contrato assinado está na pasta do cliente: Contrato assinado - Lia Kit Teste - .* \(papel\)\.pdf\./)).toBeVisible()
 
   // CA6 · Outro computador: o histórico da ficha diz o modelo e a versão usados e que o kit foi para a pasta do cliente.
   const outro = await browser.newContext({ baseURL })
