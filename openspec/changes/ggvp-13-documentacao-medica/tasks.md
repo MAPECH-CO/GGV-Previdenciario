@@ -32,6 +32,10 @@
 - [x] 3.6 Janela "Parecer médico de suficiência" (`src/componentes/ParecerMedico.tsx`, Figma `1654:2`) nas instruções das telas de passo e no "Abrir ›" da liberação, com a visão do perfil; "Documentação médica" da ficha com o resultado; a Central da Advogada com "Analisar laudo novo" e "Dar parecer médico". Teste em `ParecerMedico.test.tsx`, `LiberarCaso.test.tsx`, `FichaCliente.test.tsx` e `CentralAdvogada.test.tsx` (CA6, dado de saúde por perfil). Verifica com `pnpm vitest run src/componentes/ParecerMedico.test.tsx src/paginas`.
 - [x] 3.7 Playwright `e2e/parecer.e2e.ts`: a Rita da Central da Advogada ao parecer Insuficiente com o campo do G20 (CA1, CA3, CA5, CA8); o laudo novo do Antônio, comparado e mantido (CA6, CA7); o laudo com "incapacidade total" da Cleide deixa o parecer Contraditório (CA2); a janela na liberação sem o conteúdo para a Documentação; o `liberar.e2e.ts` passa pelo parecer da Rita; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3193 PORTA_E2E_WEB=5193 pnpm exec playwright test parecer liberar`.
 - [ ] 3.8 Ligar no servidor: a IA de verdade lê e compara os documentos médicos; o corpo de `dados/parecer.ts` vira `fetch` nos endpoints da design; o perfil e o nome vêm da sessão. Depende do GGVP-118 e do banco do Mateus. **Fica aberta nesta história.**
+- [x] 3.9 CA6 (Pedro, 14/10) · Servidor: o registro do parecer conclui "Analisar laudo novo" (`laudo-<ficha>`) e limpa a marca "Laudo novo" da ficha e do contrato da Recepção (`laudoConferido` em `fluxo/documentacao-medica.ts`, chamado em `rotas/parecer.ts`); teste em `rotas/parecer.test.ts`.
+- [x] 3.10 CA6 · Servidor: com "Analisar laudo novo" da Recepção aberto, `GET /api/documentacao-medica` não calcula a segunda linha (`cardJaAbriu`); teste em `rotas/parecer.test.ts`.
+- [x] 3.11 CA6 · Tela do laudo novo: "Como segue" no "Antes de concluir" (no parecer, conferir o laudo e manter ou refazer; ao registrar, a tarefa fecha e a marca sai); teste em `AnalisarLaudoNovo.test.tsx`.
+- [x] 3.12 Rodar typecheck, lint e testes; colar a saída; relatório final.
 
 ## GGVP-29 · Pedir o complemento ao médico do cliente
 
