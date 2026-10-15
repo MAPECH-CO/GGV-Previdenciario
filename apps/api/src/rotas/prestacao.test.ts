@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
-import { COOKIE } from '../sessao/rotas.ts'
+import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import {
   MSG_ACOMPANHANTE,
   MSG_ANTES_DA_PRESTACAO,
@@ -15,7 +15,6 @@ import {
   MSG_G8,
   MSG_LIGACAO_ANTES,
   MSG_MESMA_PESSOA,
-  MSG_OUTRA_ADVOGADA,
   MSG_SEM_DEFERIDO,
   MSG_SEM_DESFECHO,
   MSG_SEM_IDA,
@@ -49,7 +48,7 @@ const PRESTACAO = { valorRecebido: '12.345,67', percentual: '30', formaPagamento
 const AGENDA = () => ({ data: '15/10/2026', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: ids.ana })
 const RECEBIDO = { resultado: 'recebido', valoresConferem: true }
 const receber = () => chamar('julia', 'POST', '/prestacao/recebimento', RECEBIDO)
-/** O caminho até a tarefa do aviso: OK da advogada e recebimento do Financeiro (GGVP-98 CA4). */
+/** O caminho até a tarefa do aviso: OK da Sênior e recebimento do Financeiro (GGVP-98 CA4; GGVP-44 CA13). */
 async function ateOAviso() {
   await deferir()
   await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
@@ -62,7 +61,8 @@ const AGORA = new Date('2026-10-08T15:00:00Z')
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
   app = criarServidor({ banco, agora: () => AGORA })
-  for (const [apelido, perfil] of [['gabi', 'advogada'], ['julia', 'financeiro'], ['ana', 'atendimento'], ['igor', 'juridico_adm']] as const) {
+  // GGVP-44 CA13 (Mateus, 14/10): quem faz a prestação é a Sênior; a Gabi entra como Sênior.
+  for (const [apelido, perfil] of [['gabi', 'senior'], ['julia', 'financeiro'], ['ana', 'atendimento'], ['igor', 'juridico_adm']] as const) {
     const [u] = await banco
       .insert(usuario)
       .values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -83,25 +83,28 @@ async function deferir() {
     .values({ casoId, tipo: 'comunicacao_inss', chaveArmazenamento: 'x/carta', nomeOriginal: 'carta-de-concessao.pdf', mime: 'application/pdf', tamanho: 1, hashSha256: 'h', origem: 'portal' })
     .returning()
   await banco.insert(resultadoInss).values({ casoId, resultado: 'deferido', dataDecisao: '2026-10-05', documentoId: d.id, registradoPor: ids.gabi })
-  await banco.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: d.id })
+  await banco.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'senior', evidenciaDocumentoId: d.id })
 }
 
 describe('GGVP-44 · prestação de contas', () => {
-  it('CA13 · com advogada responsável, só ela vê e conclui; outra advogada é recusada e fica no histórico; o Financeiro segue vendo', async () => {
-    const [outra] = await banco
+  it('CA13 (Mateus, 14/10) · a prestação é da Sênior: a advogada, mesmo a responsável, é recusada e fica no histórico; a Sênior conclui e fecha também a tarefa antiga da advogada', async () => {
+    const [paula] = await banco
       .insert(usuario)
       .values({ email: 'paula@exemplo.ggv', nome: 'paula', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['advogada'], trocarSenha: false })
       .returning()
-    await banco.update(caso).set({ advogadaResponsavelId: ids.gabi }).where(eq(caso.id, casoId))
+    await banco.update(caso).set({ advogadaResponsavelId: paula.id }).where(eq(caso.id, casoId))
     await deferir()
+    // A tarefa que nasceu com a advogada antes de 14/10 (a homologação tem dessas).
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada' })
     for (const [metodo, payload] of [['GET', undefined], ['POST', PRESTACAO]] as const) {
       const r = await chamar('paula', metodo, '/prestacao', payload)
-      expect([r.statusCode, r.json().erro]).toEqual([403, MSG_OUTRA_ADVOGADA])
+      expect([r.statusCode, r.json().erro]).toEqual([403, MSG_SEM_PERMISSAO])
     }
-    const negados = await banco.select().from(eventoAuditoria).where(and(eq(eventoAuditoria.quem, outra.id), eq(eventoAuditoria.acao, 'acesso_negado')))
+    const negados = await banco.select().from(eventoAuditoria).where(and(eq(eventoAuditoria.quem, paula.id), eq(eventoAuditoria.acao, 'acesso_negado')))
     expect(negados).toHaveLength(2)
     expect((await chamar('julia', 'GET', '/prestacao')).statusCode).toBe(200)
     expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(201)
+    expect(await abertas()).toEqual(['financeiro · Receber a prestação de contas'])
   })
 
   it('sem deferimento, não há prestação', async () => {
@@ -118,22 +121,22 @@ describe('GGVP-44 · prestação de contas', () => {
 
   it('CA7 e GGVP-98 CA1, CA4 · antes de concluir, nada para o Financeiro; ao concluir, só o recebimento; recebido, nasce o aviso', async () => {
     await deferir()
-    expect(await abertas()).toEqual(['advogada · Prestar contas'])
+    expect(await abertas()).toEqual(['senior · Prestar contas'])
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect(await abertas()).toEqual(['financeiro · Receber a prestação de contas'])
     await receber()
     expect(await abertas()).toEqual([`financeiro · ${TITULO_AVISO}`])
   })
 
-  it('CA2 · os valores só para o Financeiro e a advogada da prestação; o Atendimento recebe 403; a Sênior lê, sem dar o OK (Pedro, 09/10)', async () => {
+  it('CA2, CA13 · os valores só para o Financeiro e a Sênior, que faz a prestação; o Atendimento e a advogada recebem 403; qualquer Sênior faz (Mateus, 14/10)', async () => {
     await deferir()
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect((await chamar('ana', 'GET', '/prestacao')).statusCode).toBe(403)
+    await banco.insert(usuario).values({ email: 'paula@exemplo.ggv', nome: 'paula', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['advogada'], trocarSenha: false })
+    expect((await chamar('paula', 'GET', '/prestacao')).statusCode).toBe(403)
     await banco.insert(usuario).values({ email: 'helena@exemplo.ggv', nome: 'helena', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['senior'], trocarSenha: false })
-    const daSenior = await chamar('helena', 'GET', '/prestacao')
-    expect(daSenior.statusCode).toBe(200)
-    expect(daSenior.json().podeEditar).toBe(false)
-    expect((await chamar('helena', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(403)
+    const daOutraSenior = await chamar('helena', 'GET', '/prestacao')
+    expect([daOutraSenior.statusCode, daOutraSenior.json().podeEditar]).toEqual([200, true])
     expect((await chamar('julia', 'GET', '/prestacao')).json().versoes[0].honorarios).toBe('3703.70')
     // GGVP-98: a ida ao banco passou ao Financeiro; o Atendimento não abre a tela nem vê valores.
     expect((await chamar('ana', 'GET', '/banco')).statusCode).toBe(403)
@@ -151,13 +154,13 @@ describe('GGVP-44 · prestação de contas', () => {
     expect((await abertas()).filter((t) => t.startsWith('financeiro'))).toEqual(['financeiro · Receber a prestação de contas'])
   })
 
-  it('CA8, CA9 · o Financeiro vê forma e prazo, registra o recebimento; divergência volta para a advogada com o motivo', async () => {
+  it('CA8, CA9 · o Financeiro vê forma e prazo, registra o recebimento; divergência volta para a Sênior com o motivo', async () => {
     await deferir()
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     const v = (await chamar('julia', 'GET', '/prestacao')).json()
     expect([v.versoes[0].formaPagamento, v.versoes[0].prazoPagamento, v.podeReceber]).toEqual(['pix', '2026-10-30', true])
     expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'divergencia', motivo: 'Honorários acima do contrato' })).statusCode).toBe(201)
-    expect(await abertas()).toEqual(['advogada · Corrigir a prestação: Honorários acima do contrato'])
+    expect(await abertas()).toEqual(['senior · Corrigir a prestação: Honorários acima do contrato'])
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     expect((await chamar('julia', 'POST', '/prestacao/recebimento', { resultado: 'recebido' })).json().erro).toBe('Marque "Valores conferem com o comprovante"')
     expect((await receber()).statusCode).toBe(201)
@@ -167,7 +170,7 @@ describe('GGVP-44 · prestação de contas', () => {
   })
 
   it('GGVP-98 CA8 · quem deu o OK e tenta registrar o recebimento é recusado, e a tentativa fica registrada', async () => {
-    await banco.update(usuario).set({ perfis: ['advogada', 'financeiro'] }).where(eq(usuario.id, ids.gabi))
+    await banco.update(usuario).set({ perfis: ['senior', 'financeiro'] }).where(eq(usuario.id, ids.gabi))
     await deferir()
     await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
     const cookies = await cookieDe('gabi')
@@ -288,7 +291,7 @@ describe('GGVP-44 · ida ao banco', () => {
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'baixa_registrada'))).length).toBe(2)
   })
 
-  it('G8 · sem o OK da advogada, o aviso não sai', async () => {
+  it('G8 · sem o OK da Sênior, o aviso não sai', async () => {
     await ateOAviso()
     await chamar('julia', 'POST', '/banco', AGENDA())
     await banco.update(prestacaoContas).set({ okAdvogadaEm: null, okAdvogadaPor: null })

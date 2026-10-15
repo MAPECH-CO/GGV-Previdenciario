@@ -36,7 +36,7 @@ export type MensagemAoCliente = {
   erro?: string
 }
 
-/** O texto do resultado que o Jurídico aprovou: o favorável com o OK da advogada na prestação de contas (G8), o desfavorável sem estratégia interna. */
+/** O texto do resultado que o Jurídico aprovou: o favorável com o OK da Sênior na prestação de contas (G8), o desfavorável sem estratégia interna. */
 export type AvisoAprovado = { processoId: string; tipo: 'favoravel' | 'desfavoravel'; texto: string; quem: string; quando: string }
 
 /** A mensagem pronta para revisar (CA1): o texto, se pode editar, a trava e o cliente no Chatwoot (CA6). */
@@ -49,7 +49,7 @@ export type MensagemPronta = {
   conversas: ConversaChatwoot[]
 }
 
-/** A Lúcia Exemplo ganhou a pensão: o OK da advogada na prestação de contas, com o texto revisado (GGVP-11, de exemplo). */
+/** A Lúcia Exemplo ganhou a pensão: o OK da Sênior na prestação de contas, com o texto revisado (GGVP-11, de exemplo). */
 function avisosDeExemplo(hoje: string): AvisoAprovado[] {
   return [
     {
@@ -103,7 +103,7 @@ async function textoDoModelo(banco: Banco, fichaId: string, modelo: IdDoModelo, 
     }
     case 'resultado-favoravel': {
       const ok = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'favoravel')
-      return ok ? pronto(ok.texto, false) : travado('Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).')
+      return ok ? pronto(ok.texto, false) : travado('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele (G8).')
     }
     case 'resultado-desfavoravel': {
       const aprovado = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'desfavoravel')

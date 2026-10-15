@@ -123,7 +123,7 @@ afterEach(async () => {
 })
 
 describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () => {
-  it('a advogada do caso: o caso inteiro, com o conteúdo médico e os valores; o acesso ao dado de saúde fica registrado', async () => {
+  it('a advogada do caso: o caso inteiro, com o conteúdo médico; os valores da prestação, não (são da Sênior, Mateus 14/10); o acesso ao dado de saúde fica registrado', async () => {
     const r = await ver('gabi')
     expect(r.statusCode).toBe(200)
     const p = r.json()
@@ -165,7 +165,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       ['helena', 'D2.01', 'OK da Sênior para o INSS: aprovado'],
       ['gabi', 'D2.03', 'Decisão sobre a perícia'],
     ])
-    expect(p.valores).toEqual({ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' })
+    expect(p.valores).toBeNull()
     expect(p.saude).toEqual({
       documentos: [{ tipo: 'laudo', emitidoEm: '2026-09-20', profissional: 'Dr. Ortopedista', cid: 'M54.5' }],
       parecer: { resultado: 'suficiente', confirmadoEm: '2026-10-02T12:00:00.000Z' },

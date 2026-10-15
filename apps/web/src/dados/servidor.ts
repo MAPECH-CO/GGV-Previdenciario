@@ -131,7 +131,7 @@ export type Banco = {
   versoes?: VersaoDoCampo[]
   /** Cada mensagem mandada ao cliente pelo Chatwoot, com o status de entrega (GGVP-102). */
   mensagens?: MensagemAoCliente[]
-  /** O texto do resultado aprovado pelo Jurídico: o favorável com o OK da advogada (G8). Sem ele, a semente de mensagens.ts. */
+  /** O texto do resultado aprovado pelo Jurídico: o favorável com o OK da Sênior (G8). Sem ele, a semente de mensagens.ts. */
   avisosAprovados?: AvisoAprovado[]
   /** Os dados bancários para o repasse, do mais antigo ao em vigor (GGVP-111). Sem eles, a semente de seguranca.ts. */
   dadosBancarios?: RegistroBancario[]

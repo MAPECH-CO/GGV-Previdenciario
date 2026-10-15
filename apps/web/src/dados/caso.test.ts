@@ -160,11 +160,12 @@ describe('GGVP-86 · navegar pelo caso numa linha só', () => {
     expect(financeiro!.estrategia).toBeUndefined()
   })
 
-  it('Valores · a advogada vê a causa, a renda por pessoa do LOAS e a prestação de contas do caso dela; a sênior não vê', async () => {
-    expect((await obterCaso('lucia-exemplo-1', ADVOGADA))!.valores.map((v) => v.tipo)).toEqual(['causa', 'prestacao-de-contas'])
+  it('Valores · a advogada vê a causa e a renda por pessoa do LOAS; a prestação de contas é da Sênior, com o caso na prestação (Mateus, 14/10)', async () => {
+    expect((await obterCaso('lucia-exemplo-1', ADVOGADA))!.valores.map((v) => v.tipo)).toEqual(['causa'])
     expect((await obterCaso('lucia-exemplo-1', { id: 'advogada', usuario: 'Outra advogada' }))!.valores.map((v) => v.tipo)).toEqual(['causa'])
     expect((await obterCaso('pedro-exemplo-1', ADVOGADA))!.valores.map((v) => v.tipo)).toEqual(['renda-por-pessoa'])
-    expect((await obterCaso('lucia-exemplo-1', SENIOR))!.valores).toEqual([])
+    expect((await obterCaso('lucia-exemplo-1', SENIOR))!.valores.map((v) => v.tipo)).toEqual(['prestacao-de-contas'])
+    expect((await obterCaso('pedro-exemplo-1', SENIOR))!.valores).toEqual([])
     expect((await obterCaso('lucia-exemplo-1', JURIDICO_ADM))!.valores).toEqual([])
   })
 

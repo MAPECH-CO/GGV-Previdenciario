@@ -9,7 +9,7 @@ import { atualizadoEm, criadoEm, emLista, id, momento } from './comum.ts'
 import { pessoa } from './pessoas.ts'
 
 /**
- * Prestação de contas (G8): o aviso ao cliente só nasce depois do OK da advogada.
+ * Prestação de contas (G8): o aviso ao cliente só nasce depois do OK da Sênior.
  * Quem dá o OK não registra o recebimento (GGVP-96 CA16): o banco recusa a mesma pessoa nas duas pontas.
  */
 export const prestacaoContas = pgTable(

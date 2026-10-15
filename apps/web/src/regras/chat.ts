@@ -74,7 +74,7 @@ export function portaoDoPedido(
     case 'avisar-cliente':
       return {
         portao: 'G8',
-        texto: 'O chat não fala com o cliente. O aviso do resultado só sai depois do OK da advogada na prestação de contas (G8), pela tela de mensagens ao cliente.',
+        texto: 'O chat não fala com o cliente. O aviso do resultado só sai depois do OK da Sênior na prestação de contas (G8), pela tela de mensagens ao cliente.',
       }
     case 'aprovar': {
       if (/parecer/.test(t)) return { portao: 'G17', texto: 'A IA nunca aprova parecer: o parecer médico só vale confirmado por uma pessoa do Jurídico (G17).' }
@@ -146,11 +146,10 @@ export const ACOES_DO_PERFIL = {
     'Confirmar desfecho',
     'Decidir recurso',
     'Acompanhar pagamento',
-    'Prestar contas',
-    'Aprovar prestação de contas',
     'Ligar para o cliente',
   ],
-  senior: ['Aprovar pedido', 'Despachar caso', 'Decidir cobrança', 'Revisar estudo de caso', 'Reprocessar vigília', 'Casar publicação', 'Alimentar acervo'],
+  // GGVP-44 CA13 (Mateus, 14/10): a prestação de contas é da Sênior.
+  senior: ['Aprovar pedido', 'Despachar caso', 'Decidir cobrança', 'Revisar estudo de caso', 'Reprocessar vigília', 'Casar publicação', 'Alimentar acervo', 'Prestar contas', 'Aprovar prestação de contas'],
   financeiro: ['Lançar prestação de contas', 'Confirmar recebimento'],
   // GGVP-96: a Documentação, o líder e o Sócio caíam na lista do Atendimento. Cada um fica com o que faz pela matriz: a
   // Documentação, a raia DOCUMENTAÇÃO · ADM; o líder, a do Atendimento sem o que a matriz dá a outro perfil (a ida ao banco
@@ -299,7 +298,7 @@ export const PORTOES: Record<string, string> = {
   G5: 'Quem analisa a exigência do juiz e define o setor são os advogados, não a IA.',
   G6: 'A advogada assina o conteúdo da petição; se não está boa, a IA faz outra versão.',
   G7: 'Três travas antes de protocolar na Justiça: Tema 350, pacote completo e CPF conferido.',
-  G8: 'O aviso ao cliente só nasce depois do OK da advogada na prestação de contas.',
+  G8: 'O aviso ao cliente só nasce depois do OK da Sênior na prestação de contas.',
   G9: 'A senha do gov.br vai para o cofre; nunca fica em texto transcrito nem em campo de texto.',
   G10: 'A conversa gravada começa com o aviso de gravação.',
   G11: 'A orientação da perícia nunca orienta a esconder ou mudar a situação real.',
