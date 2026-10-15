@@ -61,3 +61,11 @@ Com o protocolo registrado, o caso SHALL mostrar que espera o INSS; se a advogad
 - **Dado** o protocolo registrado
 - **Quando** o requerimento chega ao INSS
 - **Então** o caso mostra que espera o INSS
+
+### Requirement: CA8 · Obrigatórios à vista e cada documento abre (Pedro, 14/10)
+Na tela, o número do requerimento, a DER e o comprovante SHALL aparecer como obrigatórios, e "Registrar protocolo" MUST ficar desabilitado até os três estarem preenchidos e "Revisei o requerimento antes de enviar" marcado; o servidor confere de novo (CA4). Cada documento de "Documentos, na ordem" SHALL ter "Abrir", que abre o próprio arquivo numa janela do navegador, onde dá para baixar e imprimir (GGVP-81, CA17).
+
+#### Scenario: CA8 · Número em branco
+- **Dado** o caso com o OK da Sênior e "Revisei" marcado
+- **Quando** o número do requerimento está em branco
+- **Então** o campo aparece como obrigatório e "Registrar protocolo" fica desabilitado

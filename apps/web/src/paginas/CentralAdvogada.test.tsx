@@ -49,8 +49,9 @@ describe('Central da Advogada', () => {
   it('mostra a fila, as abas e os atalhos do chat da advogada', () => {
     render(<CentralAdvogada />)
     expect(screen.getByRole('heading', { name: 'O que você tem que fazer' })).toBeTruthy()
-    // GGVP-50: o parecer do Davi, de 7 anos, entra na fila. A cobrança, a fila da liberação e a dispensa são da Sênior.
-    expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(4)
+    // GGVP-50: o parecer do Davi, de 7 anos, entra na fila. A cobrança, a fila da liberação e a dispensa são da Sênior. A prestação
+    // de contas fixa, sem tela, saiu (GGVP-120 CA4).
+    expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(3)
     // GGVP-147 CA3: a advogada não é líder do setor, então não vê a aba "Tarefas do setor".
     expect(screen.queryByRole('tab')).toBeNull()
     for (const nome of ['Resumo do caso', 'Criar tarefa', 'Perícias da semana', 'Como o perito avalia?', 'Gerar peça']) {

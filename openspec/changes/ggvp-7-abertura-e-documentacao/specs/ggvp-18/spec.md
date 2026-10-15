@@ -60,3 +60,11 @@ Liberado o caso, SHALL ficar registrado quem liberou e quando, e o histórico SH
 - **Dado** a tela de liberação
 - **Quando** a Documentação vai apertar OK
 - **Então** "Liberar ao Jurídico" só habilita com os três itens de conferência marcados
+
+### Requirement: CA8 · Abrir cada documento, e a entrevista sem botão morto (Pedro, 14/10)
+Em "Documentos (abrir cada um)", o "Abrir" de cada documento SHALL abrir o próprio arquivo numa janela do navegador, onde dá para baixar e imprimir (GGVP-81, CA17), e MUST NOT levar à ficha do cliente. O documento sem arquivo no portal SHALL dizer isso no lugar do "Abrir"; o documento médico continua "o conteúdo fica com o Jurídico". A entrevista é dado de saúde e a Documentação não a vê: no "Resumo do que foi coletado", a linha da entrevista MUST NOT ter "Abrir" sem ação, e SHALL dizer "o conteúdo fica com o Jurídico".
+
+#### Scenario: CA8 · Abrir o RG antes de liberar
+- **Dado** o caso com o RG recebido na pasta do cliente
+- **Quando** a Documentação clica em "Abrir" no RG
+- **Então** o próprio arquivo abre numa janela, e a entrevista mostra "o conteúdo fica com o Jurídico", sem botão

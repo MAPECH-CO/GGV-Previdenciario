@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { AbrirDocumento, hrefDaPasta } from '../componentes/AbrirDocumento.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
@@ -58,6 +59,8 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
   const hoje = hojeIso(agora())
   const daDocumentacao = perfil === 'documentacao'
   const recebidos = checklist.itens.filter((i) => i.situacao === 'recebido')
+  // GGVP-18 CA8: o arquivo do item é o mais novo daquele tipo, já lido, na pasta do caso ou nos pessoais, como no checklist.
+  const arquivoDo = (tipo: string) => ficha.arquivos.filter((a) => a.tipo === tipo && !a.aguardaLeitura && (a.local === 'pessoais' || a.local === processoId)).at(-1)
   const parecerOk = parecerEmOrdem(processo.beneficio, parecer)
   const trava = travaDaLiberacao({ checklist, beneficio: processo.beneficio, nomeBeneficio: beneficio, parecer, conferiChecklist, conferiAssinaturas })
   const confirmado = parecer?.quem ? ` · confirmado por ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''}` : ''
@@ -180,12 +183,8 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
               </dd>
               <dt>Entrevista</dt>
               <dd className={proprio.destaque}>{ficha.transcricoes > 0 ? 'gravada e transcrita' : 'sem transcrição'}</dd>
-              <dd>
-                {/* Transcrições são da GGVP-102. */}
-                <button type="button" className={proprio.abrir} aria-disabled="true" aria-label="Abrir a entrevista">
-                  Abrir ›
-                </button>
-              </dd>
+              {/* GGVP-18 CA8: a entrevista é dado de saúde, e a Documentação não a vê; sem botão sem ação. */}
+              <dd className={documentos.detalhe}>o conteúdo fica com o Jurídico</dd>
               <dt>Benefício</dt>
               <dd>{beneficio}</dd>
               <dd />
@@ -231,9 +230,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
                     {ehMedico(i.tipo) ? (
                       <span className={documentos.detalhe}>o conteúdo fica com o Jurídico</span>
                     ) : (
-                      <a className={documentos.abrir} href={`/clientes/${ficha.id}`} aria-label={`Abrir ${i.nome}`}>
-                        Abrir
-                      </a>
+                      <AbrirDocumento href={hrefDaPasta(ficha.id, arquivoDo(i.tipo))} nome={i.nome} className={documentos.abrir} classeDaNota={documentos.detalhe} />
                     )}
                   </li>
                 ))}

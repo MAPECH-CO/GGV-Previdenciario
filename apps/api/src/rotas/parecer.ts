@@ -240,7 +240,7 @@ export function criarParecerDoCaso({ banco, agora = () => new Date(), ia, armaze
 export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () => new Date(), ia, armazenamento, preparo }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
-  const { acharCaso, anotar, nomeDe } = criarCasoMedico(banco, agora)
+  const { acharCaso, anotar, laudoConferido, nomeDe } = criarCasoMedico(banco, agora)
   const { emDia, tela, esperandoAnalise, lerParte, gravarParte } = criarParecerDoCaso({ banco, agora, ia, armazenamento })
 
   // Sugestão pronta (GGVP-134): em segundo plano, a IA lê os documentos médicos que esperam o Jurídico; a tarefa "Dar
@@ -320,6 +320,8 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
     )
     if (laudoNovoEm)
       await anotar(c, `Conferiu o laudo novo de ${dataCurta(laudoNovoEm, hojeEmBrasilia(agora()))} e ${anterior?.situacao === registro.situacao ? 'manteve' : 'refez'} o parecer`, pedido)
+    // CA6 (Pedro, 14/10): o registro conferiu os documentos médicos; "Analisar laudo novo" fecha e a marca sai da ficha.
+    await laudoConferido(c)
     await historico(quem, 'parecer_registrado', pedido, `caso:${c.id}`, {
       situacao: registro.situacao,
       corrigidos,

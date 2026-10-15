@@ -34,16 +34,34 @@ describe('Protocolar no Meu INSS (GGVP-27)', () => {
     servidor({ [`/api/casos/${CASO}/protocolo`]: [200, casoParaProtocolo] })
     render(<Protocolar casoId={CASO} />)
     expect(await screen.findByText(/OK recebido · Helena/)).toBeTruthy()
-    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['RG e CPF.pdf', 'Laudo médico.pdf'])
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['RG e CPF.pdf · Abrir', 'Laudo médico.pdf · Abrir'])
+    // CA8 (Pedro, 14/10): cada documento abre o próprio arquivo, numa janela.
+    expect(screen.getByRole('link', { name: 'Abrir RG e CPF.pdf' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${casoParaProtocolo.documentos[0].id}`)
     expect(screen.getByRole('button', { name: 'Ver a senha do gov.br' })).toBeTruthy()
+  })
+
+  it('CA8 · número, DER e comprovante aparecem como obrigatórios, e o botão só liga com os três e a revisão', async () => {
+    servidor({ [`/api/casos/${CASO}/protocolo`]: [200, casoParaProtocolo] })
+    render(<Protocolar casoId={CASO} />)
+    const numero = (await screen.findByLabelText('Número do requerimento (obrigatório)')) as HTMLInputElement
+    expect(numero.required).toBe(true)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Revisei o requerimento antes de enviar' }))
+    const botao = () => (screen.getByRole('button', { name: 'Registrar protocolo' }) as HTMLButtonElement).disabled
+    expect(botao()).toBe(true)
+    fireEvent.change(screen.getByLabelText('Comprovante do protocolo (obrigatório)'), { target: { files: [new File(['%PDF'], 'c.pdf', { type: 'application/pdf' })] } })
+    expect(botao()).toBe(true)
+    fireEvent.change(numero, { target: { value: '2026123456' } })
+    expect(botao()).toBe(false)
+    fireEvent.change(screen.getByLabelText('Data de entrada do requerimento (DER) (obrigatório)'), { target: { value: '' } })
+    expect(botao()).toBe(true)
   })
 
   it('CA4 · sem a conferência marcada, não envia e diz o que falta', async () => {
     const fetch = servidor({ [`/api/casos/${CASO}/protocolo`]: [200, casoParaProtocolo] })
     render(<Protocolar casoId={CASO} />)
-    fireEvent.change(await screen.findByLabelText('Número do requerimento'), { target: { value: '1234a5' } })
-    expect((screen.getByLabelText('Número do requerimento') as HTMLInputElement).value).toBe('12345')
-    const der = screen.getByLabelText('Data de entrada do requerimento (DER)') as HTMLInputElement
+    fireEvent.change(await screen.findByLabelText('Número do requerimento (obrigatório)'), { target: { value: '1234a5' } })
+    expect((screen.getByLabelText('Número do requerimento (obrigatório)') as HTMLInputElement).value).toBe('12345')
+    const der = screen.getByLabelText('Data de entrada do requerimento (DER) (obrigatório)') as HTMLInputElement
     expect([der.type, der.value]).toEqual(['date', der.max]) // calendário, já em hoje, sem data futura
     fireEvent.change(der, { target: { value: '2026-10-05' } })
     // GGVP-109 CA3: sem a revisão marcada, o botão fica desabilitado.

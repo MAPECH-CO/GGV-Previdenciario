@@ -3,7 +3,9 @@ import type { FormEvent } from 'react'
 import { normalizarData, validarData } from '@ggv/campos'
 import { bloqueioDoG1, DecidirConferencia, DispensarParecer, ResponderDispensa, type CasoParaConferencia } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { AbrirDocumento, hrefDoCaso } from '../componentes/AbrirDocumento.tsx'
 import { ChanceDoCaso } from '../componentes/ChanceDoCaso.tsx'
+import documentos from './ConferirDocumentos.module.css'
 import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 import { nomeDoBeneficio } from '@ggv/contratos'
@@ -103,7 +105,9 @@ export function Conferencia({ casoId }: { casoId: string }) {
         <h3 className={styles.rotulo}>Documentos</h3>
         <ol className={styles.lista}>
           {caso.documentos.map((d) => (
-            <li key={d.id}>{d.nome}</li>
+            <li key={d.id}>
+              {d.nome} · <AbrirDocumento href={hrefDoCaso(casoId, d.id)} nome={d.nome} className={documentos.abrir} />
+            </li>
           ))}
         </ol>
         <p className={styles.dica}>

@@ -11,6 +11,7 @@ const tarefa: Tarefa = {
   detalhe: 'Auxílio por incapacidade temporária · perícia 02/10',
   prazo: 'vence hoje',
   urgente: true,
+  href: '/casos/maria-1/cobranca',
 }
 
 const desenhar = (t: Tarefa) =>
@@ -34,10 +35,19 @@ describe('TarefaLinha', () => {
     const { container } = desenhar(tarefa)
     const passo = screen.getByRole('link', { name: 'Maria das Graças Oliveira · Cobrar documento' })
     const ficha = screen.getByRole('link', { name: 'Maria das Graças Oliveira' })
-    expect(passo.getAttribute('href')).toBe('/tarefas/t1')
+    expect(passo.getAttribute('href')).toBe('/casos/maria-1/cobranca')
     expect(ficha.getAttribute('href')).toBe('/clientes/maria')
     expect(passo.contains(ficha)).toBe(false)
     expect(container.querySelector('a a')).toBeNull()
+  })
+
+  it('CA4 (Pedro, 14/10) · sem tela própria, a linha abre a ficha; sem cliente, não é link; nunca a "tela não construída"', () => {
+    const { unmount } = desenhar({ ...tarefa, href: undefined })
+    expect(screen.getByRole('link', { name: 'Maria das Graças Oliveira · Cobrar documento' }).getAttribute('href')).toBe('/clientes/maria')
+    unmount()
+    desenhar({ ...tarefa, href: undefined, cliente: null, contexto: 'Vigília das publicações' })
+    expect(screen.queryByRole('link')).toBeNull()
+    expect(screen.getByText(/Cobrar documento/)).toBeTruthy()
   })
 
   it('tarefa urgente avisa o leitor de tela; a comum não', () => {

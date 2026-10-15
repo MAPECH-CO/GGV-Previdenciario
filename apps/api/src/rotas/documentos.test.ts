@@ -7,9 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, caso, documento, eventoAuditoria, pessoa, usuario } from '../banco/esquema.ts'
+import type { Drive } from '../drive.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_DOCUMENTO_DE_PECA, MSG_DOCUMENTO_SENSIVEL, ehPeca } from './documentos.ts'
+import { MSG_DOCUMENTO_DE_PECA, MSG_DOCUMENTO_SENSIVEL, MSG_DRIVE_DESLIGADO, MSG_DRIVE_FORA, ehPeca } from './documentos.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -97,5 +98,72 @@ describe('baixar documento do caso (GGVP-52 CA3, GGVP-71 CA11)', () => {
     expect((await baixar('gabi', 'nao-e-uuid')).statusCode).toBe(404)
     const semArquivo = await guardar('sumiu.pdf', '%PDF', false, false)
     expect((await baixar('gabi', semArquivo)).json().erro).toBe('O arquivo deste documento não está no armazenamento.')
+  })
+})
+
+describe('GGVP-81 CA17 · o arquivo da pasta do cliente, pela pessoa e pelo conteúdo', () => {
+  const HASH = 'a'.repeat(64)
+  let pessoaId: string
+  const daPessoa = async (nome: string, conteudo: string, sensivel = false, comCaso = false) => {
+    const chave = `pessoas/${pessoaId}/${nome}`
+    await arquivos.salvar(chave, Buffer.from(conteudo), 'application/pdf')
+    const [d] = await banco
+      .insert(documento)
+      .values({ pessoaId, casoId: comCaso ? casoId : null, tipo: sensivel ? 'laudo' : 'rg', sensivel, chaveArmazenamento: chave, nomeOriginal: nome, mime: 'application/pdf', tamanho: conteudo.length, hashSha256: HASH, origem: 'card' })
+      .returning()
+    return d.id
+  }
+  const abrir = async (apelido: string, pessoa = pessoaId, hash = HASH) => app.inject({ method: 'GET', url: `/api/pessoas/${pessoa}/documentos/${hash}`, cookies: await cookieDe(apelido) })
+  beforeEach(async () => {
+    ;[{ pessoaId }] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+  })
+
+  it('abre o documento pessoal, que não tem caso; de outra pessoa ou com hash inválido, não acha', async () => {
+    await daPessoa('RG.pdf', '%PDF-1.4 RG')
+    const r = await abrir('ana')
+    expect([r.statusCode, r.headers['content-type'], r.body, r.headers['content-disposition']]).toEqual([200, 'application/pdf', '%PDF-1.4 RG', "inline; filename*=UTF-8''RG.pdf"])
+    const [outra] = await banco.insert(pessoa).values({ nome: 'Outra' }).returning()
+    expect((await abrir('ana', outra.id)).statusCode).toBe(404)
+    expect((await abrir('ana', pessoaId, 'nao-e-hash')).statusCode).toBe(404)
+  })
+
+  it('o mesmo conteúdo como laudo em outro registro: vale a trava da saúde, e a leitura fica registrada', async () => {
+    await daPessoa('scan.pdf', '%PDF-1.4 laudo')
+    await daPessoa('laudo.pdf', '%PDF-1.4 laudo', true, true)
+    expect((await abrir('ana')).json().erro).toBe(MSG_DOCUMENTO_SENSIVEL)
+    expect((await abrir('gabi')).statusCode).toBe(200)
+    const acessos = await banco.select().from(acessoDadoSensivel)
+    expect(acessos.map((a) => [a.perfil, a.recurso.startsWith('documento:')])).toEqual([['advogada', true]])
+  })
+})
+
+describe('GGVP-81 CA17 · o documento do scanner é lido no Drive', () => {
+  const doScanner = async () => {
+    const [d] = await banco
+      .insert(documento)
+      .values({ casoId, tipo: 'rg', chaveArmazenamento: 'drive:arq-1', driveArquivoId: 'arq-1', nomeOriginal: 'RG.pdf', mime: 'application/pdf', tamanho: 9, hashSha256: 'y', origem: 'scanner' })
+      .returning()
+    return d.id
+  }
+  const religar = async (baixarDoDrive: ((id: string) => Promise<Buffer>) | null) => {
+    await app.close()
+    const drive = baixarDoDrive && { drive: { baixar: baixarDoDrive } as unknown as Drive, pastas: { clientes: 'c', revisar: 'r' }, soLeitura: true }
+    app = criarServidor({ banco, armazenamento: arquivos, drive })
+  }
+
+  it('com o Drive só de leitura, abre o arquivo de lá pelo id do arquivo', async () => {
+    const pedidos: string[] = []
+    await religar(async (id) => (pedidos.push(id), Buffer.from('%PDF-1.4 RG')))
+    const r = await baixar('ana', await doScanner())
+    expect([r.statusCode, r.headers['content-type'], r.body, pedidos]).toEqual([200, 'application/pdf', '%PDF-1.4 RG', ['arq-1']])
+  })
+
+  it('sem o Drive ligado, ou com o Drive fora, diz isso', async () => {
+    const doc = await doScanner()
+    await religar(null)
+    expect((await baixar('ana', doc)).json().erro).toBe(MSG_DRIVE_DESLIGADO)
+    await religar(() => Promise.reject(new Error('Drive: 500')))
+    const r = await baixar('ana', doc)
+    expect([r.statusCode, r.json().erro]).toEqual([502, MSG_DRIVE_FORA])
   })
 })

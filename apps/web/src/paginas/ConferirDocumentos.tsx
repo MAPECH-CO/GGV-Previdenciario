@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { AbrirDocumento, hrefDaPasta } from '../componentes/AbrirDocumento.tsx'
 import { InstrucoesPasso } from '../componentes/InstrucoesPasso.tsx'
 import { TopoPasso } from '../componentes/TopoPasso.tsx'
 import { dataParaIso, isoParaData, normalizarData, validarData } from '../campos.ts'
@@ -377,9 +378,12 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                           ) : ehMedico(e.tipo) ? (
                             <span className={proprio.detalhe}>o conteúdo fica com o Jurídico, que recebe a análise da IA</span>
                           ) : (
-                            <a className={proprio.abrir} href={`/clientes/${ficha.id}`} aria-label={`Abrir ${nomeTipo(e.tipo)}`}>
-                              Abrir
-                            </a>
+                            <AbrirDocumento
+                              href={hrefDaPasta(ficha.id, ficha.arquivos.find((a) => a.nome === d.arquivo))}
+                              nome={nomeTipo(e.tipo)}
+                              className={proprio.abrir}
+                              classeDaNota={proprio.detalhe}
+                            />
                           )}
                         </li>
                       )
