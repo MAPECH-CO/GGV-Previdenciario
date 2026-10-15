@@ -808,3 +808,15 @@ As tarefas 9.6 a 9.10 esperam o aceite do Lucas em todas as histórias (Mateus, 
   - o /saude conferido.
 - [ ] 9.10 O monitor no Coolify (P9.5): o docker compose com o comando, as variáveis `ALARME_*` e o healthcheck desligado. O teste é uma queda com o Mateus: o canal e o Jira recebem "caiu" e "voltou".
 - [ ] 9.11 Relatório final ao Mateus.
+
+## GGVP-158 · Parte 10 · A história do sistema (15/10)
+
+Pedido do Mateus em 15/10: escrever no repositório a definição de pronto do portal, que os cartões de fechamento citam, passo a passo por perfil. Só documentação, na branch `docs/GGVP-158-historia-do-sistema`.
+
+- [ ] 10.1 A história do sistema (P10.1, decisão 86): `docs/scrum/historia-do-sistema.md`.
+  - Confere:
+    - cada passo tem o perfil, o passo do BPMN e a fonte da regra;
+    - cada capítulo aponta as jornadas do roteiro;
+    - nenhuma decisão nova e nenhum dado de cliente.
+- [ ] 10.2 Os links: a definição de pronto da história e o resumo do Scrum apontam para ela, e os links relativos do texto abrem.
+- [ ] 10.3 `openspec validate --all --strict`; pedido para a main; relatório ao Mateus.
