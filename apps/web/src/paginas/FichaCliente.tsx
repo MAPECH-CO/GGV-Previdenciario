@@ -168,7 +168,7 @@ export function FichaCliente({ id, mensagemInicial }: { id: string; mensagemInic
           </Cartao>
           <CartaoFichaAtendimento ficha={ficha} hoje={hoje} />
           {veDadosBancarios && <CartaoDadosBancarios fichaId={ficha.id} aoMudar={async () => setFicha(await obterFicha(id))} />}
-          <Reunioes agendamentos={ficha.agendamentos} hoje={hoje} />
+          <Reunioes fichaId={ficha.id} agendamentos={ficha.agendamentos} hoje={hoje} />
         </div>
       </main>
       <AbaSuporte />
