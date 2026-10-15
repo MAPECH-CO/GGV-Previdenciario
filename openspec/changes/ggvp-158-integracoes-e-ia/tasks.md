@@ -58,6 +58,15 @@
 
 ## GGVP-158 · 7. Fechamento
 
-- [ ] 7.1 Variável nova: nenhuma. Conferir `variaveis.test.ts` e a tabela de `docs/infra/homologacao.md` sem mudança.
-- [ ] 7.2 Rodar typecheck, lint, testes e Playwright, uma suíte por vez; colar a saída no relatório. Rodar `openspec validate --all --strict`.
+- [x] 7.1 Variável nova: nenhuma. Conferir `variaveis.test.ts` e a tabela de `docs/infra/homologacao.md` sem mudança.
+- [x] 7.2 Rodar typecheck, lint, testes e Playwright, uma suíte por vez; colar a saída no relatório. Rodar `openspec validate --all --strict`.
+
+  Verificado em 15/10, na branch:
+  - typecheck dos quatro pacotes sem erro; lint sem erro (só os avisos que já existiam);
+  - contratos 196/196; `campos` 12/12; tela 1735/1735; API 1074 de 1077 na suíte inteira (3 pulados, o Drive de verdade), sem falha;
+  - Playwright, nos três passos da CI: 2/2, 2/2 e 266 de 267. A falha é o nome do arquivo baixado no `kit-de-verdade.e2e.ts`
+    ("download" em vez de "Kit do contrato - versão 1.docx"): o Chromium desta máquina (141) é mais velho que o do Playwright
+    do projeto e dá "download" para todo `<a download>`, também numa página em branco, sem o portal. A CI instala o certo;
+  - `openspec validate --all --strict`: esta change é válida; 15 de 17. As 2 que falham (ggvp-12 e ggvp-6, requisito sem
+    SHALL na primeira linha) já vieram assim da `main` e são de outros épicos: ficam no relatório, sem mexer aqui.
 - [ ] 7.3 Trazer a `main` por merge, resolver conflitos e abrir o PR "GGVP-158: ..." com o template, sem mesclar.
