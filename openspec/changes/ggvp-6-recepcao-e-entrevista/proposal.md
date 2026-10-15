@@ -10,7 +10,7 @@ Uma história por vez, nesta ordem (fluxo D1 do Miro, decisão do Pedro em 05/10
 
 1. GGVP-16 · Reconhecer quem chegou e para quê
 2. GGVP-17 · Receber documento entregue no balcão
-3. GGVP-123 · Marcar a entrevista e a agenda
+3. GGVP-123 · Marcar a entrevista e a agenda. Ajuste do teste do Pedro (14/10): o botão do cartão "Reuniões" da ficha leva à marcação (CA10).
 4. GGVP-21 · Confirmar o agendamento do lead
 5. GGVP-24 · Preencher a ficha de atendimento · mexe com senha: sessão nova
 6. GGVP-32 · Preparar a conversa lendo a ficha

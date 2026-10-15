@@ -41,6 +41,8 @@
 - [x] 3.10 Playwright `e2e/agenda.e2e.ts`: do balcão a marcar a entrevista e ver na agenda (CA1, CA5), horário ocupado (CA3), convite no Chatwoot simulado (CA4), compromisso interno (CA5), "confirmar se aconteceu" com "Faltou" e remarcar com motivo até "Últimos contatos" (CA7, CA8, CA9), "Realizado" (CA6), tema escuro e fonte grande na marcação e na agenda. Verifica com `npm run e2e`.
 - [ ] 3.11 Ligar no servidor: trocar o corpo das funções de `src/dados/agenda.ts` por `fetch` nos endpoints da `design.md`, criar o link do Google Meet e abrir o Chatwoot de verdade com o modelo da GGVP-102. Depende do GGVP-118, do banco do Mateus e da GGVP-102 (Fernando). **Fica aberta nesta história.**
 - [x] 3.12 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [ ] 3.13 CA10 (teste do Pedro, 14/10) · O botão do cartão "Reuniões" leva à marcação (`/agenda/marcar/:id`), com o rótulo "Marcar reunião (com transcrição)", só para quem tem `ficha.editar`. Teste Vitest em `FichaCliente.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [ ] 3.14 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-21 · Confirmar o agendamento do lead
 
