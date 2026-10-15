@@ -51,7 +51,7 @@ export const VersaoDaPrestacao = z.object({
 })
 export type VersaoDaPrestacao = z.infer<typeof VersaoDaPrestacao>
 
-/** GET /api/casos/:id/prestacao (só `prestacao.ver`: Financeiro, advogada, Sênior e Sócio, CA2). */
+/** GET /api/casos/:id/prestacao (só `prestacao.ver`: Financeiro, Sênior e Sócio, CA2; a Sênior faz, GGVP-44 CA13). */
 export const PrestacaoDoCaso = z.object({
   casoId: z.uuid(),
   cliente: z.string(),

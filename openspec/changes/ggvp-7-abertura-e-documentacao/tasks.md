@@ -106,6 +106,17 @@
 - [x] 11.5 Playwright `e2e/liberar.e2e.ts`: o caminho inteiro da Rita, da leitura ao OK e à fila da sênior (CA1, CA6, CA7); o Sebastião na fila há 2 dias e travado (CA2, CA5); outro perfil vê só a situação (CA4); tema escuro e fonte grande. Verifica com `npm run e2e`.
 - [ ] 11.6 Ligar no servidor: trocar o corpo das funções de `src/dados/liberacao.ts` por `fetch` nos endpoints da spec, tirar o perfil do login (a tela já usa o perfil da sessão; o servidor de exemplo ainda recebe o `perfil` que a tela manda, e o servidor de verdade confere o da sessão), ler o parecer da GGVP-20 e gravar no histórico do processo (GGVP-86). Depende do GGVP-118, do banco do Mateus, da GGVP-20 e da GGVP-86. **Fica aberta nesta história.**
 
+**Ajustes do Pedro, segundo PDF (14/10): abrir o próprio documento** (`fix/GGVP-18-abrir-documento`; GGVP-18 CA8, GGVP-81 CA17, GGVP-27 CA8; design, decisão 5)
+
+- [x] 11.7 Servidor: o arquivo do scanner (chave `drive:<id>`) é lido do Drive em `rotas/documentos.ts`, com o Drive passado em `servidor.ts`; sem Drive, 404 com mensagem clara; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
+- [x] 11.8 Servidor: `GET /api/pessoas/:id/documentos/:hash` pela mesma função de servir, com `caso.ver`, peça, saúde e `acesso_dado_sensivel`; teste em `rotas/documentos.test.ts` (GGVP-81 CA17).
+- [x] 11.9 Tela: `componentes/AbrirDocumento.tsx` (janela do navegador; sem arquivo, diz isso) e o endereço do arquivo da ficha pela pessoa e pelo hash; teste em `AbrirDocumento.test.tsx` (GGVP-81 CA17).
+- [x] 11.10 Liberar ao Jurídico: cada documento abre o próprio arquivo; a entrevista diz "o conteúdo fica com o Jurídico", sem botão; teste em `LiberarCaso.test.tsx` (CA8).
+- [x] 11.11 Conferir documento e a lista da perícia: "Abrir" pelo arquivo; testes em `ConferirDocumentos.test.tsx` e `MarcarPericia.test.tsx` (que abre a página da perícia) (GGVP-81 CA17).
+- [x] 11.12 Conferir antes do INSS, Protocolar e a página do processo: "Abrir" na janela pela rota do caso; testes em `Conferencia.test.tsx`, `Passos.test.tsx` (o protocolo) e `PaginaDoCaso.test.tsx` (GGVP-81 CA17).
+- [x] 11.13 Playwright: a Documentação abre na liberação e na conferência um documento que chegou pelo card e vê o arquivo na janela; o laudo segue só com o Jurídico.
+- [x] 11.14 Rodar typecheck, lint e testes; colar a saída; relatório final.
+
 <!-- Fim do grupo documentos. -->
 
 ## GGVP-125 · Ligar a Recepção e a Abertura no servidor (Mateus, 08/10)

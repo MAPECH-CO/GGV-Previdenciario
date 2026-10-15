@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UsuarioDaSessao } from '@ggv/contratos'
 import { CHAVE } from '../dados/servidor.ts'
 import { SessaoContexto } from '../sessao.ts'
-import { ITENS_DA_GESTAO, ITENS_DAS_BASES, itensDoPerfil } from './itensDaGestao.ts'
+import { ITENS_DA_GESTAO, ITENS_DAS_BASES, ITENS_DE_CONSULTA_DO_SOCIO, itensDoPerfil } from './itensDaGestao.ts'
 import { Topbar, type ItemNavegacao } from './Topbar.tsx'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -94,6 +94,26 @@ describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 19
 
   it('GGVP-162 CA8 · o Sócio tem Clientes e Processos no topo, logo depois do Início e da Agenda', () => {
     expect(ids('socio').slice(0, 4)).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
+  })
+
+  it('GGVP-162 CA9 · o Sócio chega a todas as telas de consulta pelo topo, em toda tela; os outros perfis não mudam', () => {
+    expect(ids('socio')).toEqual([
+      'inicio',
+      'agenda',
+      'clientes',
+      'processos',
+      'estudos',
+      'roteiros',
+      'vigilia',
+      'tentativas',
+      'prazos',
+      'cofre',
+      'resultados',
+      'configuracao',
+      'financeiro',
+    ])
+    expect(ids('socio', [...itens, ...ITENS_DE_CONSULTA_DO_SOCIO])).toEqual(ids('socio'))
+    for (const perfil of ['advogada', 'senior', 'juridico_adm', 'atendimento_lider']) expect(ids(perfil)).not.toContain('vigilia')
   })
 
   it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {

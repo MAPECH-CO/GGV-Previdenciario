@@ -690,6 +690,13 @@ Só servidor, com teste junto; as telas são do Pedro. Branch `feat/GGVP-158-par
     - "Em andamento" entra sem desfecho e sem linha recusada.
 
   Verificado em 14/10: `fluxo/raio-x.test.ts` (1 novo), `rotas/raio-x.test.ts` e `fluxo/importacao.test.ts`, 13/13; typecheck e lint da API sem erro. Cada palavra vira o desfecho do acervo, e "Em andamento" entra sem desfecho, sem linha recusada. Na primeira rodada, um teste das rotas do Raio-X falhou uma vez, sem repetir nas três rodadas seguintes.
+- [x] 7.17 A data de corte na "Base do acervo" (P7.7, decisão 73, GGVP-148 CA5, 14/10): `dataDeCorte`, opcional, no painel dos Resultados.
+  - Verifica com `fluxo/resultados.test.ts` e o teste dos contratos:
+    - a data de corte é a decisão mais nova da base;
+    - sem decisão na base, fica nula;
+    - o painel sem o campo segue valendo.
+
+  Verificado em 14/10: `fluxo/resultados.test.ts` (1 novo) com `rotas/gestao.test.ts`, 28/28; contratos 190/190; `Resultados.test.tsx` e `InicioDoSocio.test.tsx` 14/14; typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam). A data de corte é a decisão mais nova da base (05/10 numa base carregada em 14/10); sem decisão, nula; o painel sem o campo segue valendo.
 
 ## GGVP-158 · Parte 8 · Auditoria (14/10)
 
@@ -776,14 +783,16 @@ O código e o roteiro vão na branch `feat/GGVP-158-parte-9`, em cima do #82, se
   - a limpeza do PrevGGVLucas;
   - a mudança da homologação.
 
-  Feito em 14/10: `docs/infra/producao.md` (novo), com a ordem, a mudança da homologação (as três opções), o backup e o ensaio no projeto temporário, a chave nova do cofre, a limpeza (os comandos e a conferência), o app, liberar e voltar uma versão, o monitor em docker compose, a cópia no Drive e o que espera o Lucas e o Pedro. A homologação aponta para ele. Na escrita: o registro dos modelos do Word fica no banco, então o depósito sai inteiro e os modelos sobem de novo (decisão 81 e P9.2 ajustadas). `variaveis.test.ts` 4/4 com a doc mexida.
+  Feito em 14/10: `docs/infra/producao.md` (novo), com a ordem, a mudança da homologação (as três opções; depois, na escolha do Mateus, a volta a Oregon), o backup e o ensaio no projeto temporário, a chave nova do cofre, a limpeza (os comandos e a conferência), o app, liberar e voltar uma versão, o monitor em docker compose, a cópia no Drive e o que espera o Lucas e o Pedro. A homologação aponta para ele. Na escrita: o registro dos modelos do Word fica no banco, então o depósito sai inteiro e os modelos sobem de novo (decisão 81 e P9.2 ajustadas). `variaveis.test.ts` 4/4 com a doc mexida.
 - [x] 9.5 Rodar typecheck, lint, testes e Playwright; colar a saída; pedido para a main.
 
   Verificado em 14/10, na branch da parte 9 (em cima do #82): typecheck dos quatro pacotes sem erro; lint sem erro (os 3 avisos da tela já existiam); contratos 189/189; `campos` 11/11; tela 1674/1674 (a primeira rodada, junto com uma instalação em outra pasta, deixou 21 arquivos sem subir o processo de teste; repetida sozinha, passou inteira); API 1014 de 1017 na suíte inteira (3 pulados), sem falha; Playwright 262/262; `openspec validate --all --strict` 16/16.
 
 **Fora do código, com o Mateus**
 
-- [ ] 9.6 A homologação muda de banco (P9.2, decisão 81), na escolha do Mateus na hora. Depois vêm as variáveis novas no app dela, o deploy e o `homologacao:preparar`, com as senhas entregues por ele.
+As tarefas 9.6 a 9.10 esperam o aceite do Lucas em todas as histórias (Mateus, 14/10): a produção só sobe depois dele.
+
+- [ ] 9.6 A homologação volta ao "Portal Operacional", de Oregon (P9.2, decisão 81; Mateus, 14/10). Depois vêm as variáveis dele no app da homologação, o deploy e o `homologacao:preparar`, com as senhas entregues pelo Mateus.
 - [ ] 9.7 O backup e o ensaio (P9.3, decisão 82):
   - conferir o backup diário do PrevGGVLucas pelo painel;
   - restaurar o mais novo num projeto temporário, conferindo as migrações e as contagens;

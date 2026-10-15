@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { AbrirDocumento, hrefDaPasta } from '../componentes/AbrirDocumento.tsx'
 import { ConferirEnviar } from '../componentes/ConferirEnviar.tsx'
 import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -11,9 +12,11 @@ import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
+import { ehMedico } from '../regras/leitura.ts'
 import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, numerosDaJurimetria, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
 import { SISTEMA } from '../regras/periciaNoCaso.ts'
 import passo from './Balcao.module.css'
+import documentos from './ConferirDocumentos.module.css'
 import proprio from './Pericia.module.css'
 import styles from './ProcessoPericia.module.css'
 
@@ -21,8 +24,9 @@ import styles from './ProcessoPericia.module.css'
 // marcada" (2179:664). A página do processo nasce aqui com a perícia em destaque (épico GGVP-10); as outras etapas aparecem
 // e ficam indisponíveis até as histórias delas. Dado de saúde só para o Jurídico.
 
-const navegacao: ItemNavegacao[] = [
-  { id: 'inicio', rotulo: 'Início', href: '/advogada' },
+/** GGVP-158: o Início é o de quem está na tela (com sessão, "/"); sem sessão, a Central da advogada, como no Figma. */
+const navegacao = (inicio: string): ItemNavegacao[] => [
+  { id: 'inicio', rotulo: 'Início', href: inicio },
   { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
 ]
 
@@ -135,7 +139,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
   return (
     <>
       <title>{`${ficha.nome} · Processo · perícia · GGV Previdenciário`}</title>
-      <Topbar itens={navegacao} ativo="" funcao={perfil?.rotulo ?? 'Advogada'} />
+      <Topbar itens={navegacao(perfil?.inicio ?? '/advogada')} ativo="" funcao={perfil?.rotulo ?? 'Advogada'} />
       <main className={styles.pagina}>
         <header className={styles.cabecalho}>
           <div className={styles.linha}>
@@ -539,6 +543,12 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                           {a.nome} · {dataCurta(a.data, hoje)}
                         </span>
                       </span>
+                      {/* GGVP-81 CA17: o próprio arquivo, numa janela; o laudo só para o Jurídico. */}
+                      {ehMedico(a.tipo) && !juridico ? (
+                        <span className={styles.nota}>o conteúdo fica com o Jurídico</span>
+                      ) : (
+                        <AbrirDocumento href={hrefDaPasta(ficha.id, a)} nome={a.nome} className={documentos.abrir} classeDaNota={styles.nota} />
+                      )}
                     </li>
                   ))}
                 </ul>

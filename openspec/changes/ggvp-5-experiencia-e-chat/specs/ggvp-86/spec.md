@@ -117,3 +117,11 @@ O Atendimento SHALL ver o caso sem petição, estratégia, valores nem o conteú
 - **Dado** a pessoa do Atendimento
 - **Quando** abre o caso
 - **Então** não vê petição, estratégia, valores nem o conteúdo dos laudos
+
+### Requirement: CA14 · Os dados do processo dentro da tarefa (Pedro, 14/10)
+Toda tela de tarefa de um caso (as telas de passo em `/casos/:id/...`, como decidir a perícia, protocolar e cumprir exigência) SHALL mostrar no topo o bloco "Dados do processo": o cliente (nome, CPF e telefone), o benefício, a fase, o NB, o número do requerimento, o número do processo judicial e a vara, com "Abrir a ficha" e, para quem abre o processo, "Abrir o processo". O bloco SHALL vir de uma rota leve, só para quem vê o caso (`caso.ver`), e MUST NOT trazer dado de saúde, estratégia nem valores. Quem não vê o caso (hoje, o Financeiro) MUST NOT ver o bloco.
+
+#### Scenario: CA14 · Decidir a perícia sem sair da tarefa
+- **Dado** a advogada na tarefa "Decidir perícia" de um caso
+- **Quando** a tela abre
+- **Então** ela vê no topo o cliente, o CPF, o telefone, o benefício, a fase e os números do caso, sem precisar abrir o processo

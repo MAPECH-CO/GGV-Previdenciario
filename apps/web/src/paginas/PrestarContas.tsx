@@ -104,14 +104,14 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
 
       <section className={styles.cartao} aria-label="Contrato e fonte dos valores">
         <h2 className={styles.cartaoTitulo}>Contrato e fonte dos valores</h2>
-        <p>Valor recebido: a advogada informa e confere com a carta de concessão. Honorários e repasse: calculados pelo sistema a partir desse valor e do percentual informado.</p>
+        <p>Valor recebido: a Sênior informa e confere com a carta de concessão. Honorários e repasse: calculados pelo sistema a partir desse valor e do percentual informado.</p>
         <p>Percentual do contrato: {p.percentualContrato === null ? 'não informado pelo servidor' : formatarDecimal(Number(p.percentualContrato)) + '%'}.</p>
         {atual && <p>Os campos começam com a versão {atual.versao}, registrada por {atual.por ?? 'pessoa não identificada'} em {dia(atual.em)}. Confira antes de dar um novo OK.</p>}
         <p>A entrada, as parcelas do contrato e a divisão de uma parte na Caixa ainda não estão disponíveis. Esses valores não entram nesta conta.</p>
         {['Entrada do contrato', 'Parcelas do contrato', 'Parte na Caixa'].map(rotulo => <label key={rotulo} className={styles.rotulo}>
           {rotulo}<input className={styles.campo} disabled value="" placeholder="Ainda indisponível" />
         </label>)}
-        <p className={styles.dica}>Quem dá o OK é a advogada da prestação. A Sênior consulta. A edição direta dos honorários ainda não está disponível.</p>
+        <p className={styles.dica}>Quem faz a prestação e dá o OK é a Sênior (G8). A edição direta dos honorários ainda não está disponível.</p>
       </section>
 
       {atual && (

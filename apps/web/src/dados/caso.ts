@@ -570,7 +570,7 @@ function montar(banco: Banco, processoId: string, quem: QuemPergunta | undefined
     peritoParaIdentificar,
     visao,
     valores: (c.valores ?? []).filter((v) =>
-      podeVerValor(perfil, v.tipo, { advogadaDoCaso: !!quem && quem.usuario === c.advogada, naPrestacaoDeContas: !!c.naPrestacaoDeContas }),
+      podeVerValor(perfil, v.tipo, { naPrestacaoDeContas: !!c.naPrestacaoDeContas }),
     ),
     estrategia: visao === 'juridico' ? c.estrategia : undefined,
     saude: visao === 'juridico' ? c.saude : undefined,

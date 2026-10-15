@@ -35,7 +35,7 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
     setFeito(
       entrada.data.resultado === 'recebido'
         ? 'Recebimento lançado. Agora avise o cliente e marque a ida ao banco.'
-        : 'Divergência registrada. A prestação voltou para a advogada.',
+        : 'Divergência registrada. A prestação voltou para a Sênior.',
     )
     setVersao((v) => v + 1)
   }
@@ -80,7 +80,7 @@ export function ReceberPrestacao({ casoId }: { casoId: string }) {
           {v.divergencia && <span className={`${styles.selo} ${styles.seloAlerta}`}>Divergência: {v.divergencia}</span>}
         </section>
       ) : (
-        <p className={styles.dica}>A prestação ainda não foi concluída pela advogada.</p>
+        <p className={styles.dica}>A prestação ainda não foi concluída pela Sênior.</p>
       )}
 
       <section className={styles.cartao} aria-label="Ida ao banco">

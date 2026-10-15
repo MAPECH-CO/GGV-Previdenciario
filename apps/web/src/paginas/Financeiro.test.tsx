@@ -68,7 +68,7 @@ describe('GGVP-78 · o painel Financeiro, como no Figma (1930:4)', () => {
     expect(itens('Indicadores do mês').map((i) => i.textContent)).toEqual([
       'Recebido no mêsR$ 3.703,70▲ 12% sobre setembro',
       'A receberR$ 500,001 processo esperando a ida ao banco',
-      'Prestações de contas a lançar21 aguardando o OK da advogada (G8)',
+      'Prestações de contas a lançar21 aguardando o OK da Sênior (G8)',
       'Em atrasoR$ 0,000 processos com o prazo de pagamento vencido',
     ])
     expect(itens('Recebido e previsto por mês').map((i) => i.getAttribute('aria-label'))).toEqual([

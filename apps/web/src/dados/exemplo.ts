@@ -143,7 +143,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
       { beneficio: 'loas-idoso', etapa: 'Administrativo · exigência do INSS', proximaAcao: 'responder a exigência', prazo: 'vence em 2 dias', urgente: true },
     ]),
     cliente(9, 'lucia-exemplo', 'Lúcia Exemplo', [
-      { beneficio: 'pensao-morte', etapa: 'Judicial · sentença procedente', proximaAcao: 'avisar a cliente depois do OK da advogada', prazo: 'hoje', urgente: true },
+      { beneficio: 'pensao-morte', etapa: 'Judicial · sentença procedente', proximaAcao: 'avisar a cliente depois do OK da Sênior', prazo: 'hoje', urgente: true },
     ]),
     // GGVP-50: a criança do LOAS Deficiente, menor de 16 anos pela data de nascimento. Sem CPF: a semente não inventa número.
     cliente(

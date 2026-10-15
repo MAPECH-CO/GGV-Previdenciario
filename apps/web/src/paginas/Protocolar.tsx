@@ -3,8 +3,10 @@ import type { FormEvent } from 'react'
 import { hojeIso, isoParaData, somenteDigitos } from '@ggv/campos'
 import { nomeDoBeneficio, RegistrarProtocolo, SEGUNDOS_SENHA, type CasoParaProtocolo, type SenhaDoCofre } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
+import { AbrirDocumento, hrefDoCaso } from '../componentes/AbrirDocumento.tsx'
 import { CofreGovbr } from '../componentes/CofreGovbr.tsx'
 import { usePode } from '../sessao.ts'
+import documentos from './ConferirDocumentos.module.css'
 import { TelaDePasso } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
@@ -150,7 +152,9 @@ export function Protocolar({ casoId }: { casoId: string }) {
         </h2>
         <ol className={styles.lista}>
           {caso.documentos.map((d) => (
-            <li key={d.id}>{d.nome}</li>
+            <li key={d.id}>
+              {d.nome} · <AbrirDocumento href={hrefDoCaso(casoId, d.id)} nome={d.nome} className={documentos.abrir} />
+            </li>
           ))}
         </ol>
         {caso.temSenhaNoCofre ? <SenhaDoGov casoId={casoId} /> : <p className={styles.dica}>Este cliente não tem senha do gov.br no cofre.</p>}
@@ -165,18 +169,19 @@ export function Protocolar({ casoId }: { casoId: string }) {
       ) : (
         <form className={styles.cartao} onSubmit={registrar} noValidate>
           <h2 className={styles.cartaoTitulo}>Registrar o protocolo</h2>
+          {/* CA8 (Pedro, 14/10): os três obrigatórios à vista; o botão só liga com eles e a revisão. */}
           <label className={styles.rotulo} htmlFor={ids.numero}>
-            Número do requerimento
+            Número do requerimento (obrigatório)
           </label>
-          <input id={ids.numero} className={styles.campo} inputMode="numeric" value={numero} onChange={(e) => setNumero(somenteDigitos(e.target.value))} />
+          <input id={ids.numero} className={styles.campo} inputMode="numeric" required value={numero} onChange={(e) => setNumero(somenteDigitos(e.target.value))} />
           <label className={styles.rotulo} htmlFor={ids.der}>
-            Data de entrada do requerimento (DER)
+            Data de entrada do requerimento (DER) (obrigatório)
           </label>
-          <input id={ids.der} className={styles.campo} type="date" max={hojeIso()} value={der} onChange={(e) => setDer(e.target.value)} />
+          <input id={ids.der} className={styles.campo} type="date" required max={hojeIso()} value={der} onChange={(e) => setDer(e.target.value)} />
           <label className={styles.rotulo} htmlFor={ids.comprovante}>
-            Comprovante do protocolo
+            Comprovante do protocolo (obrigatório)
           </label>
-          <input id={ids.comprovante} type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e) => setComprovante(e.target.files?.[0] ?? null)} />
+          <input id={ids.comprovante} type="file" required accept="application/pdf,image/jpeg,image/png" onChange={(e) => setComprovante(e.target.files?.[0] ?? null)} />
           <label className={styles.escolha} htmlFor={ids.revisado}>
             <input id={ids.revisado} type="checkbox" checked={revisado} onChange={(e) => setRevisado(e.target.checked)} />
             Revisei o requerimento antes de enviar
@@ -187,7 +192,7 @@ export function Protocolar({ casoId }: { casoId: string }) {
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior || !revisado}>
+            <button type="submit" className={styles.botao} disabled={enviando || !caso.okSenior || !revisado || !numero || !der || !comprovante}>
               {enviando ? 'Registrando…' : 'Registrar protocolo'}
             </button>
           </div>

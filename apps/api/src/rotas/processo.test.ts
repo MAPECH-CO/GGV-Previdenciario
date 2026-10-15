@@ -123,7 +123,7 @@ afterEach(async () => {
 })
 
 describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () => {
-  it('a advogada do caso: o caso inteiro, com o conteúdo médico e os valores; o acesso ao dado de saúde fica registrado', async () => {
+  it('a advogada do caso: o caso inteiro, com o conteúdo médico; os valores da prestação, não (são da Sênior, Mateus 14/10); o acesso ao dado de saúde fica registrado', async () => {
     const r = await ver('gabi')
     expect(r.statusCode).toBe(200)
     const p = r.json()
@@ -165,7 +165,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       ['helena', 'D2.01', 'OK da Sênior para o INSS: aprovado'],
       ['gabi', 'D2.03', 'Decisão sobre a perícia'],
     ])
-    expect(p.valores).toEqual({ versao: 2, recebido: '18900.00', honorarios: '5670.00', cliente: '13230.00' })
+    expect(p.valores).toBeNull()
     expect(p.saude).toEqual({
       documentos: [{ tipo: 'laudo', emitidoEm: '2026-09-20', profissional: 'Dr. Ortopedista', cid: 'M54.5' }],
       parecer: { resultado: 'suficiente', confirmadoEm: '2026-10-02T12:00:00.000Z' },
@@ -299,5 +299,34 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, ['D3a.03', 'D3a.04'])))
     p = (await ver('gabi')).json()
     expect([p.prazos, doJuiz(p)]).toEqual([[], []])
+  })
+})
+
+describe('GGVP-86 CA14 · os dados do processo dentro da tarefa (Pedro, 14/10)', () => {
+  const resumo = async (apelido: string, id = casoId) => app.inject({ method: 'GET', url: `/api/casos/${id}/resumo`, cookies: await cookieDe(apelido) })
+
+  it('quem vê o caso recebe só a identificação: o cliente, o benefício, a fase, os números e a vara; nada de saúde, estratégia nem valores', async () => {
+    await banco.update(caso).set({ vara: '1ª Vara Federal de Osasco' }).where(eq(caso.id, casoId))
+    await banco.update(pessoa).set({ telefone: '11987654321' }).where(eq(pessoa.cpf, '27183946509'))
+    for (const apelido of ['ana', 'eva', 'fabio', 'gabi', 'helena', 'igor', 'lauro']) {
+      const r = await resumo(apelido)
+      expect([apelido, r.statusCode]).toEqual([apelido, 200])
+      expect(r.json()).toEqual({
+        casoId,
+        pessoa: { id: expect.any(String), nome: 'Vera Lúcia', cpf: '27183946509', telefone: '11987654321' },
+        beneficio: 'loas-deficiente',
+        fase: 'administrativa',
+        identificadores: { nb: '4561237895', protocolo: null, cnj: null },
+        vara: '1ª Vara Federal de Osasco',
+      })
+    }
+    // Nada do caso médico nem dos valores passa pela rota leve, e ninguém leu dado de saúde.
+    expect(JSON.stringify((await resumo('ana')).json())).not.toMatch(/M54|laudo|honor|estrateg/i)
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
+  })
+
+  it('o Financeiro, que não vê o caso, não recebe o resumo; caso que não existe ou id torto: 404', async () => {
+    expect((await resumo('julia')).statusCode).toBe(403)
+    for (const id of ['00000000-0000-4000-8000-000000000000', 'antonio-exemplo-1']) expect((await resumo('gabi', id)).statusCode).toBe(404)
   })
 })

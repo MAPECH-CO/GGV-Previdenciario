@@ -53,7 +53,7 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     expect(enviar().disabled).toBe(true)
   })
 
-  it('CA7 · o aviso favorável: com o OK da advogada, o texto revisado não muda; sem o OK, travado (G8)', async () => {
+  it('CA7 · o aviso favorável: com o OK da Sênior, o texto revisado não muda; sem o OK, travado (G8)', async () => {
     await abrir('lucia-exemplo', 'resultado-favoravel')
     expect(screen.getByText('Mensagem aprovada pelo Jurídico (não muda)')).toBeTruthy()
     expect(texto().readOnly).toBe(true)
@@ -61,7 +61,7 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Modelo' }), { target: { value: 'resultado-desfavoravel' } })
     expect(await screen.findByText('Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.')).toBeTruthy()
     render(comSessao(<MensagemAoCliente ficha={(await obterFicha('antonio-exemplo'))!} modeloInicial="resultado-favoravel" aoFechar={() => {}} />))
-    expect(await screen.findByText('Falta o OK da advogada na prestação de contas: o aviso só sai depois dele (G8).')).toBeTruthy()
+    expect(await screen.findByText('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele (G8).')).toBeTruthy()
   })
 
   it('CA6 · com mais de uma conversa, a de mais mensagens primeiro; escolher outra muda o "Abrir a conversa"', async () => {

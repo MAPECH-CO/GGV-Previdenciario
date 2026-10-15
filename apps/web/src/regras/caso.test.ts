@@ -119,18 +119,19 @@ describe('GGVP-86 · o caso numa linha só', () => {
     expect(visaoDoPerfil(undefined)).toBe('atendimento')
   })
 
-  it('Valores · só o Financeiro e o Sócio; a advogada vê a causa, a renda por pessoa e a prestação de contas do caso dela', () => {
-    const dela = { advogadaDoCaso: true, naPrestacaoDeContas: true }
+  it('Valores · só o Financeiro e o Sócio; a advogada vê a causa e a renda por pessoa; a Sênior, a prestação de contas enquanto o caso está nela (Mateus, 14/10)', () => {
+    const naPrestacao = { naPrestacaoDeContas: true }
     for (const tipo of ['causa', 'renda-por-pessoa', 'prestacao-de-contas'] as const) {
-      expect(podeVerValor('financeiro', tipo, dela)).toBe(true)
-      expect(podeVerValor('socio', tipo, dela)).toBe(true)
-      for (const outro of ['atendimento', 'documentacao', 'senior', 'juridico-adm', undefined]) expect(podeVerValor(outro, tipo, dela)).toBe(false)
+      expect(podeVerValor('financeiro', tipo, naPrestacao)).toBe(true)
+      expect(podeVerValor('socio', tipo, naPrestacao)).toBe(true)
+      for (const outro of ['atendimento', 'documentacao', 'juridico-adm', undefined]) expect(podeVerValor(outro, tipo, naPrestacao)).toBe(false)
     }
-    expect(podeVerValor('advogada', 'causa', { advogadaDoCaso: false, naPrestacaoDeContas: false })).toBe(true)
-    expect(podeVerValor('advogada', 'renda-por-pessoa', { advogadaDoCaso: false, naPrestacaoDeContas: false })).toBe(true)
-    expect(podeVerValor('advogada', 'prestacao-de-contas', dela)).toBe(true)
-    expect(podeVerValor('advogada', 'prestacao-de-contas', { advogadaDoCaso: false, naPrestacaoDeContas: true })).toBe(false)
-    expect(podeVerValor('advogada', 'prestacao-de-contas', { advogadaDoCaso: true, naPrestacaoDeContas: false })).toBe(false)
+    expect(podeVerValor('advogada', 'causa', { naPrestacaoDeContas: false })).toBe(true)
+    expect(podeVerValor('advogada', 'renda-por-pessoa', { naPrestacaoDeContas: false })).toBe(true)
+    expect(podeVerValor('advogada', 'prestacao-de-contas', naPrestacao)).toBe(false)
+    expect(podeVerValor('senior', 'prestacao-de-contas', naPrestacao)).toBe(true)
+    expect(podeVerValor('senior', 'prestacao-de-contas', { naPrestacaoDeContas: false })).toBe(false)
+    expect([podeVerValor('senior', 'causa', naPrestacao), podeVerValor('senior', 'renda-por-pessoa', naPrestacao)]).toEqual([false, false])
   })
 })
 

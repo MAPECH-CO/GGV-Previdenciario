@@ -472,6 +472,7 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - `GET /api/acervo/raio-x` (`resultados.ver`): os indicadores, calculados por uma função pura com teste (uma base inventada), cada um com o número de casos; os totais e a data da base.
     - A constante `RAIO_X` do contrato sai quando a tela do Pedro ler a rota: o teste de tela dele conta os números de hoje.
     - O tamanho e o limite de linhas são os do importador de hoje. Nada do arquivo vai ao log.
+    - A "Base do acervo" dos Resultados (GGVP-148 CA5) leva também a data de corte, a decisão mais nova da base, no campo `dataDeCorte` do painel (`PainelDeResultados`). O campo é opcional, para não quebrar os testes de tela que montam o painel. A `dataDaBase`, da entrada mais recente (GGVP-55 CA3), fica como está. A tela mostra a data de corte quando o Pedro ligar (14/10, pedido do Mateus).
 
 ### Parte 8 · Auditoria (decisões do Mateus, 14/10)
 
@@ -518,7 +519,7 @@ O que já está feito e não entra: as outras leituras de conteúdo médico já 
 O código e o roteiro vão num pedido em cima do #82 (parte 8). O que é fora do código (Coolify, Supabase e DNS) é feito com o Mateus, passo a passo, cada um só com o pedido dele. Sem migração e sem matriz nova.
 
 Decisões do Mateus em 14/10:
-- o banco da produção é o PrevGGVLucas (São Paulo), que hoje é o da homologação. A homologação muda de banco antes, e o PrevGGVLucas é limpo do teste;
+- o banco da produção é o PrevGGVLucas (São Paulo), que hoje é o da homologação. A homologação volta antes ao "Portal Operacional", de Oregon, e o PrevGGVLucas é limpo do teste. A produção só sobe depois do aceite do Lucas em todas as histórias;
 - o monitor do /saude roda num container à parte no servidor, com a mesma imagem;
 - os arquivos têm a cópia no Drive do escritório, com um aviso quando ela atrasa. O banco fica com o backup diário do Supabase e a restauração testada;
 - plano aprovado, código em seguida.
@@ -531,13 +532,11 @@ Decisões do Mateus em 14/10:
     - Em produção, a largada recusa o que é de teste. Além do `LEITURA_SIMULADA` (P4.10), recusa o `GOOGLE_DRIVE_SO_LEITURA=sim` e o `RELACIONAMENTO_SIMULADO` com valor diferente de `nao`, e a mensagem diz qual variável sobrou. Copiar o app da homologação no Coolify traria essas variáveis.
 81. **O banco da produção é o PrevGGVLucas** (P9.2).
     - A ordem:
-      1. a homologação muda de banco, para os dois apps nunca gravarem no mesmo;
+      1. a homologação volta ao Portal Operacional, para os dois apps nunca gravarem no mesmo;
       2. o Mateus limpa o PrevGGVLucas;
       3. a produção sobe.
-    - O banco novo da homologação é decisão do Mateus na hora. As opções:
-      - um projeto novo no Supabase, com o depósito de arquivos (tem custo);
-      - o "Portal Operacional", de Oregon (é lento e adia o apagar da tarefa 2.16);
-      - um Postgres no Coolify, com pgvector, e os arquivos numa pasta do servidor (sem custo novo).
+    - O banco da homologação volta a ser o "Portal Operacional", de Oregon (decisão do Mateus, 14/10). A homologação é de teste, e a lentidão de Oregon (150 a 180 ms por consulta) pesa menos que um projeto novo. Por isso o Portal Operacional não é mais apagado: a tarefa 2.16 da GGVP-2 foi cancelada.
+    - A produção espera o aceite do Lucas em todas as histórias (Mateus, 14/10). A volta da homologação a Oregon e a limpeza do PrevGGVLucas ficam para essa hora; até lá, a homologação segue no PrevGGVLucas, que é mais rápido para os testes do Lucas.
     - A limpeza deixa o banco como novo:
       - os esquemas do portal (`public` e `drizzle`) saem inteiros, e a largada roda todas as migrações de novo. Assim volta junto o que as migrações põem, como o catálogo dos benefícios, e a largada põe os feriados, os padrões do protocolo e o modelo da ida ao banco;
       - o depósito `documentos` fica vazio. Os modelos do Word sobem de novo pelo `modelos:subir`, com o login de uma Sênior da produção, porque o registro deles (a tabela `modelo`) sai com o banco (14/10, na implementação).
@@ -653,7 +652,7 @@ Parte 9: nenhum.
 - **Leituras sem registro:** a estratégia, a sugestão de benefício e a petição seguem sem registro de leitura. A auditoria contou só as rotas com a trava do dado de saúde.
 - **O aviso no áudio gravado fora:** até a tela da entrevista mandar a confirmação, o pedido do servidor espera. Quem sobe o áudio de fora hoje não confirma o aviso.
 - **O servidor inteiro fora do ar:** o monitor cai junto, e ninguém é avisado. Restam o painel do Coolify e o da Hostinger.
-- **A homologação muda de banco:** o roteiro de teste do Lucas recomeça no banco novo. É preciso rodar o `homologacao:preparar` de novo, com senhas novas.
+- **A homologação volta a Oregon:** ela fica mais lenta (de 150 a 180 ms por consulta). O que foi testado no PrevGGVLucas depois de 13/10 sai na limpeza. O `homologacao:preparar` roda de novo lá e acrescenta só o que falta.
 - **A produção sem o que espera o Lucas:**
   - sem a lista de logins, ela sobe sem usuários reais;
   - sem as OABs do DJEN e a chave da AASP, a vigília avisa "sem fonte" uma vez por dia (P5.10).

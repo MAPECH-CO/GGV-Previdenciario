@@ -7,6 +7,9 @@
 - [x] 1.3 Tela `/casos/:id` (`src/paginas/PaginaDoCaso.tsx`, Figma `72:2`, `72:287`, `72:572`, `59:11`) e a sobreposição da jurimetria (`src/componentes/JurimetriaDoCaso.tsx`, Figma `2184:2` a `2184:183`); a rota no fim de `Telas`; a ficha leva ao caso e ao laudo novo. Teste em `src/paginas/PaginaDoCaso.test.tsx`. Verifica com `pnpm vitest run src/paginas/PaginaDoCaso.test.tsx`.
 - [x] 1.4 Playwright `e2e/caso.e2e.ts`: o caso do Antônio de ponta a ponta, o perito do Pedro em um clique, a visão do Atendimento; tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5195 pnpm exec playwright test caso`.
 - [ ] 1.5 Ligar no servidor: `obterCaso` vira `GET /api/casos/:id` com o perfil da sessão; a linha, as esperas e os laços vêm das tabelas do Mateus; a jurimetria da GGVP-59, GGVP-64 e GGVP-131. **Fica aberta nesta história.**
+- [x] 1.6 CA14 (Pedro, 14/10) · Contrato `ResumoDoCaso` em `packages/contratos/src/processo.ts`; rota `GET /api/casos/:id/resumo` em `rotas/processo.ts` (`caso.ver`; sem saúde, estratégia nem valores); teste em `rotas/processo.test.ts` (quem vê, o Financeiro recusado, o caso que não existe).
+- [x] 1.7 CA14 · Tela: `componentes/DadosDoProcesso.tsx` e o bloco na `TelaDePasso` quando o endereço é de um caso; teste em `DadosDoProcesso.test.tsx` (o bloco com os dados, os atalhos por permissão, nada sem permissão).
+- [x] 1.8 Rodar typecheck, lint e testes; colar a saída; relatório final.
 
 ## GGVP-82 · Conversar com o portal em linguagem natural
 

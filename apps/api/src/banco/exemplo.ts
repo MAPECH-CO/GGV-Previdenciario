@@ -206,7 +206,7 @@ export async function semearExemplos(banco: Banco) {
     })
     .returning()
   await banco.insert(resultadoInss).values({ casoId: cv.id, resultado: 'deferido', dataDecisao: new Date().toISOString().slice(0, 10), documentoId: carta.id, registradoPor: advogada.id })
-  await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: carta.id })
+  await banco.insert(tarefa).values({ casoId: cv.id, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'senior', evidenciaDocumentoId: carta.id })
 
   // Caso perdido (GGVP-22): improcedente, sem recurso; a advogada escreve e aprova o resumo para o cliente. A semente já
   // abre o resumo, sem passar pelo "Não recorrer" (GGVP-100).

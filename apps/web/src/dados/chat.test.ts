@@ -55,10 +55,10 @@ describe('GGVP-82 · o chat que consulta', () => {
     expect(r.tipo).toBe('recusa')
     expect(r.sugestao.texto).toContain('não tem acesso a esse valor')
     expect(JSON.stringify(r)).not.toMatch(/18\.900|R\$/)
-    // A sênior também não vê valores; o Financeiro e a advogada do caso veem.
-    expect((await pergunta('Qual o valor da prestação de contas da Lúcia Exemplo?', SENIOR)).tipo).toBe('recusa')
+    // GGVP-44 CA13 (Mateus, 14/10): a prestação é da Sênior, que vê o valor com o caso na prestação; o Financeiro também; a advogada, não.
+    expect((await pergunta('Qual o valor da prestação de contas da Lúcia Exemplo?', SENIOR)).sugestao.texto).toContain('R$ 18.900,00')
     expect((await pergunta('Qual o valor da prestação de contas da Lúcia Exemplo?', FINANCEIRO)).sugestao.texto).toContain('R$ 18.900,00')
-    expect((await pergunta('Qual o valor da prestação de contas da Lúcia Exemplo?', ADVOGADA)).sugestao.texto).toContain('R$ 18.900,00')
+    expect((await pergunta('Qual o valor da prestação de contas da Lúcia Exemplo?', ADVOGADA)).tipo).toBe('recusa')
   })
 
   it('CA10 · jurimetria: os números vêm do sistema, com o número de casos, sem amostra mínima, e a IA cita as fontes', async () => {
@@ -204,10 +204,10 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
   it('comprovante de RPV no Financeiro: o valor vem do comprovante, a IA não calcula honorários (G19), o aviso só depois do OK (G8)', async () => {
     const r = await pergunta('comprovante do RPV da Lúcia Exemplo', FINANCEIRO, { anexos: [{ nome: 'rpv_lucia.pdf', tamanho: 10 }] })
     expect(r.acao!.tipo).toBe('lancar-comprovante')
-    expect(r.acao!.travas).toEqual(['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da advogada (G8)'])
+    expect(r.acao!.travas).toEqual(['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da Sênior (G8)'])
     const feito = await confirmarAcao(r.acao!.id, FINANCEIRO, { arquivos: [pdf('rpv_lucia.pdf')] })
     expect(feito.texto).toContain('(G8)')
-    expect(tarefasCriadasPeloChat('Dra. Paula (exemplo)')[0]).toMatchObject({ acao: 'Aprovar prestação de contas' })
+    expect(tarefasCriadasPeloChat('Dra. Renata (exemplo)')[0]).toMatchObject({ acao: 'Aprovar prestação de contas' })
     // Fora do Financeiro, o comprovante de RPV não é lançado.
     expect((await pergunta('comprovante do RPV da Lúcia Exemplo', ATENDIMENTO, { anexos: [{ nome: 'rpv_lucia.pdf', tamanho: 10 }] })).tipo).toBe('recusa')
   })

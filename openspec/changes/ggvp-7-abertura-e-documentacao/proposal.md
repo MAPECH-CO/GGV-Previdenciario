@@ -34,6 +34,10 @@ documento, o laudo novo, "Liberar ao Jurídico" no servidor e a baixa na exigên
 
 Cada história ganha uma spec em `specs/ggvp-n/spec.md` e uma seção no `tasks.md`, no bloco do seu grupo.
 
+**Ajustes do Pedro, segundo PDF (14/10)** (`fix/GGVP-18-abrir-documento`): o "Abrir" de toda lista de documentos abre o próprio
+arquivo numa janela do navegador, também o que veio do scanner pelo Drive (GGVP-81 CA17, GGVP-18 CA8), e a tela do protocolo
+mostra os obrigatórios (GGVP-27 CA8, na change `ggvp-8-via-administrativa-inss`).
+
 ## Fora do escopo
 
 - Servidor, banco e implantação: Supabase e Coolify são do Mateus. Aqui só tela, sobre dados de exemplo em `apps/web/src/dados/`, menos o que a GGVP-125 liga no servidor. Cada história deixa aberta a tarefa "ligar no servidor".

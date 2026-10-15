@@ -105,6 +105,8 @@ export const PainelDeResultados = z.object({
       aguardandoConferencia: z.number().int(),
       /** AAAA-MM-DD: a entrada mais recente, em Brasília. */
       dataDaBase: z.string(),
+      /** GGVP-148 CA5: AAAA-MM-DD, a decisão mais nova da base (a data de corte); sem decisão, nula. Opcional até a tela ler. */
+      dataDeCorte: z.string().nullable().optional(),
     }),
   ]),
 })

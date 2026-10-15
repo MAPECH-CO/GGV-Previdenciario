@@ -198,7 +198,9 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
     const achou = caminho.match(padrao)
     if (achou) return tela(achou[1])
   }
-  if (caminho === '/') {
+  // GGVP-158: as telas desenhadas para a advogada levam o Início a /advogada; outro perfil vai à tela inicial dele, e não à
+  // Central da advogada (o Atendimento na página da perícia, a Sênior na entrevista ao vivo).
+  if (caminho === '/' || (caminho === '/advogada' && perfil !== 'advogada')) {
     // Uma tela inicial por perfil, pelo perfil da sessão ("Entrar como...", GGVP-96; tela inicial, GGVP-78).
     if (NA_CENTRAL_DO_ATENDIMENTO.includes(perfil)) return <CentralAtendimento />
     if (perfil === 'advogada') return <CentralAdvogada />

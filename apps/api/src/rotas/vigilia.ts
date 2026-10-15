@@ -142,10 +142,11 @@ export function registrarRotasVigilia(app: FastifyInstance, { banco, armazenamen
         await tx.insert(etapa).values({ casoId, diagrama: 'D3', passo: 'D3.03', situacao: 'aberta', iniciadaEm: agora() })
         await tx.insert(tarefa).values({ casoId, passo: 'D3.03', titulo: 'Despachar caso', perfilDono: 'senior', evidenciaDocumentoId: d.id, criadoEm: agora() })
       } else if (dados.diferenteDoPedido) {
-        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Analisar deferimento diferente do pedido', perfilDono: 'advogada' })
+        // GGVP-44 CA13 (Mateus, 14/10): o passo da prestação é da Sênior, também a análise, que abre a mesma tela.
+        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Analisar deferimento diferente do pedido', perfilDono: 'senior' })
       } else {
         // GGVP-44 CA4: a prestação nasce com a carta de concessão (a comunicação do deferimento).
-        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'advogada', evidenciaDocumentoId: d.id })
+        await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: 'Prestar contas', perfilDono: 'senior', evidenciaDocumentoId: d.id })
         // GGVP-158 P7.5: o deferimento entra no acervo agora, não só na ida ao banco.
         await desfechoNoAcervo(tx, casoId, { desfecho: 'deferido', dataDecisao: hoje(agora()) })
       }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { DadosDoProcesso } from '../componentes/DadosDoProcesso.tsx'
 import { Topbar } from '../componentes/Topbar.tsx'
 import styles from './Passo.module.css'
 
@@ -13,10 +14,15 @@ const ITENS = [
  * coluna, com o "← Voltar ao início" escrito em cima.
  */
 export function TelaDePasso({ children }: { children: ReactNode }) {
+  // GGVP-86 CA14 (Pedro, 14/10): a tela de passo de um caso mora em /casos/<id>/...; ali, os dados do processo vêm no topo.
+  const casoId = window.location.pathname.match(/^\/casos\/([0-9a-f-]{36})\//)?.[1]
   return (
     <>
       <Topbar itens={ITENS} ativo="" funcao="" voltar />
-      <main className={styles.pagina}>{children}</main>
+      <main className={styles.pagina}>
+        {casoId && <DadosDoProcesso casoId={casoId} />}
+        {children}
+      </main>
       <AbaSuporte />
     </>
   )

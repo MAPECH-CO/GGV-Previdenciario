@@ -3,7 +3,7 @@
 // mundo do caso. O conteúdo médico (os documentos médicos com o CID e o parecer) só para quem vê dado de saúde, com o
 // acesso registrado (LGPD); a peça em preparo só para o Jurídico; os valores da prestação de contas só para o Financeiro
 // e a advogada do caso. O Financeiro e o Sócio não abrem o caso (`caso.ver`).
-import { ProcessoDoCaso, pode, type Erro } from '@ggv/contratos'
+import { ProcessoDoCaso, ResumoDoCaso, pode, type Erro } from '@ggv/contratos'
 import { and, asc, desc, eq, gte, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
@@ -23,7 +23,6 @@ import {
   perito,
   pessoa,
   prazo,
-  prestacaoContas,
   publicacao,
   tarefa,
   usuario,
@@ -63,6 +62,25 @@ type Opcoes = { banco: Banco; agora?: () => Date }
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
 export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
+  // GGVP-86 CA14 (Pedro, 14/10): os dados do processo dentro da tarefa, para quem vê o caso; só a identificação, sem saúde,
+  // estratégia nem valores. A página inteira continua de quem abre o processo (GGVP-162).
+  app.get<{ Params: { id: string } }>('/api/casos/:id/resumo', { preHandler: exigir(banco, 'caso.ver', agora) }, async (pedido, resposta) => {
+    const casoId = pedido.params.id
+    if (!UUID.test(casoId)) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
+    const [c] = await banco.select({ caso, pessoa }).from(caso).innerJoin(pessoa, eq(caso.pessoaId, pessoa.id)).where(eq(caso.id, casoId))
+    if (!c) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
+    const ids = await banco.select().from(identificadorCaso).where(eq(identificadorCaso.casoId, casoId)).orderBy(desc(identificadorCaso.criadoEm))
+    const numero = (tipo: string) => ids.find((i) => i.tipo === tipo)?.valor ?? null
+    return ResumoDoCaso.parse({
+      casoId,
+      pessoa: { id: c.pessoa.id, nome: c.pessoa.nome, cpf: c.pessoa.cpf, telefone: c.pessoa.telefone },
+      beneficio: c.caso.beneficio && (NO_CATALOGO[c.caso.beneficio] ?? c.caso.beneficio),
+      fase: c.caso.fase,
+      identificadores: { nb: numero('nb'), protocolo: numero('protocolo_inss'), cnj: numero('cnj') },
+      vara: c.caso.vara,
+    })
+  })
+
   // GGVP-162: a página do processo é de quem abre o processo; o Atendimento e a Documentação leem o caso pela ficha.
   app.get<{ Params: { id: string } }>('/api/casos/:id/processo', { preHandler: exigir(banco, 'processo.abrir', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
@@ -213,11 +231,6 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
         ? { oQue: `Esperando: ${esperando.aguardando}`, setor: null, prazo: null, tela: null }
         : null
 
-    // Valores: o Financeiro, o Sócio e a advogada que faz a prestação do caso (a que não foi definida ainda conta como a da
-    // prestação, como na rota dela). A Sênior vê a prestação na tela dela, não os valores aqui (Pedro, 09/10).
-    const daAdvogada = (c.caso.advogadaResponsavelId ?? quem) === quem
-    const veValores = pode(perfil, 'valores.ver') || (pode(perfil, 'prestacao.dar_ok') && daAdvogada)
-    const [pc] = veValores ? await banco.select().from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1) : []
 
     let saude = null
     if (veSaude) {
@@ -241,7 +254,7 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
     const [cofre] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, c.pessoa.id))
 
     // GGVP-158 P7.6: os valores que a regra de valores deixa o perfil ver; os outros não vêm.
-    const visiveis = await valoresVisiveis(banco, casoId, perfil, quem)
+    const visiveis = await valoresVisiveis(banco, casoId, perfil)
     return ProcessoDoCaso.parse({
       casoId,
       pessoa: { id: c.pessoa.id, nome: c.pessoa.nome, cpf: c.pessoa.cpf, nascimento: c.pessoa.dataNascimento },
@@ -267,7 +280,11 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       prazos,
       publicacoes,
       proximoPasso,
-      valores: pc ? { versao: pc.versao, recebido: pc.valorRecebido, honorarios: pc.honorarios, cliente: pc.valorCliente } : null,
+      // Os valores da prestação pela mesma regra de valores (GGVP-44 CA13, Mateus 14/10): o Financeiro, o Sócio e a Sênior,
+      // esta enquanto o caso está na prestação de contas; a advogada, não.
+      valores: visiveis && 'prestacao' in visiveis && visiveis.prestacao
+        ? { versao: visiveis.prestacao.versao, recebido: visiveis.prestacao.recebido, honorarios: visiveis.prestacao.honorarios, cliente: visiveis.prestacao.repasse }
+        : null,
       saude,
     })
   })

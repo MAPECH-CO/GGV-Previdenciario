@@ -1,16 +1,19 @@
+import { destinoDaTarefa } from '../dados/tarefas.ts'
 import type { Tarefa } from '../dados/tipos.ts'
 import styles from './TarefaLinha.module.css'
 
 type Props = { tarefa: Tarefa }
 
 /**
- * Uma tarefa da fila. A linha inteira abre o passo do caso; o nome do cliente abre a ficha dele.
+ * Uma tarefa da fila. A linha inteira abre o passo do caso; o nome do cliente abre a ficha dele. Sem tela própria, a linha
+ * abre a ficha; sem cliente, não é link (GGVP-120 CA4).
  * Os dois links são irmãos (nunca um dentro do outro): o da ação se estica por cima da linha com ::after.
  * As rotas são provisórias até as telas de passo e de cliente existirem.
  */
 export function TarefaLinha({ tarefa }: Props) {
   const { cliente, contexto, acao, detalhe, prazo, urgente } = tarefa
   const quem = cliente?.nome ?? contexto ?? ''
+  const destino = destinoDaTarefa(tarefa)
 
   return (
     <li className={`${styles.linha} ${urgente ? styles.urgente : ''}`}>
@@ -25,10 +28,17 @@ export function TarefaLinha({ tarefa }: Props) {
             ) : (
               <strong className={styles.quem}>{contexto}</strong>
             )}
-            <a className={styles.acao} href={tarefa.href ?? `/tarefas/${tarefa.id}`} aria-label={`${quem} · ${acao}`}>
-              {' · '}
-              {acao}
-            </a>
+            {destino ? (
+              <a className={styles.acao} href={destino} aria-label={`${quem} · ${acao}`}>
+                {' · '}
+                {acao}
+              </a>
+            ) : (
+              <span>
+                {' · '}
+                {acao}
+              </span>
+            )}
           </span>
         </div>
         <p className={styles.detalhe}>{detalhe}</p>
@@ -39,9 +49,11 @@ export function TarefaLinha({ tarefa }: Props) {
           {prazo}
         </span>
       )}
-      <span className={styles.seta} aria-hidden="true">
-        ›
-      </span>
+      {destino && (
+        <span className={styles.seta} aria-hidden="true">
+          ›
+        </span>
+      )}
     </li>
   )
 }

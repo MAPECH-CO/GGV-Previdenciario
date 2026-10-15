@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DetalhePericia } from '../componentes/DetalhePericia.tsx'
 import { eventosDaAgenda } from '../dados/agenda.ts'
+import { enviarArquivos } from '../dados/documentos.ts'
 import { lerComprovante, obterPericia, registrarMarcacao, remarcarPericia } from '../dados/pericia.ts'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
 import { configurarExemplo, zerarExemplo } from '../dados/servidor.ts'
@@ -178,5 +179,25 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     fireEvent.change(screen.getByLabelText(/Justificativa/), { target: { value: 'Cliente internada; o médico dá alta na semana que vem.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Autorizar mais uma remarcação' }))
     expect(await screen.findByText('Remarcação autorizada: a tarefa de marcar volta para o Jurídico administrativo.')).toBeTruthy()
+  })
+
+  it('GGVP-81 CA17 · cada documento da pasta tem o seu "Abrir"; fora do Jurídico, o laudo fica com o Jurídico', async () => {
+    await enviarArquivos('antonio-exemplo', {
+      origem: 'card',
+      arquivos: ['rg', 'laudo'].map((tipo, i) => ({ nome: `${tipo}.pdf`, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(50 + i).padStart(64, '0') })),
+    })
+    entrarComo('atendimento')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
+    const docs = (await screen.findByRole('heading', { name: 'Documentos (abrir cada um)' })).closest('section')!
+    expect(within(docs).getByText('o conteúdo fica com o Jurídico')).toBeTruthy()
+    // O Antônio é ficha de exemplo: o arquivo não está no portal, e a tela diz isso no lugar do link.
+    expect(within(docs).getByText('sem arquivo no portal')).toBeTruthy()
+  })
+
+  it('GGVP-158 · com sessão, o Início da página do processo é a tela inicial de quem entrou, e não a Central da advogada', async () => {
+    entrarComo('atendimento')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
+    await screen.findByRole('heading', { name: 'Perícias' })
+    expect(screen.getByRole('link', { name: 'Início' }).getAttribute('href')).toBe('/')
   })
 })

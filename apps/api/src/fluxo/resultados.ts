@@ -150,6 +150,8 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
       conferidos: count(processoAcervo.desfechoConferidoPor),
       aguardando: sql`count(*) filter (where ${processoAcervo.desfecho} is not null and ${processoAcervo.desfechoConferidoPor} is null)`.mapWith(Number),
       ultimaEntrada: max(processoAcervo.criadoEm),
+      // GGVP-148 CA5: a data de corte é a decisão mais nova da base.
+      corte: max(processoAcervo.dataDecisao),
     })
     .from(processoAcervo)
 
@@ -197,6 +199,7 @@ export async function painelDeResultados(banco: Banco, { de, ate, recorte, verTo
           conferidos: acervo.conferidos,
           aguardandoConferencia: acervo.aguardando,
           dataDaBase: diaEmBrasilia(acervo.ultimaEntrada),
+          dataDeCorte: acervo.corte ?? null,
         }
       : { situacao: 'sem_dados' },
   }

@@ -1127,6 +1127,11 @@ Os indicadores do Raio-X SHALL sair da base importada, por código com teste, ca
 - **Quando** a Sênior simula
 - **Então** as três aparecem como colunas ignoradas, e nada delas é gravado
 
+#### Scenario: P7.7 · A Base do acervo com a data de corte
+- **Dado** a base carregada, com a decisão mais nova em 05/10/2026
+- **Quando** a Gestão abre os Resultados
+- **Então** a "Base do acervo" traz os totais e a data de corte, 05/10/2026 (GGVP-148 CA5)
+
 ### Requirement: P8.1 · Quem abre conteúdo médico fica registrado
 Toda rota que entrega conteúdo com a trava do dado de saúde SHALL registrar a leitura, como as outras: quem leu, o perfil, o caso e o que foi lido. Valem:
 - a lista da Recepção com as gravações do Jurídico;
@@ -1225,7 +1230,7 @@ Na recusa, a mensagem diz qual variável sobrou.
 - **Então** o /saude da produção mostra a mesma versão
 
 ### Requirement: P9.2 · O banco da produção é o PrevGGVLucas, sem dado de teste
-O banco da produção SHALL ser o PrevGGVLucas (São Paulo). A homologação MUST mudar para outro banco antes de a produção subir, para os dois apps nunca gravarem no mesmo. O PrevGGVLucas SHALL ficar limpo do teste antes da produção: os esquemas do portal saem, a largada roda todas as migrações de novo, e o depósito de arquivos fica vazio. Os modelos do Word sobem de novo, porque o registro deles sai com o banco. Quem roda a limpeza é o Mateus.
+O banco da produção SHALL ser o PrevGGVLucas (São Paulo). A homologação MUST voltar ao "Portal Operacional", de Oregon, antes de a produção subir, para os dois apps nunca gravarem no mesmo. A produção só sobe depois do aceite do Lucas em todas as histórias. O PrevGGVLucas SHALL ficar limpo do teste antes da produção: os esquemas do portal saem, a largada roda todas as migrações de novo, e o depósito de arquivos fica vazio. Os modelos do Word sobem de novo, porque o registro deles sai com o banco. Quem roda a limpeza é o Mateus.
 
 #### Scenario: P9.2 · A produção sobe vazia
 - **Dado** o PrevGGVLucas limpo e a homologação em outro banco

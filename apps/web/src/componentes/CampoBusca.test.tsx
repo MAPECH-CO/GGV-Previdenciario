@@ -13,6 +13,7 @@ beforeEach(() => {
 const FILA: Tarefa[] = [
   { id: 't1', codigo: 'D2.06', cliente: { id: 'marta-exemplo', nome: 'Marta Exemplo' }, acao: 'Lançar prestação de contas', detalhe: '', href: '/casos/x/prestacao' },
   { id: 't2', codigo: 'D4.01', cliente: null, contexto: 'Vigília das publicações', acao: 'Reprocessar vigília', detalhe: '' },
+  { id: 't3', codigo: 'Chat', cliente: { id: 'antonio-exemplo', nome: 'Antônio Exemplo' }, acao: 'Ligar para o cliente', detalhe: '' },
 ]
 
 function buscar(perfil: string, termo: string) {
@@ -45,8 +46,15 @@ describe('GGVP-78 CA9 · a busca da tela inicial respeita o perfil (GGVP-135)', 
 
   it('a tarefa sem cliente se acha pelo contexto; sem nada, a tela diz', async () => {
     await buscar('senior', 'vigilia')
-    expect(nomes('Tarefas encontradas')).toEqual([['Vigília das publicações · Reprocessar vigília', '/tarefas/t2']])
+    // GGVP-120 CA4 (Pedro, 14/10): sem tela e sem cliente, a tarefa aparece, mas não é link; nunca a "tela não construída".
+    const lista = screen.getByRole('list', { name: 'Tarefas encontradas' })
+    expect([lista.textContent, within(lista).queryAllByRole('link').length]).toEqual(['Vigília das publicações · Reprocessar vigília', 0])
     expect(screen.queryByRole('list', { name: 'Clientes encontrados' })).toBeNull()
+  })
+
+  it('GGVP-120 CA4 · a tarefa sem tela própria, como a do chat sem processo, abre a ficha do cliente', async () => {
+    await buscar('senior', 'ligar')
+    expect(nomes('Tarefas encontradas')).toEqual([['Antônio Exemplo · Ligar para o cliente', '/clientes/antonio-exemplo']])
   })
 
   it('nada encontrado', async () => {
