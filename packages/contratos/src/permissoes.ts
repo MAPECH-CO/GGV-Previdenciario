@@ -26,9 +26,9 @@ const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10), quem abre o processo 32 (14/10), a prestação da Sênior 33 (14/10), as custas do processo 34 (15/10). Quem entrar depois
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10), quem abre o processo 32 (14/10), a prestação da Sênior 33 (14/10), as custas do processo 34 (15/10), a conferência do checklist e do documento só da Documentação 35 (15/10). Quem entrar depois
 // renumera.
-export const VERSAO_MATRIZ = 34
+export const VERSAO_MATRIZ = 35
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -183,6 +183,11 @@ export const MATRIZ = {
   'custas.ver': ['socio', 'financeiro', 'senior'],
   'custas.lancar': ['senior', 'financeiro'],
   'custas.aprovar': ['financeiro'],
+  // Versão 35 (GGVP-158 E10, 15/10): "Conferir checklist" (D1.21) e "Conferir documento" (D1.18: arquivar, liberar da
+  // quarentena, mover, usar no cadastro) são da Documentação (perfis.md); `ficha.editar` deixava o Atendimento e o Jurídico
+  // fazerem os dois pela API. O Atendimento segue abrindo a tela do checklist, só para as boas-vindas (D1.22).
+  'checklist.conferir': ['documentacao'],
+  'documento.conferir': ['documentacao'],
 } as const satisfies Record<string, readonly Perfil[]>
 
 export type Acao = keyof typeof MATRIZ

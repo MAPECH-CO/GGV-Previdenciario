@@ -27,6 +27,8 @@ Os perfis saem das raias do BPMN. Toda tela inicial tem o mesmo formato: **"O qu
 - as exigências que pedem documento: a do INSS (D2.05) e o laço da Documentação na do juiz (D3a.03);
 - os documentos da perícia e a cobrança deles, "Reunir documentos da perícia" e "Cobrar documento da perícia" (DP.03).
 
+Matriz v35 (GGVP-158, 15/10): "Conferir checklist" e as decisões de "Conferir documento" (arquivar, liberar da quarentena, mover, usar no cadastro) têm ação própria (`checklist.conferir`, `documento.conferir`), só da Documentação; o servidor recusa os outros perfis, e a tela do checklist mostra o botão de concluir só a ela. O Atendimento abre a tela do checklist só para as boas-vindas.
+
 O resto da Central é do **Atendimento**, e a Documentação não vê: agenda e confirmação, fichas, contrato e assinatura, a cobrança dos documentos do caso (D1.23), boas-vindas, fechamento e recontato, nova demanda, "Pedir documento legível" (GGVP-95 CA3), "Completar telefone" da ficha do scanner (GGVP-17 CA15), o complemento ao médico e o "Ajustar o caso" devolvido pela Sênior (GGVP-127; Pedro, 08/10). O Atendimento, e o líder dele, também não veem as tarefas da Documentação. As tarefas que o servidor guarda já vêm pelo perfil ativo, e as que o chat criou ou que nasceram de uma conversa são da pessoa.
 
 Os documentos pendentes de cada cliente, o que a cobrança aberta ainda espera, aparecem em cada processo do "Caso em andamento" da ficha, para todos que veem o caso, e na página do processo, para quem a abre, com o caminho para o checklist (comentário do Lucas de 07/10 no GGVP-130). A cobrança dos documentos do caso (D1.23) é do Atendimento pelo BPMN, em todas as telas; o cartão GGVP-130 cita "cobrança" entre as tarefas da Documentação: **a confirmar com o Lucas**.
