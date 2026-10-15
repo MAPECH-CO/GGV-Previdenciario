@@ -1,5 +1,5 @@
 // Financeiro, jurimetria e acervo, mensagens e configuração (GGVP-44, 55, 59, 64, 75, 90, 92, 98, 102, 104, 143).
-import { RESULTADOS_DO_RECURSO, TIPOS_DE_TERMO } from '@ggv/contratos'
+import { RESULTADOS_DO_RECURSO, SITUACOES_DO_CUSTO, TIPOS_DE_TERMO } from '@ggv/contratos'
 import { sql } from 'drizzle-orm'
 import { bigint, boolean, check, date, index, integer, jsonb, numeric, pgTable, text, unique, uniqueIndex, uuid, vector } from 'drizzle-orm/pg-core'
 import { usuario } from './acesso.ts'
@@ -47,6 +47,41 @@ export const prestacaoContas = pgTable(
     unique('prestacao_versao_unica').on(t.casoId, t.versao),
     check('prestacao_pessoas_diferentes', sql`${t.okAdvogadaPor} is null or ${t.recebidaPor} is null or ${t.okAdvogadaPor} <> ${t.recebidaPor}`),
     check('prestacao_aviso_depois_do_ok', sql`${t.clienteAvisadoEm} is null or ${t.okAdvogadaEm} is not null`),
+  ],
+).enableRLS()
+
+/**
+ * Custas do processo (GGVP-157): o gasto do escritório no caso, com descrição livre e o comprovante no armazenamento
+ * privado. Não entra na prestação de contas do cliente. Nada é apagado: corrigir e cancelar ficam no histórico.
+ */
+export const custoProcesso = pgTable(
+  'custo_processo',
+  {
+    id: id(),
+    casoId: uuid('caso_id')
+      .notNull()
+      .references(() => caso.id),
+    data: date('data').notNull(),
+    descricao: text('descricao').notNull(),
+    valor: numeric('valor', { precision: 14, scale: 2 }).notNull(),
+    comprovanteChave: text('comprovante_chave').notNull(),
+    comprovanteMime: text('comprovante_mime').notNull(),
+    comprovanteNome: text('comprovante_nome').notNull(),
+    situacao: text('situacao').notNull().default('esperando'),
+    /** O motivo da recusa do Financeiro. */
+    motivo: text('motivo'),
+    lancadoPor: uuid('lancado_por')
+      .notNull()
+      .references(() => usuario.id),
+    /** Quem aprovou ou recusou, e quando. */
+    decididoPor: uuid('decidido_por').references(() => usuario.id),
+    decididoEm: momento('decidido_em'),
+    criadoEm: criadoEm(),
+  },
+  (t) => [
+    index('custo_processo_caso_idx').on(t.casoId),
+    emLista('custo_processo_situacao', t.situacao, SITUACOES_DO_CUSTO),
+    check('custo_processo_valor_positivo', sql`${t.valor} > 0`),
   ],
 ).enableRLS()
 
