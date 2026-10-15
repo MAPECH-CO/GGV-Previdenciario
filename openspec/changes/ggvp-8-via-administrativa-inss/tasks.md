@@ -9,6 +9,7 @@
 - [x] 1.5 Dados de exemplo no banco local: caso aprovado pela Sênior, documentos, senha no cofre e as tarefas; verifica entrando como Jurídico administrativo.
 - [x] 1.6 Tela: Central do perfil pela API e "Protocolar no Meu INSS"; testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 1.7 Playwright: protocolar um caso de exemplo; verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 1.8 CA8 (Pedro, 14/10) · Tela: número do requerimento, DER e comprovante marcados como obrigatórios, "Registrar protocolo" desabilitado até os três e "Revisei"; o "Abrir" de cada documento vem da GGVP-18 (tarefa 11.12 da change `ggvp-7-abertura-e-documentacao`); teste em `Passos.test.tsx`.
 
 ## GGVP-31 · Mandar para perícia quando o benefício pede
 

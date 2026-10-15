@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
+import { AbrirDocumento, hrefDaPasta } from '../componentes/AbrirDocumento.tsx'
 import { ConferirEnviar } from '../componentes/ConferirEnviar.tsx'
 import { ParecerMedico } from '../componentes/ParecerMedico.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -11,9 +12,11 @@ import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
 import { dataCurta, hojeIso } from '../regras/datas.ts'
+import { ehMedico } from '../regras/leitura.ts'
 import { NOMES_DA_INSTANCIA, NOMES_DA_SITUACAO, NOMES_DO_TIPO, numerosDaJurimetria, prazoFalado, type SituacaoDaPericia } from '../regras/pericia.ts'
 import { SISTEMA } from '../regras/periciaNoCaso.ts'
 import passo from './Balcao.module.css'
+import documentos from './ConferirDocumentos.module.css'
 import proprio from './Pericia.module.css'
 import styles from './ProcessoPericia.module.css'
 
@@ -540,6 +543,12 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                           {a.nome} · {dataCurta(a.data, hoje)}
                         </span>
                       </span>
+                      {/* GGVP-81 CA17: o próprio arquivo, numa janela; o laudo só para o Jurídico. */}
+                      {ehMedico(a.tipo) && !juridico ? (
+                        <span className={styles.nota}>o conteúdo fica com o Jurídico</span>
+                      ) : (
+                        <AbrirDocumento href={hrefDaPasta(ficha.id, a)} nome={a.nome} className={documentos.abrir} classeDaNota={styles.nota} />
+                      )}
                     </li>
                   ))}
                 </ul>

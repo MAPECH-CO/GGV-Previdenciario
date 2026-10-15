@@ -345,6 +345,11 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     const doc = screen.getByRole('dialog', { name: 'Laudo médico' })
     expect(doc.textContent).toContain('Arquivo: laudo-ortopedista.pdf')
     expect(within(doc).getByRole('link', { name: 'Abrir o arquivo' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${LAUDO}`)
+    // GGVP-81 CA17 (Pedro, 14/10): o arquivo abre numa janela do navegador, que baixa e imprime.
+    const janela = vi.spyOn(window, 'open').mockReturnValue({} as Window)
+    fireEvent.click(within(doc).getByRole('link', { name: 'Abrir o arquivo' }))
+    expect(janela).toHaveBeenCalledWith(`/api/casos/${CASO}/documentos/${LAUDO}`, 'documento', 'popup,width=900,height=1000')
+    janela.mockRestore()
   })
 
   it('o Atendimento: o que a rota não mandou não aparece; o laudo só existe, sem nome nem arquivo; sem próximo passo, diz que ainda não há', async () => {

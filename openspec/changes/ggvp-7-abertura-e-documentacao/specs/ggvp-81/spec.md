@@ -152,3 +152,11 @@ Documento médico arquivado MUST NOT ser apagado nem descartado: fica guardado p
 - **Dado** um documento médico
 - **Quando** alguém tenta descartá-lo
 - **Então** o servidor recusa e ele continua guardado
+
+### Requirement: CA17 · "Abrir" abre o próprio documento, em toda lista (Pedro, 14/10)
+Em toda lista de documentos do portal (Conferir documento, Liberar ao Jurídico, a perícia, "Conferir antes do INSS", Protocolar no Meu INSS e a página do processo), "Abrir" SHALL abrir o próprio arquivo numa janela do navegador, onde dá para baixar e imprimir; MUST NOT levar à ficha do cliente. O arquivo da pasta do cliente SHALL ser achado no servidor pela pessoa e pelo conteúdo do arquivo (o SHA-256 que a ficha e o registro do documento já guardam), com as mesmas travas do documento do caso: `caso.ver`, peça jurídica só com `peticao.ver`, dado de saúde só com `dado_saude.ver_detalhe` e cada leitura em `acesso_dado_sensivel` (LGPD). O arquivo que chegou pelo scanner mora no Drive e SHALL ser lido de lá. Sem o arquivo no portal, ou sem o Drive ligado, a resposta SHALL dizer isso com mensagem clara, sem erro mudo.
+
+#### Scenario: CA17 · Abrir na conferência
+- **Dado** um documento que chegou pelo card ou pelo scanner
+- **Quando** a Documentação clica em "Abrir" na conferência
+- **Então** o próprio arquivo abre numa janela, e o laudo continua só com o Jurídico
