@@ -16,7 +16,9 @@ beforeEach(() => {
 
 async function abrir(processoId = 'rita-exemplo-1') {
   render(comSessao(<DarParecer processoId={processoId} />))
-  await screen.findByRole('heading', { level: 1, name: /Dar parecer médico/ })
+  // A abertura é CPU (ler o banco de exemplo, analisar, gravar, desenhar), sem latência; o primeiro teste paga o custo
+  // frio e, com a suíte inteira em paralelo na CI, passou de 1 s (o padrão do findBy). 5 s, como no PaginaDoCaso.
+  await screen.findByRole('heading', { level: 1, name: /Dar parecer médico/ }, { timeout: 5000 })
 }
 
 const registrar = () => screen.getByRole('button', { name: 'Registrar parecer' }) as HTMLButtonElement
