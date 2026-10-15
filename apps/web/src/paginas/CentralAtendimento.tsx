@@ -9,11 +9,7 @@ import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
-import {
-  exemploChatAtendimento,
-  tarefasAtendimento,
-  tarefasDocumentacao,
-} from '../dados/atendimento.ts'
+import { exemploChatAtendimento, tarefasAtendimento } from '../dados/atendimento.ts'
 import { tarefasDeConfirmar } from '../dados/agenda.ts'
 import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
 import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
@@ -63,7 +59,6 @@ function tarefasDeExemplo(funcao: Funcao | null): Tarefa[] {
     ['Atendimento', tarefasDeConfirmarAgendamento()],
     ['Atendimento', tarefasDeCompletarTelefone()],
     ['Atendimento', tarefasAtendimento],
-    ['Documentação', tarefasDocumentacao],
     ['Atendimento', tarefasDoContrato()],
     ['Documentação', tarefasDeConferirDocumento()],
     ['Documentação', tarefasDeConferirChecklist()],

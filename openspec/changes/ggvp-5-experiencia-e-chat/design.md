@@ -66,6 +66,7 @@ export const CasoNaTela = z.object({ /* ficha, processo, fase, identificacao, et
 11. **Documento** (CA11): "Abrir" mostra o tipo, o arquivo, a origem, a data e o passo; laudo para quem não é do Jurídico: só que existe.
 12. **Prazos da fase** (CA12): `prazosDaFase` tira a vigília do Meu INSS do judicial e a das publicações do administrativo.
 13. **Identificação** (CA13): NB (formatado pela biblioteca `campos`) ou protocolo na administrativa; CNJ com processo judicial.
+14. **Dados do processo na tarefa** (CA14, Pedro, 14/10): `GET /api/casos/:id/resumo` (`caso.ver`, contrato `ResumoDoCaso`) devolve só a pessoa (nome, CPF, telefone), o benefício, a fase, os números (NB, requerimento, CNJ) e a vara; a página do processo continua de quem abre o processo (GGVP-162). O bloco (`componentes/DadosDoProcesso.tsx`) entra uma vez, na moldura das telas de passo (`TelaDePasso`), quando o endereço é de um caso (`/casos/<id>/...`); sem permissão ou sem caso, não aparece.
 
 ### Anotado para o Lucas
 

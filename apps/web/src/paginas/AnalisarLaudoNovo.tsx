@@ -155,6 +155,11 @@ export function AnalisarLaudoNovo({ processoId }: { processoId: string }) {
           </ul>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>O parecer de suficiência (G17) só muda com a confirmação da advogada. Dado de saúde só aparece para o Jurídico.</p>
+          {/* CA6 (Pedro, 14/10): esta tela é de leitura; a ação é no parecer. */}
+          <h3 className={styles.ladoSecao}>Como segue</h3>
+          <p className={styles.ladoSub}>
+            No parecer, você confere o laudo e mantém ou refaz o parecer. Ao registrar, esta tarefa fecha e a marca “Laudo novo” sai da ficha.
+          </p>
         </aside>
       </main>
       <AbaSuporte />

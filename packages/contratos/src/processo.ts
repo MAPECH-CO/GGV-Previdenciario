@@ -85,6 +85,20 @@ export const ProcessoDoCaso = z.object({
 })
 export type ProcessoDoCaso = z.infer<typeof ProcessoDoCaso>
 
+/**
+ * Os dados do processo dentro da tarefa (GGVP-86 CA14, Pedro, 14/10): GET /api/casos/:id/resumo, para quem vê o caso.
+ * Só a identificação: nada de saúde, estratégia nem valores, que ficam na página do processo.
+ */
+export const ResumoDoCaso = z.object({
+  casoId: z.uuid(),
+  pessoa: z.object({ id: z.uuid(), nome: z.string(), cpf: z.string().nullable(), telefone: z.string().nullable() }),
+  beneficio: z.string().nullable(),
+  fase: ProcessoDoCaso.shape.fase,
+  identificadores: ProcessoDoCaso.shape.identificadores,
+  vara: z.string().nullable(),
+})
+export type ResumoDoCaso = z.infer<typeof ResumoDoCaso>
+
 /** GGVP-158 P7.1: a saída da IA para a estratégia do caso, conferida no código. */
 export const EstrategiaDaIa = z.object({ estrategia: z.string().trim().min(20).max(1500) })
 export type EstrategiaDaIa = z.infer<typeof EstrategiaDaIa>

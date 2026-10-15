@@ -30,6 +30,10 @@ describe('Analisar laudo novo · tela da advogada', () => {
     expect(mudaram).toEqual(['Raio-X de coluna lombar e ressonância magnética (22/09)', 'Carregar peso, ficar em pé e dirigir'])
     expect(screen.getByText('A IA só compara: não sugere CID, grau nem conclusão (G20). Quem confirma o laudo e o parecer de suficiência (G17) é a advogada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Ir para o parecer' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/parecer')
+    // CA6 (Pedro, 14/10): a tela é de leitura e diz onde fica a ação.
+    expect(screen.getByRole('heading', { name: 'Como segue' }).nextElementSibling?.textContent).toBe(
+      'No parecer, você confere o laudo e mantém ou refaz o parecer. Ao registrar, esta tarefa fecha e a marca “Laudo novo” sai da ficha.',
+    )
   })
 
   it('CA6 · diante do roteiro: o relatório da Rita passa a cobrir o prognóstico e as barreiras, e nada mais falta', async () => {

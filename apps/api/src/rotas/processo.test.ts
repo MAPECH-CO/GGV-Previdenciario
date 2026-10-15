@@ -301,3 +301,32 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect([p.prazos, doJuiz(p)]).toEqual([[], []])
   })
 })
+
+describe('GGVP-86 CA14 · os dados do processo dentro da tarefa (Pedro, 14/10)', () => {
+  const resumo = async (apelido: string, id = casoId) => app.inject({ method: 'GET', url: `/api/casos/${id}/resumo`, cookies: await cookieDe(apelido) })
+
+  it('quem vê o caso recebe só a identificação: o cliente, o benefício, a fase, os números e a vara; nada de saúde, estratégia nem valores', async () => {
+    await banco.update(caso).set({ vara: '1ª Vara Federal de Osasco' }).where(eq(caso.id, casoId))
+    await banco.update(pessoa).set({ telefone: '11987654321' }).where(eq(pessoa.cpf, '27183946509'))
+    for (const apelido of ['ana', 'eva', 'fabio', 'gabi', 'helena', 'igor', 'lauro']) {
+      const r = await resumo(apelido)
+      expect([apelido, r.statusCode]).toEqual([apelido, 200])
+      expect(r.json()).toEqual({
+        casoId,
+        pessoa: { id: expect.any(String), nome: 'Vera Lúcia', cpf: '27183946509', telefone: '11987654321' },
+        beneficio: 'loas-deficiente',
+        fase: 'administrativa',
+        identificadores: { nb: '4561237895', protocolo: null, cnj: null },
+        vara: '1ª Vara Federal de Osasco',
+      })
+    }
+    // Nada do caso médico nem dos valores passa pela rota leve, e ninguém leu dado de saúde.
+    expect(JSON.stringify((await resumo('ana')).json())).not.toMatch(/M54|laudo|honor|estrateg/i)
+    expect(await banco.select().from(acessoDadoSensivel)).toEqual([])
+  })
+
+  it('o Financeiro, que não vê o caso, não recebe o resumo; caso que não existe ou id torto: 404', async () => {
+    expect((await resumo('julia')).statusCode).toBe(403)
+    for (const id of ['00000000-0000-4000-8000-000000000000', 'antonio-exemplo-1']) expect((await resumo('gabi', id)).statusCode).toBe(404)
+  })
+})

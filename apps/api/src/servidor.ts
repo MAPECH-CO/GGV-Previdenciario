@@ -250,7 +250,7 @@ export function criarServidor({
     registrarRotasVigiliaDiario(app, { banco, agora, fontes: fontes ?? fontesAtivas() })
     registrarRotasExigenciaJuiz(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo })
     registrarRotasManifestacao(app, { banco, agora, armazenamento: arquivos, ia: motorIa })
-    registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos })
+    registrarRotasDocumentos(app, { banco, agora, armazenamento: arquivos, drive: doAmbiente?.drive })
     registrarRotasIndeferimento(app, { banco, agora, ia: motorIa, preparo })
     registrarRotasPeticao(app, { banco, agora, armazenamento: arquivos, ia: motorIa, preparo, driveLigado: comDrive })
     registrarRotasGestao(app, { banco, agora })

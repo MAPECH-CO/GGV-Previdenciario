@@ -66,6 +66,17 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     expect((await obterFicha('rita-exemplo'))?.historico.at(-1)?.oQue).toBe('Caso liberado ao Jurídico pela Documentação')
   })
 
+  it('CA8 · nenhum "Abrir" leva à ficha, e a entrevista diz que o conteúdo fica com o Jurídico, sem botão', async () => {
+    await completarRita()
+    await abrir('rita-exemplo-1')
+    const lista = screen.getByRole('list', { name: 'Documentos recebidos' })
+    expect(screen.queryByRole('button', { name: 'Abrir a entrevista' })).toBeNull()
+    expect(screen.getAllByText('o conteúdo fica com o Jurídico').length).toBeGreaterThan(1)
+    // A Rita é ficha de exemplo: os arquivos dela não estão no portal, e a tela diz isso no lugar do link.
+    expect(within(lista).queryAllByRole('link')).toHaveLength(0)
+    expect(within(lista).getAllByText('sem arquivo no portal').length).toBeGreaterThan(0)
+  })
+
   it('CA4 · outro perfil vê só a situação, sem o OK', async () => {
     await completarRita()
     await abrir('rita-exemplo-1', 'atendimento')
