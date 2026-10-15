@@ -76,6 +76,7 @@
 - [x] 6.13 CA5 · Tela: a ficha abre a "Mensagem ao cliente" pelo link `?mensagem=`; o cartão diz que o Atendimento recebeu a tarefa; o roteiro de teste do Lucas atualizado. Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 6.14 Playwright `e2e/seguranca.e2e.ts`: a confirmação sem mensagem, a tarefa do Atendimento e o aviso enviado pela janela, que fecha a tarefa. Verifica com `pnpm --filter @ggv/web e2e`.
 - [x] 6.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.16 CA5 (decisão do Pedro, 15/10) · A mudança bancária fica só no histórico: saem a tarefa "Avisar o cliente da mudança bancária", o link `?mensagem=` da ficha e o fecho da tarefa pelo envio (6.11 a 6.14 substituídas). Testes em `rotas/seguranca.test.ts`, `CartaoDadosBancarios.test.tsx` e `e2e/seguranca.e2e.ts`.
 
 ## GGVP-138 · Ligar no servidor as telas do Relacionamento (Pedro, 08/10)
 

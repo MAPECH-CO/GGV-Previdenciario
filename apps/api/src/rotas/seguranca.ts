@@ -20,7 +20,6 @@ import {
   motivoParaNaoMudar,
   pertoDaPrestacao,
   podeConfirmarSegunda,
-  tarefaDoAvisoBancario,
   type Verificacao,
 } from '../../../web/src/regras/seguranca.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario } from './recepcao.ts'
@@ -62,7 +61,7 @@ type Opcoes = { banco: Banco; agora?: () => Date }
 
 export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
-  const { evento, nomeDe, fichas, guardar, abrirTarefa, garantirAberta } = criarFichario(banco, agora)
+  const { evento, nomeDe, fichas, guardar, abrirTarefa } = criarFichario(banco, agora)
   // LGPD, minimização (GGVP-96): os dados bancários, só quem pede ou confirma a mudança e o Financeiro, que repassa.
   const ver = { preHandler: exigir(banco, 'dados_bancarios.ver', agora) }
   const pedir = { preHandler: exigir(banco, 'dados_bancarios.pedir', agora) }
@@ -166,9 +165,7 @@ export function registrarRotasSeguranca(app: FastifyInstance, { banco, agora = (
     }
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'dados_bancarios_confirmados', pedido, `pessoa:${ficha.id}`, { alerta: Boolean(perto) })
-    // CA5 (opção B, decisão do Mateus em 14/10; o Lucas confirma): o aviso não sai sozinho. O Atendimento recebe a tarefa, com o
-    // aviso pronto na Mensagem ao cliente, para conferir e enviar; o envio que sai fecha a tarefa (rotas/mensagens.ts).
-    await garantirAberta(tarefaDoAvisoBancario(ficha))
+    // CA5 (decisão do Pedro, 15/10): a mudança fica só no histórico; não vira tarefa nem mensagem ao cliente.
     return novo satisfies MudancaBancariaConfirmada
   })
 }

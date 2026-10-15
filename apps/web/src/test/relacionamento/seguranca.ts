@@ -12,7 +12,6 @@ import {
   motivoParaNaoMudar,
   pertoDaPrestacao,
   podeConfirmarSegunda,
-  tarefaDoAvisoBancario,
   type DadosBancarios,
   type Verificacao,
 } from '../../regras/seguranca.ts'
@@ -66,7 +65,7 @@ export async function pedirMudancaBancaria(fichaId: string, pedido: { dados: Dad
 
 /**
  * POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma (CA5): os dados mudam, e a mudança fica no
- * histórico, sem os números (CA1); o Atendimento recebe a tarefa de avisar o cliente (CA5); perto da prestação de contas, a advogada e o
+ * histórico, sem os números (CA1), e não vira tarefa nem mensagem ao cliente (CA5); perto da prestação de contas, a advogada e o
  * Financeiro recebem o alerta antes do OK e do repasse (CA2).
  */
 export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): Promise<RegistroBancario> {
@@ -103,9 +102,7 @@ export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): P
       banco.tarefas.push(alerta)
     }
   }
-  // CA5 (opção B, 14/10), como o servidor: o aviso não sai sozinho; o Atendimento recebe a tarefa, que volta a abrir.
-  const aviso = tarefaDoAvisoBancario(ficha)
-  banco.tarefas = [...banco.tarefas.filter((t) => t.id !== aviso.id), aviso]
+  // CA5 (decisão do Pedro, 15/10), como o servidor: a mudança fica só no histórico; sem tarefa nem mensagem ao cliente.
   gravar(banco)
   return novo
 }

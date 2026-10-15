@@ -26,7 +26,7 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     expect(cartao().queryByText('Conta com os números e o dígito: 12345-6.')).toBeNull()
   })
 
-  it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e o Atendimento recebe a tarefa de avisar o cliente', async () => {
+  it('CA1 e CA5 · só pede a mudança com o cliente verificado e em contrato novo; quem pediu não confirma; outra pessoa confirma e a mudança fica só no histórico', async () => {
     const aoMudar = vi.fn()
     // A sessão desde o começo: a troca de quem está logado mantém o cartão aberto (rerender).
     entrarComo('atendimento')
@@ -53,16 +53,13 @@ describe('Dados bancários para o repasse (GGVP-111)', () => {
     entrarComo('atendimento-lider')
     rerender(comSessao(<CartaoDadosBancarios fichaId="lucia-exemplo" aoMudar={aoMudar} />))
     fireEvent.click(botao('Confirmar a mudança (segunda pessoa)'))
-    expect(await cartao().findByText('Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.')).toBeTruthy()
+    expect(await cartao().findByText('Dados bancários mudados. A mudança ficou no histórico.')).toBeTruthy()
     expect(cartao().getByText(/^Banco Exemplo Dois · agência 0002 · conta 65432-1 · desde 07\/10\/2026/)).toBeTruthy()
     expect(aoMudar).toHaveBeenCalled()
-    // CA5 (opção B, 14/10): nada sai sozinho para o cliente; o Atendimento recebe a tarefa, com o link da mensagem pronta.
+    // CA5 (decisão do Pedro, 15/10): só o histórico; nada sai para o cliente e o Atendimento não recebe tarefa.
     const lucia = (await obterFicha('lucia-exemplo'))!
     expect(lucia.contatos.some((c) => c.texto.includes('Se não foi você'))).toBe(false)
-    expect(tarefasDoSetor('Atendimento').find((t) => t.acao === 'Avisar o cliente da mudança bancária')).toMatchObject({
-      href: '/clientes/lucia-exemplo?mensagem=aviso-de-mudanca',
-      urgente: true,
-    })
+    expect(tarefasDoSetor('Atendimento').some((t) => /mudança bancária/.test(t.acao))).toBe(false)
     expect(tarefasDoSetor('Jurídico')).toHaveLength(1)
   })
 

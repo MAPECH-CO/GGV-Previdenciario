@@ -108,8 +108,8 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
             onClick={() =>
               fazer(
                 () => confirmarMudancaBancaria(fichaId),
-                // CA5 (opção B, 14/10): o aviso não sai sozinho; vira a tarefa revisada do Atendimento.
-                'Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.',
+                // CA5 (decisão do Pedro, 15/10): a mudança fica só no histórico; sem tarefa nem mensagem ao cliente.
+                'Dados bancários mudados. A mudança ficou no histórico.',
               )
             }
           >

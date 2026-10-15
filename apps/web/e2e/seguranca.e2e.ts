@@ -48,9 +48,9 @@ test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva
   await eva.goto(ficha)
   const doCartao = eva.getByRole('region', { name: 'Dados bancários para o repasse' })
   await doCartao.getByRole('button', { name: 'Confirmar a mudança (segunda pessoa)' }).click()
-  await expect(doCartao.getByRole('status')).toHaveText('Dados bancários mudados. O Atendimento recebeu a tarefa de avisar o cliente, com o aviso pronto para conferir e enviar.')
+  await expect(doCartao.getByRole('status')).toHaveText('Dados bancários mudados. A mudança ficou no histórico.')
   await expect(doCartao).toContainText('Banco Exemplo Dois · agência 0002 · conta 65432-1')
-  // CA5 (opção B, decisão do Mateus em 14/10): nada sai sozinho para o cliente.
+  // CA5 (decisão do Pedro, 15/10): só o histórico; nada sai para o cliente.
   await expect(eva.getByRole('list', { name: 'Últimos contatos' })).not.toContainText('Se não foi você')
   // GGVP-96 (LGPD): o histórico vai a todos que veem o caso; fica só o fato, sem a conta.
   const historico = eva.getByRole('list', { name: 'Histórico' })
@@ -58,18 +58,10 @@ test('CA5 · a conta muda só com a segunda confirmação de outra pessoa, a Eva
   await expect(historico).not.toContainText('65432-1')
   await contexto.close()
 
-  // A Ana acha a tarefa na Central; o link abre a ficha com o aviso pronto; ela confere e envia, e a tarefa sai.
-  await page.goto('/')
-  const tarefa = page.getByRole('link', { name: 'Rosa Conta Teste · Avisar o cliente da mudança bancária' })
-  await tarefa.click()
-  const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Conta Teste' })
-  await expect(janela.getByLabel('Modelo')).toHaveValue('aviso-de-mudanca')
-  await expect(janela.getByRole('textbox')).toHaveValue(/Os dados para você receber os valores do seu caso mudaram hoje, a seu pedido\. Se não foi você, ligue para o escritório agora\./)
-  await janela.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()
-  await expect(janela.getByText(/✓ Simulado no Chatwoot às \d\d:\d\d/)).toBeVisible()
+  // Sem tarefa de aviso: a Central da Ana não ganha "Avisar o cliente da mudança bancária".
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'O que você tem que fazer' })).toBeVisible()
-  await expect(tarefa).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /Avisar o cliente da mudança bancária/ })).toHaveCount(0)
 })
 
 test('CA3 e CA7 · na ligação, o roteiro de segurança; no chat, a próxima tarefa vem com o lembrete da identidade', async ({ page }) => {

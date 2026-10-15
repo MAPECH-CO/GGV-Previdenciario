@@ -24,7 +24,6 @@ import { CANAIS, RESULTADOS, cobrancaDoCaso, type Cobranca } from '../../../web/
 import { complementoNaTela, doProcesso, type Complemento } from '../../../web/src/regras/complemento.ts'
 import { mensagemDaConfirmacao } from '../../../web/src/regras/confirmacao.ts'
 import { MODELOS_DE_MENSAGEM, beneficioParaOCliente, comAvisoDaSenha, ordenarConversas, problemasDaMensagem } from '../../../web/src/regras/mensagens.ts'
-import { AVISAR_MUDANCA_BANCARIA } from '../../../web/src/regras/seguranca.ts'
 import { camposDoProcessoEmVigor } from './conversa.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { TITULO_AVISO } from './prestacao.ts'
@@ -59,7 +58,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   // GGVP-158 P1.1: a entrega de mentira é só dos testes de tela; em produção não vale, mesmo com a variável posta por engano.
   const entregaDeMentira = simulado && ambiente.RELACIONAMENTO_SIMULADO === 'entrega' && ambiente.NODE_ENV !== 'production'
   const historico = registrarHistorico(banco, agora)
-  const { hoje, evento, nomeDe, guardar, concluirTarefas } = criarFichario(banco, agora)
+  const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
   const { doCaso } = criarChecklist(banco, agora)
 
@@ -308,8 +307,6 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     // G15 (GGVP-29 CA3): a orientação que saiu conta como tentativa do laço, ainda sem resposta, de qualquer janela, como em
     // rotas/complemento.ts. A trava do modelo já conferiu que o complemento está aberto e não parado.
     const tentativa = p.modelo === 'complemento' && status !== 'falhou' ? await tentativaDoComplemento(p.processoId ?? ficha.processos[0]!.id, quem) : null
-    // GGVP-111 CA5 (opção B, 14/10): o aviso da mudança bancária que saiu fecha a tarefa do Atendimento; o que não saiu a deixa.
-    if (p.modelo === 'aviso-de-mudanca' && status !== 'falhou') await concluirTarefas(ficha.id, AVISAR_MUDANCA_BANCARIA)
     if (tentativa) ficha.historico.push(evento(`Complemento ao médico: ${tentativa.n}ª tentativa por ${CANAIS.chatwoot} (${RESULTADOS['sem-resposta']})`, quem))
     await guardar(ficha)
     await historico(pedido.usuario!.id, 'mensagem_enviada', pedido, `pessoa:${ficha.id}`, { mensagem: linha.id, modelo: p.modelo, status })

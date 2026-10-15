@@ -1,12 +1,10 @@
 import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, eventoAuditoria, fichaRecepcao, mensagem, pessoa, tarefaRecepcao, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_SIMULADO } from './mensagens.ts'
-import { AVISAR_MUDANCA_BANCARIA } from '../../../web/src/regras/seguranca.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -96,10 +94,9 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
       expect(vista, apelido).toContain('Mudou os dados bancários')
       for (const dado of ['Banco Exemplo', '0001', '12345-6']) expect(vista, `${apelido}: ${dado}`).not.toContain(dado)
     }
-    // CA5 (opção B, 14/10): nenhuma mensagem sai sozinha; o Atendimento recebe a tarefa de avisar, com o aviso pronto.
+    // CA5 (decisão do Pedro, 15/10): a mudança fica só no histórico; nenhuma mensagem ao cliente e nenhuma tarefa ao Atendimento.
     expect(await banco.select().from(mensagem)).toEqual([])
-    const [aviso] = await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Atendimento'))
-    expect(aviso.dados).toMatchObject({ acao: AVISAR_MUDANCA_BANCARIA, urgente: true, href: `/clientes/${id}?mensagem=aviso-de-mudanca` })
+    expect(await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Atendimento'))).toHaveLength(0)
     // Sem caso perto da prestação de contas, nenhum alerta.
     expect(await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.setor, 'Financeiro'))).toHaveLength(0)
     expect((await chamar('eva', 'POST', confirmacao)).statusCode).toBe(404)
@@ -115,27 +112,5 @@ describe('GGVP-138 · terceiro não se passa pelo cliente, no servidor', () => {
     const alertas = (await banco.select().from(tarefaRecepcao)).filter((t) => t.setor !== 'Atendimento')
     expect(alertas.map((t) => t.setor).sort()).toEqual(['Financeiro', 'Jurídico'])
     expect(alertas[0].dados).toMatchObject({ acao: 'Dados bancários mudaram', urgente: true })
-  })
-
-  it('CA5 (opção B, 14/10) · o aviso sai só pela Mensagem ao cliente: o que não sai deixa a tarefa aberta; o que sai a fecha', async () => {
-    const { id } = await novaFicha('11987654321')
-    const url = `/api/fichas/${id}/dados-bancarios`
-    await json('ana', 'POST', url, { dados: { banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6' }, verificacao: { como: 'presencial', contratoNovo: true } })
-    await json('eva', 'POST', `${url}/confirmacao`)
-    const tarefa = async () => (await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, `aviso-banco-${id}`)))[0]
-    const enviarAviso = async () => {
-      const pronta = await json('ana', 'GET', `/api/fichas/${id}/mensagens/aviso-de-mudanca`)
-      return json('ana', 'POST', `/api/fichas/${id}/mensagens`, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 })
-    }
-    // Sem o Chatwoot, o aviso não sai: a tarefa fica aberta, para tentar de novo.
-    expect(await enviarAviso()).toMatchObject({ status: 'falhou', erro: MSG_SIMULADO })
-    expect((await tarefa()).concluidaEm).toBeNull()
-    // Com o Chatwoot de mentira que entrega (o dos testes de tela), o aviso sai e fecha a tarefa.
-    await app.close()
-    vi.stubEnv('RELACIONAMENTO_SIMULADO', 'entrega')
-    app = criarServidor({ banco, agora: () => relogio })
-    vi.unstubAllEnvs()
-    expect((await enviarAviso()).status).not.toBe('falhou')
-    expect((await tarefa()).concluidaEm).not.toBeNull()
   })
 })

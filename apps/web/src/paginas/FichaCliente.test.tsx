@@ -275,16 +275,6 @@ describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-1
   })
 })
 
-describe('GGVP-111 CA5 (opção B, 14/10) · o link da tarefa abre a ficha na mensagem pronta', () => {
-  it('com ?mensagem=aviso-de-mudanca, a "Mensagem ao cliente" abre no aviso da mudança bancária, para conferir e enviar', async () => {
-    entrarComo('atendimento')
-    render(comSessao(<FichaCliente id="lucia-exemplo" mensagemInicial="aviso-de-mudanca" />))
-    const janela = await screen.findByRole('dialog', { name: /^Mensagem ao cliente · / })
-    expect((within(janela).getByLabelText('Modelo') as HTMLSelectElement).value).toBe('aviso-de-mudanca')
-    await waitFor(() => expect((within(janela).getByRole('textbox') as HTMLTextAreaElement).value).toMatch(/Os dados para você receber os valores do seu caso mudaram hoje/))
-  })
-})
-
 describe('GGVP-123 CA10 (Pedro, 14/10) · o cartão "Reuniões" marca a reunião', () => {
   it('a Sênior vê "Marcar reunião (com transcrição)", que leva à marcação do cliente; o Sócio, que não marca, não vê o botão', async () => {
     for (const [perfil, ve] of [['senior', true], ['socio', false]] as const) {

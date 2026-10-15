@@ -2,7 +2,7 @@
 // não IA.
 import { normalizarTelefone, validarAgencia, validarConta } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
-import type { EdicaoFicha, Ficha, TarefaEncaminhada } from '../dados/tipos.ts'
+import type { EdicaoFicha, Ficha } from '../dados/tipos.ts'
 import type { CanalDoRegistro, ComQuem } from './conversa.ts'
 
 /** Como o escritório confirma que é o cliente: chamada de vídeo ou o cliente no escritório (Lucas, 07/10). */
@@ -54,25 +54,6 @@ export function erroDosDadosBancarios(d: Partial<DadosBancarios>): string | null
   if ((d.pix ?? '').length > 80) return 'Chave Pix até 80 letras.'
   return null
 }
-
-/** CA5 (opção B, decisão do Mateus em 14/10; o Lucas confirma): o aviso da mudança bancária não sai sozinho. */
-export const AVISAR_MUDANCA_BANCARIA = 'Avisar o cliente da mudança bancária'
-
-/**
- * A tarefa do Atendimento depois da segunda confirmação: abre a ficha com a "Mensagem ao cliente" no aviso pronto, para
- * conferir e enviar. Uma por ficha (a próxima mudança a abre de novo); o aviso que sai a fecha.
- */
-export const tarefaDoAvisoBancario = (ficha: Pick<Ficha, 'id' | 'nome'>): TarefaEncaminhada => ({
-  id: `aviso-banco-${ficha.id}`,
-  codigo: 'D3b.02',
-  cliente: { id: ficha.id, nome: ficha.nome },
-  acao: AVISAR_MUDANCA_BANCARIA,
-  detalhe: 'confira e envie o aviso pronto · se não foi o cliente, ele liga para o escritório',
-  prazo: 'hoje',
-  urgente: true,
-  href: `/clientes/${ficha.id}?mensagem=aviso-de-mudanca`,
-  setor: 'Atendimento',
-})
 
 /** Quem dá a segunda confirmação da mudança bancária (CA5): outra pessoa, do Atendimento líder ou do Jurídico. */
 export function podeConfirmarSegunda(perfil: IdPerfil | undefined, quem: string, pediu: string): string | null {

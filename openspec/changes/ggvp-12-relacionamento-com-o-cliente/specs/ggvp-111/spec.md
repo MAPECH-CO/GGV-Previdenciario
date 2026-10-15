@@ -44,20 +44,15 @@ Os modelos de mensagem ao cliente SHALL dizer que o escritório nunca pede a sen
 - **Quando** são enviados
 - **Então** dizem que o escritório nunca pede a senha do gov.br por mensagem
 
-### Requirement: CA5 · Dados bancários: confirmação dupla e aviso ao contato cadastrado, revisado
-A alteração de dados bancários SHALL exigir a confirmação de uma segunda pessoa. Confirmada, ela SHALL abrir para o Atendimento a tarefa "Avisar o cliente da mudança bancária", urgente e para hoje, que abre a "Mensagem ao cliente" com o aviso pronto. O aviso MUST NOT sair sozinho. A tarefa fecha quando o aviso sai; o aviso que não saiu deixa a tarefa aberta.
+### Requirement: CA5 · Dados bancários: confirmação dupla, só no histórico
+A alteração de dados bancários SHALL exigir a confirmação de uma segunda pessoa. Confirmada, a mudança SHALL ficar no histórico (quem, quando, o fato, sem os números). Ela MUST NOT mandar mensagem ao cliente nem abrir tarefa para o Atendimento.
 
-Decisão do Mateus em 14/10 (teste do Pedro, opção B): o aviso saía sozinho na confirmação, sem ninguém ver o texto; agora passa pela revisão, como as outras mensagens ao cliente (GGVP-102). O Lucas confirma na revisão.
+Decisão do Pedro em 15/10 (teste de 14/10): o aviso saía sozinho na confirmação; a opção B do Mateus (14/10) o trocou por uma tarefa do Atendimento. O Pedro decidiu que basta o histórico: "tem coisas desse tipo que nem precisam ficar virando tarefa ou mandar mensagem pro cliente". O alerta de mudança perto da prestação de contas (CA2) continua.
 
 #### Scenario: CA5 · A alteração é confirmada
 - **Dado** uma alteração de dados bancários pedida com a verificação
 - **Quando** outra pessoa confirma
-- **Então** os dados mudam, nenhuma mensagem sai sozinha, e o Atendimento recebe a tarefa "Avisar o cliente da mudança bancária"
-
-#### Scenario: CA5 · O Atendimento avisa o cliente
-- **Dado** a tarefa "Avisar o cliente da mudança bancária"
-- **Quando** o Atendimento a abre e envia o aviso
-- **Então** a "Mensagem ao cliente" abre com o aviso pronto, e a tarefa fecha quando o aviso sai; se o aviso não sai, a tarefa fica aberta
+- **Então** os dados mudam, a mudança fica no histórico, nenhuma mensagem sai para o cliente e nenhuma tarefa nasce para o Atendimento
 
 ### Requirement: CA6 · A ligação da perícia com a mesma verificação
 A ligação de orientação para a perícia SHALL seguir a mesma verificação antes de passar data, local e orientação.
