@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { entrarPelaApi } from './entrar.ts'
+import { ATENDIMENTO, entrarPelaApi, trocarDeUsuario } from './entrar.ts'
 
 // GGVP-101 · Cobrar os documentos pendentes: o checklist incompleto abre a cobrança, "Enviar cobrança" pelo Chatwoot
 // simulado, o limite de 2 tentativas e a decisão da sênior. Cada teste começa da semente de exemplo.ts.
@@ -10,9 +10,12 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA1, CA4, CA6 e CA11 · do checklist incompleto à cobrança na Central, enviada pelo Chatwoot com a mensagem pronta', async ({ page }) => {
+  // GGVP-158 E10 (15/10): quem confere o checklist é a Documentação; a cobrança é do Atendimento.
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/rita-exemplo-1/checklist')
   await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
   await expect(page.getByRole('heading', { name: /✓ Conferido às/ })).toBeVisible()
+  await trocarDeUsuario(page, ATENDIMENTO)
 
   await page.goto('/')
   const tarefa = page.getByRole('link', { name: 'Rita Exemplo · Cobrar documento' })

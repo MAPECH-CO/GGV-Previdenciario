@@ -37,6 +37,6 @@
 
 - [E1 tira a publicação de quem tinha `caso.ver` e precisava?] → ninguém: a leitura (D3a.01) é da advogada; a exigência do juiz vai aos setores pela própria exigência, não pela publicação.
 - [E3 duas linhas para a mesma escalada no quadro do setor] → o quadro já junta por id; a linha nova tem id `confirmar-senior-<pessoa>`, diferente da da tabela da Recepção (`confirmar-senior-<agendamento>`); a Sênior vê as duas só no quadro, uma na fila.
-- [E10 quebra teste que confere como Atendimento] → só o e2e das boas-vindas (dois testes) e nenhum teste do servidor (todos usam a Documentação); os dois trocam de login.
-- [E11 mexe em tela do Pedro] → só o ramo do servidor de três arquivos fora de qualquer PR aberto (conferido em 15/10); o e2e do kit de verdade, que afirmava o botão desligado, passa a concluir.
+- [E10 quebra teste que confere como Atendimento] → os e2e das boas-vindas (dois testes) e da cobrança (um), e nenhum teste do servidor (todos usam a Documentação); os três conferem como Documentação e voltam ao Atendimento.
+- [E11 mexe em tela do Pedro] → só o ramo do servidor de três arquivos fora de qualquer PR aberto (conferido em 15/10); os e2e do kit de verdade e da recepção no servidor, que afirmavam o botão desligado, passam a afirmar o anexo ligado (o do kit conclui).
 - [Matriz v35 e outra sessão] → a versão sobe por último, depois de trazer a main; conflito resolvido no merge.
