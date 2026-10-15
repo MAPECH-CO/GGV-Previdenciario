@@ -69,6 +69,8 @@ describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75,
       'Configuração',
       'Importar planilha',
       'Financeiro',
+      // GGVP-157: as custas dos processos, para quem vê valores.
+      'Custas',
     ])
     expect(screen.getByRole('link', { name: /Importar planilha/ }).getAttribute('href')).toBe('/gestao/importar')
     expect(screen.queryByRole('link', { name: '← Voltar ao início' })).toBeNull()
