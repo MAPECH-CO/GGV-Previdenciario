@@ -125,7 +125,6 @@ export function registrarRotasRecepcaoChecklist(app: FastifyInstance, { banco, a
   const { doCaso } = criarChecklist(banco, agora)
   const { hoje, evento, nomeDe, guardar, fichas } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
-  const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const mandar = { preHandler: exigir(banco, 'mensagem.enviar', agora) }
 
   /** As boas-vindas do caso (GGVP-97), pela regra das telas, com os registros do banco. As cópias vão com o contrato assinado. */
