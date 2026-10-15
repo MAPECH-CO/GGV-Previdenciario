@@ -32,7 +32,7 @@
 
 ## GGVP-158 · 4. Tela sem resposta do servidor
 
-- [ ] 4.1 I20 · `chamarApi` com a rede caída: `apps/web/src/api.ts`. Teste em `apps/web/src/api.test.ts`. Antes, conferir os PRs abertos.
+- [x] 4.1 I20 · `chamarApi` com a rede caída: `apps/web/src/api.ts`. Teste em `apps/web/src/api.test.ts`. Antes, conferir os PRs abertos.
 
 ## GGVP-158 · 5. IA
 
