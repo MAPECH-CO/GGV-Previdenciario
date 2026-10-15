@@ -5,12 +5,12 @@
 
 ## GGVP-158 · 1. Chatwoot e mensagens
 
-- [ ] 1.1 I1 · A repetição só no mesmo dia: `apps/api/src/rotas/mensagens.ts` (`enviar`, a busca da repetida filtra `enviadaEm` desde o início do dia em Brasília). Teste em `src/rotas/mensagens.test.ts`: a mesma mensagem amanhã chama o Chatwoot de novo; hoje, não. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
-- [ ] 1.2 I2 · O registro da perícia pela mais nova de hoje: `apps/api/src/rotas/pericia.ts` (`envioDe`). Teste em `src/rotas/pericia.test.ts`: a de hoje falhou e a de ontem saiu, 409; a de hoje saiu, registra.
-- [ ] 1.3 I3 · Convite, confirmação e tentativa pelo Chatwoot com a mensagem que saiu hoje: `apps/api/src/rotas/recepcao-agenda.ts` (convite e confirmação) e `apps/api/src/rotas/recepcao-cobranca.ts` (tentativa com canal `chatwoot`). Testes em `src/rotas/recepcao-agenda.test.ts` e no teste da cobrança: sem a mensagem, 409; com ela, registra.
-- [ ] 1.4 I4 · O aviso da pendência do contrato diz que não foi enviado pelo portal: `apps/api/src/rotas/recepcao-contrato.ts`. Teste em `src/rotas/recepcao-contrato.test.ts`.
-- [ ] 1.5 I5 · Tempo esgotado sem duplicar: `apps/api/src/chatwoot.ts` (a mensagem do escritório com o mesmo texto na conversa, depois de uma hora) e `apps/api/src/rotas/mensagens.ts` (`sair`, só depois de uma falha de hoje por "o Chatwoot não respondeu"). Teste em `src/rotas/mensagens.test.ts`: a primeira expira, a segunda acha a mensagem e não envia.
-- [ ] 1.6 I6 · O erro na entrada do Chatwoot no log: `apps/api/src/rotas/chatwoot-entrada.ts`. Teste em `src/rotas/chatwoot-entrada.test.ts`: o `receber` que lança deixa a linha no log, sem o segredo nem o texto.
+- [x] 1.1 I1 · A repetição só no mesmo dia: `apps/api/src/rotas/mensagens.ts` (`enviar`, a busca da repetida filtra `enviadaEm` desde o início do dia em Brasília). Teste em `src/rotas/mensagens.test.ts`: a mesma mensagem amanhã chama o Chatwoot de novo; hoje, não. Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/mensagens.test.ts`.
+- [x] 1.2 I2 · O registro da perícia pela mais nova de hoje: `apps/api/src/rotas/pericia.ts` (`envioDe`). Teste em `src/rotas/pericia.test.ts`: a de hoje falhou e a de ontem saiu, 409; a de hoje saiu, registra.
+- [x] 1.3 I3 · Convite, confirmação e tentativa pelo Chatwoot com a mensagem que saiu hoje: `apps/api/src/rotas/recepcao-agenda.ts` (convite e confirmação) e `apps/api/src/rotas/recepcao-cobranca.ts` (tentativa com canal `chatwoot`). Testes em `src/rotas/recepcao-agenda.test.ts` e no teste da cobrança: sem a mensagem, 409; com ela, registra.
+- [x] 1.4 I4 · O aviso da pendência do contrato diz que não foi enviado pelo portal: `apps/api/src/rotas/recepcao-contrato.ts`. Teste em `src/rotas/recepcao-contrato.test.ts`.
+- [x] 1.5 I5 · Tempo esgotado sem duplicar: `apps/api/src/chatwoot.ts` (a mensagem do escritório com o mesmo texto na conversa, depois de uma hora) e `apps/api/src/rotas/mensagens.ts` (`sair`, só depois de uma falha de hoje por "o Chatwoot não respondeu"). Teste em `src/rotas/mensagens.test.ts`: a primeira expira, a segunda acha a mensagem e não envia.
+- [x] 1.6 I6 · O erro na entrada do Chatwoot no log: `apps/api/src/rotas/chatwoot-entrada.ts`. Teste em `src/rotas/chatwoot-entrada.test.ts`: o `receber` que lança deixa a linha no log, sem o segredo nem o texto.
 
 ## GGVP-158 · 2. Drive, armazenamento e PDF
 

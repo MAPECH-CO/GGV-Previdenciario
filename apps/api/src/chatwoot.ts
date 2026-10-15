@@ -9,7 +9,7 @@ import type { ContatoChatwoot, ConversaChatwoot, MensagemAoCliente } from '@ggv/
 
 type ContatoDaApi = { id: number; name?: string; phone_number?: string; contact_inboxes?: { source_id?: string; inbox?: { id?: number; name?: string } }[] }
 type ConversaDaApi = { id: number; inbox_id?: number; status?: string; last_activity_at?: number }
-type MensagemDaApi = { id?: number; status?: string; content_attributes?: { external_error?: string } }
+type MensagemDaApi = { id?: number; status?: string; content?: string; message_type?: number | string; created_at?: number; content_attributes?: { external_error?: string } }
 
 /** O status do Chatwoot no do portal. A entrega e a leitura chegam depois, pela rota de entrada (GGVP-158 P6.5). */
 export const STATUS_DO_CHATWOOT: Record<string, MensagemAoCliente['status']> = { sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'falhou' }
@@ -114,6 +114,19 @@ export function abrirChatwoot(ambiente: Record<string, string | undefined> = pro
       const { payload = [] } = await chamar<{ payload?: MensagemDaApi[] }>(`/conversations/${conversa}/messages`)
       const m = payload.find((x) => x.id === id)
       return m ? (STATUS_DO_CHATWOOT[m.status ?? 'sent'] ?? null) : null
+    },
+
+    /**
+     * GGVP-158 I5: a mensagem do escritório com o mesmo texto que já está na conversa, criada desde `desde` (com 2 minutos de
+     * folga: o envio que esgotou o tempo foi gravado no Chatwoot antes da desistência do portal). Nula quando não está na
+     * última página.
+     */
+    async jaSaiu(conversa: number, texto: string, desde: Date): Promise<{ id: number; status: MensagemAoCliente['status']; erro?: string } | null> {
+      const { payload = [] } = await chamar<{ payload?: MensagemDaApi[] }>(`/conversations/${conversa}/messages`)
+      const m = payload.find(
+        (x) => (x.message_type === 1 || x.message_type === 'outgoing') && x.content?.trim() === texto && (x.created_at ?? 0) * 1000 >= desde.getTime() - 120_000,
+      )
+      return m && typeof m.id === 'number' ? { id: m.id, status: STATUS_DO_CHATWOOT[m.status ?? 'sent'] ?? 'enviada' } : null
     },
 
     /**

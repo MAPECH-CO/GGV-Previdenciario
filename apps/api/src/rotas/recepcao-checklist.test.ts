@@ -356,6 +356,9 @@ describe('GGVP-158 P7.2 · as tarefas da Recepção são linhas da tabela de tar
     // Conferido o checklist do cliente novo, as boas-vindas também esperam o Atendimento.
     expect(await linha('ana', `boas-vindas-${processoId}`)).toMatchObject({ titulo: 'Enviar boas-vindas', detalhe: 'LOAS Idoso · checklist conferido · 6 pendências' })
 
+    // GGVP-158 I3: pelo Chatwoot, a tentativa só conta com a cobrança que saiu hoje; por ligação, segue sem mensagem.
+    const pelaConversa = await chamar('ana', 'POST', `/api/processos/${processoId}/cobranca/tentativas`, { canal: 'chatwoot', resultado: 'sem-resposta' })
+    expect([pelaConversa.statusCode, pelaConversa.json().erro]).toEqual([409, 'Envie a cobrança pelo Chatwoot antes de registrar.'])
     await json('ana', 'POST', `/api/processos/${processoId}/cobranca/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })
     expect(await linha('ana', cobrar)).toMatchObject({ prazo: '2026-10-11', urgente: false, detalhe: expect.stringMatching(/ · 2ª tentativa$/) })
 

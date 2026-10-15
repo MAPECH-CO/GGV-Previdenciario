@@ -4,12 +4,13 @@
 // conferido em tempo constante, e o endereço não vai ao log.
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { eq } from 'drizzle-orm'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply } from 'fastify'
 import { normalizarTelefone, validarTelefone } from '@ggv/campos'
 import { EventoDoChatwoot, type MensagemAoCliente } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { mensagem } from '../banco/esquema.ts'
 import { abrirChatwoot } from '../chatwoot.ts'
+import { resumoDoErro } from '../servidor.ts'
 
 /** A mensagem do WhatsApp como a conversa recebe: do cliente (a que chega) ou do escritório (a resposta pelo Chatwoot). */
 export type MensagemDoWhatsapp = { telefone: string; nome: string; texto: string; papel: 'cliente' | 'escritorio'; chatwootId: number | null; quando: Date }
@@ -42,7 +43,10 @@ export function registrarRotasChatwootEntrada(app: FastifyInstance, { banco, ago
   async function atualizarStatus(conversa: number, id: number) {
     const [linha] = await banco.select({ id: mensagem.id, status: mensagem.status }).from(mensagem).where(eq(mensagem.chatwootMensagemId, id)).limit(1)
     if (!linha || linha.status === 'falhou') return
-    const status = await chatwoot!.statusDaMensagem(conversa, id).catch(() => null)
+    const status = await chatwoot!.statusDaMensagem(conversa, id).catch((e: unknown) => {
+      app.log.error({ rota: ROTA_DA_ENTRADA, ...resumoDoErro(e) }, 'o status da mensagem não veio do Chatwoot')
+      return null
+    })
     if (!status || (status !== 'falhou' && ORDEM[status] <= ORDEM[(linha.status ?? 'enviada') as MensagemAoCliente['status']])) return
     await banco.update(mensagem).set({ status }).where(eq(mensagem.id, linha.id))
   }
@@ -52,26 +56,37 @@ export function registrarRotasChatwootEntrada(app: FastifyInstance, { banco, ago
     // O endereço leva o segredo: a rota não escreve nada no log, nem a chegada do pedido.
     { logLevel: 'silent', config: { semTrava: 'a rota do Chatwoot é pública: a trava é o segredo no endereço, conferido em tempo constante' } },
     async (pedido, resposta) => {
-      if (!segredo || !chatwoot || !mesmoSegredo(pedido.params.segredo, segredo)) return resposta.code(404).send({ erro: 'Não encontrado.' })
-      // O que não serve responde 200 do mesmo jeito: o Chatwoot não repete o aviso.
-      const lido = EventoDoChatwoot.safeParse(pedido.body)
-      if (!lido.success) return { ok: true }
-      const e = lido.data
-      if (e.account?.id !== conta || e.inbox?.id !== caixa) return { ok: true }
-      if (e.event === 'message_updated') {
-        if (e.id && e.conversation?.id) await atualizarStatus(e.conversation.id, e.id)
-        return { ok: true }
+      try {
+        return await entrar(pedido.params.segredo, pedido.body, resposta)
+      } catch (e) {
+        // GGVP-158 I6: a rota não escreve no log (o endereço leva o segredo), então o erro vai ao log do servidor, só com a
+        // rota, o código e o tipo, sem o segredo nem o texto da mensagem.
+        app.log.error({ rota: ROTA_DA_ENTRADA, ...resumoDoErro(e) }, 'a entrada do Chatwoot falhou')
+        throw e
       }
-      if (e.event !== 'message_created' || e.private || (e.message_type !== 'incoming' && e.message_type !== 'outgoing')) return { ok: true }
-      const contato = e.conversation?.meta?.sender
-      const telefone = doBrasil(contato?.phone_number ?? '')
-      // A trava da homologação vale também na entrada: fora da produção, só os telefones de teste.
-      if (!validarTelefone(telefone) || !chatwoot.permite(telefone)) return { ok: true }
-      const texto = e.content?.trim() || (e.attachments?.length ? SEM_TEXTO : '')
-      if (!texto) return { ok: true }
-      const papel = e.message_type === 'incoming' ? 'cliente' : 'escritorio'
-      await receber({ telefone, nome: contato?.name?.trim() ?? '', texto, papel, chatwootId: e.id ?? null, quando: agora() })
-      return { ok: true }
     },
   )
+
+  /** O aviso do Chatwoot, conferido o segredo. O que não serve responde 200 do mesmo jeito: o Chatwoot não repete o aviso. */
+  async function entrar(dado: string, corpo: unknown, resposta: FastifyReply) {
+    if (!segredo || !chatwoot || !mesmoSegredo(dado, segredo)) return resposta.code(404).send({ erro: 'Não encontrado.' })
+    const lido = EventoDoChatwoot.safeParse(corpo)
+    if (!lido.success) return { ok: true }
+    const e = lido.data
+    if (e.account?.id !== conta || e.inbox?.id !== caixa) return { ok: true }
+    if (e.event === 'message_updated') {
+      if (e.id && e.conversation?.id) await atualizarStatus(e.conversation.id, e.id)
+      return { ok: true }
+    }
+    if (e.event !== 'message_created' || e.private || (e.message_type !== 'incoming' && e.message_type !== 'outgoing')) return { ok: true }
+    const contato = e.conversation?.meta?.sender
+    const telefone = doBrasil(contato?.phone_number ?? '')
+    // A trava da homologação vale também na entrada: fora da produção, só os telefones de teste.
+    if (!validarTelefone(telefone) || !chatwoot.permite(telefone)) return { ok: true }
+    const texto = e.content?.trim() || (e.attachments?.length ? SEM_TEXTO : '')
+    if (!texto) return { ok: true }
+    const papel = e.message_type === 'incoming' ? 'cliente' : 'escritorio'
+    await receber({ telefone, nome: contato?.name?.trim() ?? '', texto, papel, chatwootId: e.id ?? null, quando: agora() })
+    return { ok: true }
+  }
 }

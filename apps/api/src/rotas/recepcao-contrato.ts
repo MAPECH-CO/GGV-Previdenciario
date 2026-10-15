@@ -542,15 +542,16 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     return { contrato, ficha: await fichaPeloId(ficha.id), ...(arquivo && { arquivo }) }
   })
 
-  // GGVP-85: o aviso ao cliente pelo WhatsApp, da tela de conferir, fica em "Últimos contatos" (Chatwoot simulado).
+  // GGVP-85: o aviso ao cliente da pendência, da tela de conferir, fica em "Últimos contatos". GGVP-158 I4: o portal não envia
+  // este aviso pelo Chatwoot (não há modelo de mensagem para ele; decisão do Pedro), então o registro não diz que avisou.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/conferencia/aviso', conduzir, async (pedido, resposta) => {
     const entrada = MensagemEnviada.safeParse(pedido.body)
     if (!entrada.success || !entrada.data.mensagem) return negar(resposta, 400, 'Escreva a mensagem.')
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha } = achado
-    ficha.contatos.push({ data: hoje(), canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
-    ficha.historico.push(evento('Avisou o cliente pelo WhatsApp da pendência no contrato assinado', await quem(pedido)))
+    ficha.contatos.push({ data: hoje(), canal: 'Registro, sem envio pelo portal', texto: `Aviso da pendência no contrato assinado: ${entrada.data.mensagem.trim()}` })
+    ficha.historico.push(evento('Registrou o aviso da pendência no contrato assinado; o portal não o enviou ao cliente', await quem(pedido)))
     await guardar(ficha)
     return { ficha: await fichaPeloId(ficha.id) }
   })

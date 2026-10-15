@@ -381,6 +381,23 @@ describe('GGVP-158 P5.1 · o que vai pelo Chatwoot só registra com a mensagem q
     const cobranca = await post('dora', '/cobranca', { mensagem: 'Faltam os exames.' })
     expect([cobranca.statusCode, cobranca.json().erro]).toEqual([409, 'Envie a cobrança pelo Chatwoot antes de registrar.'])
   })
+
+  it('GGVP-158 I2 · sem o id, vale a mensagem mais nova de hoje: a de hoje falhou e a de ontem saiu, recusa', async () => {
+    await pronta()
+    const texto = 'Olá, Maria! Sua perícia é amanhã, 22/10, às 08:30. Leve RG e os laudos originais.'
+    const [c] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const em = (enviadaEm: Date, status: string) =>
+      banco.insert(mensagem).values({ pessoaId: c.pessoaId, casoId, canal: 'whatsapp', modelo: 'pericia-presenca', conteudo: texto, status, enviadaPor: ids.igor, enviadaEm })
+    await em(new Date(relogio.getTime() - 86_400_000), 'entregue')
+    const soOntem = await post('igor', '/lembrete', { mensagem: texto })
+    expect([soOntem.statusCode, soOntem.json().erro]).toEqual([409, 'Envie o lembrete pelo Chatwoot antes de registrar.'])
+    await em(relogio, 'falhou')
+    const falhouHoje = await post('igor', '/lembrete', { mensagem: texto })
+    expect([falhouHoje.statusCode, falhouHoje.json().erro]).toEqual([409, 'O lembrete não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.'])
+    expect(await acoes()).not.toContain('pericia_lembrete_enviado')
+    await em(new Date(relogio.getTime() + 60_000), 'enviada')
+    expect((await post('igor', '/lembrete', { mensagem: texto })).statusCode).toBe(200)
+  })
 })
 
 /** O motor com chaves de mentira e um `fetch` falso que responde como a Mistral (OCR) e como a OpenAI. */

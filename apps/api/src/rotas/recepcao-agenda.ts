@@ -44,6 +44,7 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, papelDa,
 import type { RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { criarCobranca } from './recepcao-cobranca.ts'
+import { motivoSemEnvio } from './mensagens.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
@@ -441,6 +442,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!ficha.telefone) return negar(resposta, 400, 'Sem telefone: complete na ficha.')
+    const semEnvio = await motivoSemEnvio(banco, agora(), { pessoaId: ficha.id, modelo: 'convite', texto: entrada.data.mensagem, oQue: 'o convite' })
+    if (semEnvio) return negar(resposta, 409, semEnvio)
     a.conviteEnviadoEm = agora().toISOString()
     ficha.contatos.push({ data: hoje(), canal: 'Chatwoot', texto: `Convite da entrevista de ${quandoNaAgenda(a)}: ${entrada.data.mensagem}` })
     const registro = evento('Enviou o convite da entrevista pelo Chatwoot', await nomeDe(pedido))
@@ -476,6 +479,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!ficha.telefone) return negar(resposta, 400, 'Sem telefone: complete na ficha.')
+    const semEnvio = await motivoSemEnvio(banco, agora(), { pessoaId: ficha.id, modelo: 'confirmacao', texto: entrada.data.mensagem, oQue: 'a mensagem de confirmação' })
+    if (semEnvio) return negar(resposta, 409, semEnvio)
     ficha.contatos.push({ data: hoje(), canal: 'Chatwoot', texto: `Confirmação da entrevista de ${quandoNaConfirmacao(a)}: ${entrada.data.mensagem}` })
     const registro = evento('Mandou a mensagem de confirmação da entrevista pelo Chatwoot', await nomeDe(pedido))
     ficha.historico.push(registro)

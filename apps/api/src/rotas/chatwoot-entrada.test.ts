@@ -121,6 +121,20 @@ describe('GGVP-158 P6.5 · a rota de entrada do Chatwoot', () => {
     await isolado.close()
   })
 
+  it('GGVP-158 I6 · o erro ao receber vai ao log do servidor, com o código e o tipo, sem o segredo e sem o texto', async () => {
+    const linhas: string[] = []
+    const isolado = Fastify({ logger: { level: 'info', stream: { write: (linha: string) => void linhas.push(linha) } } })
+    const falha = Object.assign(new Error('Failed query: insert into atendimento params: Oi, tudo bem?'), { code: '57P01' })
+    registrarRotasChatwootEntrada(isolado, { banco, ambiente: AMBIENTE, receber: async () => Promise.reject(falha) })
+    expect((await isolado.inject({ method: 'POST', url: `/api/chatwoot/entrada/${SEGREDO}`, payload: aviso() })).statusCode).toBe(500)
+    const log = linhas.join('\n')
+    expect(log).toContain('a entrada do Chatwoot falhou')
+    expect(log).toContain('57P01')
+    expect(log).not.toContain(SEGREDO)
+    expect(log).not.toContain('tudo bem')
+    await isolado.close()
+  })
+
   it('outra conta, outra caixa, a nota privada, a atividade e o telefone fora da lista de teste: 200, e nada é gravado', async () => {
     montar()
     for (const a of [{ conta: 8 }, { caixa: 10 }, { privada: true }, { tipo: 'activity' }, { telefone: '+5521999990000' }, { content: '   ' }]) {
