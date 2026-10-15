@@ -808,3 +808,30 @@ As tarefas 9.6 a 9.10 esperam o aceite do Lucas em todas as histórias (Mateus, 
   - o /saude conferido.
 - [ ] 9.10 O monitor no Coolify (P9.5): o docker compose com o comando, as variáveis `ALARME_*` e o healthcheck desligado. O teste é uma queda com o Mateus: o canal e o Jira recebem "caiu" e "voltou".
 - [ ] 9.11 Relatório final ao Mateus.
+
+## GGVP-158 · Parte 10 · A história do sistema (15/10)
+
+Pedido do Mateus em 15/10: escrever no repositório a definição de pronto do portal, que os cartões de fechamento citam, passo a passo por perfil. Só documentação, na branch `docs/GGVP-158-historia-do-sistema`.
+
+- [x] 10.1 A história do sistema (P10.1, decisão 86): `docs/scrum/historia-do-sistema.md`.
+  - Confere:
+    - cada passo tem o perfil, o passo do BPMN e a fonte da regra;
+    - cada capítulo aponta as jornadas do roteiro;
+    - nenhuma decisão nova e nenhum dado de cliente.
+
+  Feito em 15/10: 8 capítulos e 51 passos, cada um com o perfil, o passo do BPMN, o portão e a fonte. Abre com quando o portal está pronto e quem é quem (os logins de teste); fecha com o que fica fora hoje e o que a produção pede. Conferido contra a main: a prestação é da Sênior (#96), a página do processo é do Jurídico e do Sócio (GGVP-162), e os títulos das tarefas são os do servidor ("Trazer a resposta do INSS", "Despachar caso", "Prestar contas", "Acompanhar pagamento", a ida ao banco). Os dados são só os de teste do roteiro.
+- [x] 10.2 Os links: a definição de pronto da história e o resumo do Scrum apontam para ela, e os links relativos do texto abrem.
+
+  Verificado em 15/10: os 10 links relativos da história e da definição de pronto da história abrem.
+- [x] 10.3 `openspec validate --all --strict`; pedido para a main; relatório ao Mateus.
+
+  Verificado em 15/10: `openspec validate --all --strict` 16/16.
+
+## GGVP-158 · Ajuste do teste do Pedro (14/10)
+
+Numeradas 11.x ao juntar com a Parte 10 (15/10), que já usava 10.1 a 10.3.
+
+- [x] 11.1 P7.2 · "Confirmar se a entrevista aconteceu" (D1.03) em `sincronizarRecepcao`: abre com o compromisso que passou sem "realizado" nem "faltou", uma linha por pessoa, com o prazo no mais antigo e o detalhe da tela; fecha quando ele é marcado.
+  - Verifica com teste: abre na virada do dia (rodada), fecha ao marcar realizado, não abre para o remarcado; aparece em `/api/tarefas` do Atendimento como atrasada; `pnpm --filter @ggv/api test`.
+- [x] 11.2 P7.2 · A tela: `tarefasDeConfirmar` deixa de calcular a ficha do servidor, para a Central não repetir a linha. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 11.3 Rodar typecheck, lint, testes e Playwright; colar a saída.

@@ -19,8 +19,8 @@ Grupo 1 · a conversa com o cliente (fluxo D5)
 
 Grupo 2 · mensagens e segurança do contato
 
-5. GGVP-102 · Mensagens ao cliente com modelo e registro · Atendimento; Jurídico administrativo na perícia
-6. GGVP-111 · Terceiro não se passa pelo cliente · Atendimento; Jurídico administrativo; Documentação
+5. GGVP-102 · Mensagens ao cliente com modelo e registro · Atendimento; Jurídico administrativo na perícia. Ajuste do teste do Pedro (14/10): nenhum dado em aberto no texto ao cliente, e as boas-vindas só com caso aberto (CA11).
+6. GGVP-111 · Terceiro não se passa pelo cliente · Atendimento; Jurídico administrativo; Documentação. Ajuste do teste do Pedro (14/10): agência e conta com o traço automático, pela biblioteca `campos` (CA9); e o aviso da mudança bancária deixa de sair sozinho e vira tarefa revisada do Atendimento (CA5, decisão do Mateus; o Lucas confirma).
 
 ## Fora do escopo
 

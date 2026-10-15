@@ -2,16 +2,16 @@
 // sozinhas; as de ação pedem a aprovação da pessoa, que vira o cartão da tela. O modelo é o do motor, com o `fetch` do
 // motor (o teste passa um falso), e o rastreamento do kit fica desligado (LGPD: nada vai para o painel da OpenAI). Cada
 // rodada vai para `chamada_ia`, como as outras chamadas do motor.
-import { Agent, OpenAIChatCompletionsModel, RunState, run, setTracingDisabled, type Tool } from '@openai/agents'
+import { Agent, OpenAIChatCompletionsModel, RunState, assistant, run, setTracingDisabled, user, type Tool } from '@openai/agents'
 import OpenAI from 'openai'
-import type { FonteDaIa } from '@ggv/contratos'
+import type { FonteDaIa, MensagemAnterior } from '@ggv/contratos'
 import { MARCA_DO_BLOCO, REGRAS_DA_IA, instrucaoSuspeita, temCid, type Ia } from './ia.ts'
 
 setTracingDisabled(true)
 
 /** As finalidades do chat no registro: sem saúde (barra código de doença) e com saúde (o Jurídico e o Sócio). */
 export const FINALIDADES_DO_CHAT = { semSaude: 'chat', comSaude: 'chat_juridico' } as const
-export const VERSAO_DO_CHAT = 2
+export const VERSAO_DO_CHAT = 3
 /** Rodadas do agente por pergunta (ler, buscar, propor): o bastante para o chat e um teto para não girar em falso. */
 const MAXIMO_DE_RODADAS = 6
 
@@ -25,6 +25,10 @@ export const INSTRUCAO_DO_CHAT = [
   'Não calcule prazo, valor nem número: use só os números que o caso trouxe.',
   'Para fazer algo, use só as ferramentas de ação que você recebeu: elas pedem a confirmação da pessoa, e nada acontece antes do clique. Se a ação não está entre as suas, diga que o perfil da pessoa não faz.',
   'Nunca diga que fez algo antes da confirmação.',
+  // GGVP-142 CA7 (Pedro, 14/10): o chat pedia o nome completo em volta.
+  'Se não achar o cliente, diga que não achou cliente com esse nome e indique a busca do topo. Nunca peça de novo o nome que a pessoa já deu.',
+  // CA8: "independente do nível do acesso, ele precisa informar que a pessoa não tem acesso" (Pedro, 14/10).
+  'Quando uma ferramenta disser que a pessoa não tem acesso, diga com clareza que o perfil dela não tem acesso a isso, sem pedir mais dados.',
 ].join('\n')
 
 /** O texto que uma ferramenta devolve ao modelo: sempre como dado, sem as marcas do bloco (GGVP-110). */
@@ -40,7 +44,15 @@ export type Conversa = {
   ferramentas: Tool[]
   /** As fontes que as ferramentas de leitura usaram nesta rodada. */
   fontes: FonteDaIa[]
+  /** CA5 (Pedro, 14/10): as últimas mensagens da conversa, que o modelo lê como histórico antes da pergunta. */
+  anteriores?: MensagemAnterior[]
+  /** CA9 (Pedro, 14/10): o dia de hoje em Brasília (aaaa-mm-dd), que vai na instrução. */
+  hoje?: string
 }
+
+/** CA9: a instrução com o dia de hoje; o atraso das tarefas vem marcado pelo código. */
+export const instrucaoDoDia = (hoje?: string) =>
+  hoje ? `${INSTRUCAO_DO_CHAT}\nHoje é ${hoje.split('-').reverse().join('/')} (horário de Brasília). O atraso de cada tarefa vem marcado na lista: use só essa marca.` : INSTRUCAO_DO_CHAT
 
 export type Rodada =
   | { tipo: 'resposta'; texto: string; chamadaId: string; modelo: string; alerta: string | null }
@@ -72,10 +84,13 @@ export async function conversar(c: Conversa, entrada: string | { estado: string;
     return { tipo: 'sem-ia', motivo: 'desligada' }
   }
   const cliente = new OpenAI({ apiKey: p.chave, fetch: p.fetch })
-  const agente = new Agent({ name: 'chat do portal', instructions: INSTRUCAO_DO_CHAT, model: new OpenAIChatCompletionsModel(cliente, p.modelo), tools: c.ferramentas })
+  const agente = new Agent({ name: 'chat do portal', instructions: instrucaoDoDia(c.hoje), model: new OpenAIChatCompletionsModel(cliente, p.modelo), tools: c.ferramentas })
   try {
     let resultado
-    if (typeof entrada === 'string') resultado = await run(agente, entrada, { maxTurns: MAXIMO_DE_RODADAS })
+    if (typeof entrada === 'string') {
+      const historico = (c.anteriores ?? []).map((m) => (m.de === 'pessoa' ? user(m.texto) : assistant(m.texto)))
+      resultado = await run(agente, [...historico, user(entrada)], { maxTurns: MAXIMO_DE_RODADAS })
+    }
     else {
       const estado = await RunState.fromString(agente, entrada.estado)
       for (const pedido of estado.getInterruptions()) (entrada.aprovar ? estado.approve : estado.reject).call(estado, pedido)

@@ -44,13 +44,15 @@ Os modelos de mensagem ao cliente SHALL dizer que o escritório nunca pede a sen
 - **Quando** são enviados
 - **Então** dizem que o escritório nunca pede a senha do gov.br por mensagem
 
-### Requirement: CA5 · Dados bancários: confirmação dupla e aviso ao contato anterior
-A alteração de dados bancários SHALL exigir a confirmação de uma segunda pessoa e SHALL avisar o contato anterior.
+### Requirement: CA5 · Dados bancários: confirmação dupla, só no histórico
+A alteração de dados bancários SHALL exigir a confirmação de uma segunda pessoa. Confirmada, a mudança SHALL ficar no histórico (quem, quando, o fato, sem os números). Ela MUST NOT mandar mensagem ao cliente nem abrir tarefa para o Atendimento.
+
+Decisão do Pedro em 15/10 (teste de 14/10): o aviso saía sozinho na confirmação; a opção B do Mateus (14/10) o trocou por uma tarefa do Atendimento. O Pedro decidiu que basta o histórico: "tem coisas desse tipo que nem precisam ficar virando tarefa ou mandar mensagem pro cliente". O alerta de mudança perto da prestação de contas (CA2) continua.
 
 #### Scenario: CA5 · A alteração é confirmada
-- **Dado** uma alteração de dados bancários
-- **Quando** é confirmada
-- **Então** exige confirmação dupla e avisa o contato anterior
+- **Dado** uma alteração de dados bancários pedida com a verificação
+- **Quando** outra pessoa confirma
+- **Então** os dados mudam, a mudança fica no histórico, nenhuma mensagem sai para o cliente e nenhuma tarefa nasce para o Atendimento
 
 ### Requirement: CA6 · A ligação da perícia com a mesma verificação
 A ligação de orientação para a perícia SHALL seguir a mesma verificação antes de passar data, local e orientação.
@@ -75,3 +77,13 @@ O registro de contato SHALL guardar com quem a pessoa falou; o pedido de mudanç
 - **Dado** um contato registrado ("Registrar conversa")
 - **Quando** a pessoa marca com quem falou (cliente, familiar ou contato de apoio, médico ou clínica)
 - **Então** o registro guarda isso, e pedido de mudança de dado feito por quem não é o cliente não é aplicado sem a verificação
+
+### Requirement: CA9 · Agência e conta com o traço automático
+Teste do Pedro (14/10): a conta digitada só com números ("123456") era recusada, pedindo o traço.
+- Os campos Agência e Conta SHALL formatar enquanto a pessoa digita, pela biblioteca `campos`: a conta ganha o traço antes do último caractere (o dígito, que pode ser X); a agência com 4 números fica como está e, com 5, o último vira o dígito, depois do traço.
+- A conferência SHALL ser a da biblioteca, na tela e no servidor, com as mesmas mensagens.
+
+#### Scenario: CA9 · Digitar só os números
+- **Dado** o cartão "Dados bancários para o repasse", com a mudança aberta
+- **Quando** a pessoa digita "123456" na conta e "00019" na agência
+- **Então** os campos mostram "12345-6" e "0001-9", e o pedido pode seguir

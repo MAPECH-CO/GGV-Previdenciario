@@ -16,6 +16,7 @@ import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { boasVindasDoCaso, type RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { juntar } from '../../../web/src/regras/checklist.ts'
 import { OPCOES_DA_SENIOR, cobrancaDoCaso, type Cobranca } from '../../../web/src/regras/cobranca.ts'
+import { emAberto } from '../../../web/src/regras/busca.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { beneficioDoFechamento, entrevistaRealizada, precisaRegistrarFechamento, recontatoDevido } from '../../../web/src/regras/fechamento.ts'
 
@@ -29,6 +30,7 @@ const DA_RECEPCAO: Record<string, DaRecepcao> = {
   'Reenviar boas-vindas': { passo: 'D1.22', perfil: 'atendimento', id: (c) => `boas-vindas-${c}`, tela: (c) => `/casos/${c}/checklist` },
   'Registrar fechamento': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `fechamento-${p}`, tela: (p) => `/clientes/${p}/fechamento` },
   'Recontatar lead': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `recontato-${p}`, tela: (p) => `/clientes/${p}/recontato` },
+  'Confirmar se a entrevista aconteceu': { passo: 'D1.03', perfil: 'atendimento', id: (p) => `confirmar-${p}`, tela: () => '/agenda?ver=lista' },
 }
 const PASSOS = [...new Set(Object.values(DA_RECEPCAO).map((t) => t.passo))]
 
@@ -119,6 +121,15 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
       linhas.push({ titulo: 'Registrar fechamento', casoId: null, pessoaId: ficha.id, prazo: entrevista.data, detalhe: detalhe.join(' · ') })
     } else if (recontatoDevido(ficha, hoje).devido && ficha.fechamento?.recontatarEm)
       linhas.push({ titulo: 'Recontatar lead', casoId: null, pessoaId: ficha.id, prazo: ficha.fechamento.recontatarEm, detalhe: `motivo: ${nomeMotivo(ficha.fechamento.motivo).toLowerCase()}` })
+
+    // D1.03 (teste do Pedro, 14/10): o compromisso em aberto cujo dia passou; uma linha por pessoa, no mais antigo. Só a tela
+    // calculava, e o chat não a via. Marcar realizado, falta ou desistência guarda a ficha, e a linha fecha.
+    const [passou] = (ficha.agendamentos ?? []).filter((a) => emAberto(a) && a.data < hoje).sort((a, b) => `${a.data} ${a.hora}`.localeCompare(`${b.data} ${b.hora}`))
+    if (passou) {
+      const oQue = passou.oQue === 'Entrevista' ? 'fazer entrevista' : passou.oQue.toLowerCase()
+      const detalhe = `${oQue} de ${dataCurta(passou.data, hoje)} às ${passou.hora} · marcar realizado ou faltou`
+      linhas.push({ titulo: 'Confirmar se a entrevista aconteceu', casoId: null, pessoaId: ficha.id, prazo: passou.data, detalhe })
+    }
   }
   return linhas
 }

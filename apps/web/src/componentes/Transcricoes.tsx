@@ -40,6 +40,8 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
   const [marcadas, setMarcadas] = useState<Set<string>>(new Set())
   const [documentosConferidos, setDocumentosConferidos] = useState(false)
   const [ouvindo, setOuvindo] = useState(false)
+  /** As partes do áudio que não tocaram no navegador: viram o aviso e o "Baixar o áudio". */
+  const [naoToca, setNaoToca] = useState<Set<string>>(new Set())
   // GGVP-133: o valor que a advogada corrigiu em cada item, no lugar do que a IA ouviu.
   const [corrigidos, setCorrigidos] = useState<Record<string, string>>({})
   // "Registrar nova conversa" abre a janela da conversa com o cliente (GGVP-76).
@@ -201,6 +203,37 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                 </button>
               </div>
               <p className={styles.nota}>Participantes: {g.participantes.join(', ')}.</p>
+
+              {/* GGVP-133 (teste do Pedro, 14/10): o player vale com qualquer situação da transcrição e já abre com a duração;
+                  o áudio guardado de verdade, parte por parte; o da semente de exemplo não tem arquivo. */}
+              {ouvindo && g.audio && !fechada && (
+                <div className={styles.player} role="group" aria-label={`Áudio: ${g.audio.nome}`}>
+                  {g.audio.documentos?.length ? (
+                    g.audio.documentos.map((d, i, partes) =>
+                      naoToca.has(d.id) ? (
+                        <p key={d.id} className={styles.aviso} role="status">
+                          {/* O navegador dá o mesmo erro para o formato que não toca e para o arquivo que não veio. */}
+                          Não deu para tocar este áudio aqui ({g.audio!.formato}).{' '}
+                          <a href={arquivo(g, d.id)} download>
+                            Baixar o áudio{partes.length > 1 ? ` (parte ${i + 1})` : ''}
+                          </a>
+                        </p>
+                      ) : (
+                        <audio
+                          key={d.id}
+                          controls
+                          preload="metadata"
+                          src={arquivo(g, d.id)}
+                          onError={() => setNaoToca((x) => new Set(x).add(d.id))}
+                          aria-label={partes.length > 1 ? `Parte ${i + 1} do áudio, desde ${relogio(d.inicio).slice(3)}` : 'Áudio da gravação'}
+                        />
+                      ),
+                    )
+                  ) : (
+                    <span className={styles.nota}>{g.audio.nome}: gravação de exemplo, sem arquivo guardado no portal para tocar.</span>
+                  )}
+                </div>
+              )}
 
               {fechada ? (
                 <p className={styles.aviso}>
@@ -374,24 +407,6 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                         </span>
                       )}
                     </div>
-                    {ouvindo && g.audio && (
-                      <div className={styles.player} role="group" aria-label={`Áudio: ${g.audio.nome}`}>
-                        {/* GGVP-133: o áudio guardado de verdade, parte por parte; o da semente de exemplo não tem arquivo. */}
-                        {g.audio.documentos?.length ? (
-                          g.audio.documentos.map((d, i, partes) => (
-                            <audio
-                              key={d.id}
-                              controls
-                              preload="none"
-                              src={arquivo(g, d.id)}
-                              aria-label={partes.length > 1 ? `Parte ${i + 1} do áudio, desde ${relogio(d.inicio).slice(3)}` : 'Áudio da gravação'}
-                            />
-                          ))
-                        ) : (
-                          <span className={styles.nota}>{g.audio.nome}: gravação de exemplo, sem arquivo guardado no portal para tocar.</span>
-                        )}
-                      </div>
-                    )}
                     {trechos.length === 0 ? (
                       <p className={styles.nota}>Nenhum trecho com «{busca}».</p>
                     ) : (

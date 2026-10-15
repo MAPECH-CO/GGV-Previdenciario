@@ -89,9 +89,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Marcar entrevista' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
-    for (const nome of ['Trocar foto', 'Marcar e iniciar reunião (com transcrição)']) {
-      expect(screen.getByRole('button', { name: nome }).getAttribute('aria-disabled'), String(nome)).toBe('true')
-    }
+    expect(screen.getByRole('button', { name: 'Trocar foto' }).getAttribute('aria-disabled')).toBe('true')
     // GGVP-24: a ficha mostra só a situação da senha do gov.br, nunca a senha nem campo para ela.
     expect(document.body.textContent?.match(/senha|cofre/gi)).toEqual(['senha', 'cofre'])
     expect(screen.getByText('gov.br: senha no cofre · atualizada em 12/07/2025 por Atendimento (G9)')).toBeTruthy()
@@ -275,4 +273,18 @@ describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-1
     expect(historico().getByText('Alterou telefone')).toBeTruthy()
     expect(screen.queryByRole('group', { name: /como você confirmou que é o cliente/ })).toBeNull()
   })
+})
+
+describe('GGVP-123 CA10 (Pedro, 14/10) · o cartão "Reuniões" marca a reunião', () => {
+  it('a Sênior vê "Marcar reunião (com transcrição)", que leva à marcação do cliente; o Sócio, que não marca, não vê o botão', async () => {
+    for (const [perfil, ve] of [['senior', true], ['socio', false]] as const) {
+      entrarComo(perfil)
+      render(comSessao(<FichaCliente id="antonio-exemplo" />))
+      await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+      const marcar = screen.queryByRole('link', { name: 'Marcar reunião (com transcrição)' })
+      expect(marcar?.getAttribute('href') ?? null, perfil).toBe(ve ? '/agenda/marcar/antonio-exemplo' : null)
+      expect(screen.queryByRole('button', { name: 'Marcar e iniciar reunião (com transcrição)' }), perfil).toBeNull()
+      cleanup()
+    }
+  }, 30_000)
 })

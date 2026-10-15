@@ -1,6 +1,6 @@
 // Terceiro não se passa pelo cliente (GGVP-111): o dado protegido, a verificação e o que muda nos dados bancários. Regra,
 // não IA.
-import { normalizarTelefone } from '../campos.ts'
+import { normalizarTelefone, validarAgencia, validarConta } from '../campos.ts'
 import type { IdPerfil } from '../dados/perfis.ts'
 import type { EdicaoFicha, Ficha } from '../dados/tipos.ts'
 import type { CanalDoRegistro, ComQuem } from './conversa.ts'
@@ -48,8 +48,9 @@ export type DadosBancarios = { banco: string; agencia: string; conta: string; pi
 /** O que está errado nos dados bancários; nada, null. O servidor confere de novo. */
 export function erroDosDadosBancarios(d: Partial<DadosBancarios>): string | null {
   if (!d.banco || d.banco.trim().length < 2 || d.banco.trim().length > 60) return 'Escreva o banco.'
-  if (!/^\d{4}(-\d)?$/.test(d.agencia ?? '')) return 'Agência com 4 números (e o dígito, se houver): 0001 ou 0001-9.'
-  if (!/^\d{3,12}-[\dXx]$/.test(d.conta ?? '')) return 'Conta com os números e o dígito: 12345-6.'
+  // GGVP-111 CA9 (Pedro, 14/10): a agência e a conta pela biblioteca de campos, que também põe o traço ao digitar.
+  if (!validarAgencia(d.agencia)) return 'Agência com 4 números (e o dígito, se houver): 0001 ou 0001-9.'
+  if (!validarConta(d.conta)) return 'Conta com os números e o dígito: 12345-6.'
   if ((d.pix ?? '').length > 80) return 'Chave Pix até 80 letras.'
   return null
 }

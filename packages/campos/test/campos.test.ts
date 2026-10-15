@@ -9,6 +9,7 @@ import {
   validarCnj, formatarCnj, gerarDvCnj,
   validarNb, formatarNb,
   normalizarNome, validarNome, validarEmail,
+  formatarConta, validarConta, formatarAgencia, validarAgencia,
 } from '../src/index.ts';
 
 // Os bugs que apareceram nas duas tentativas anteriores viram teste aqui.
@@ -135,4 +136,30 @@ test('diaLocal (GGVP-120 CA10): o momento cai no dia de Brasília; a data pura f
   } finally {
     process.env.TZ = antes;
   }
+});
+
+test('conta e agência (GGVP-111 CA9, teste do Pedro de 14/10): o traço entra sozinho, a cada tecla', () => {
+  assert.equal(formatarConta('123456'), '12345-6');
+  assert.equal(formatarConta('12345-6'), '12345-6');
+  assert.equal(formatarConta(' 98.765-4 '), '98765-4');
+  assert.equal(formatarConta('1234x'), '1234-X');
+  assert.equal(formatarConta('12X34'), '123-4');
+  assert.equal(formatarConta('1'), '1');
+  // Apagar com o traço no fim tira o último número: o traço volta para antes do novo dígito.
+  assert.equal(formatarConta('12345-'), '1234-5');
+  assert.equal(formatarConta('1234567890123456'), '123456789012-3');
+  assert.equal(validarConta('12345-6'), true);
+  assert.equal(validarConta('1234-X'), true);
+  assert.equal(validarConta('1234-x'), true);
+  assert.equal(validarConta('123456'), false);
+  assert.equal(validarConta('12-3'), false);
+  assert.equal(formatarAgencia('0010'), '0010');
+  assert.equal(formatarAgencia('00019'), '0001-9');
+  assert.equal(formatarAgencia('0001-9'), '0001-9');
+  assert.equal(formatarAgencia('0001-'), '0001');
+  assert.equal(formatarAgencia('000123'), '0001-2');
+  assert.equal(validarAgencia('0010'), true);
+  assert.equal(validarAgencia('0001-9'), true);
+  assert.equal(validarAgencia('001'), false);
+  assert.equal(validarAgencia('00019'), false);
 });

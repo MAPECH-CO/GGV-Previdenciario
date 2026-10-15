@@ -54,6 +54,10 @@
 - [x] 5.4 Janela "Mensagem ao cliente" (`src/componentes/MensagemAoCliente.tsx`) e o cliente no Chatwoot (`src/componentes/ConversaNoChatwoot.tsx`); "Mensagem ao cliente" no card; a janela do convite, da confirmação, da cobrança e do complemento (`ConviteChatwoot.tsx`) com o mesmo envio. Teste em `MensagemAoCliente.test.tsx`, `ConviteChatwoot.test.tsx` e `FichaCliente.test.tsx` (CA1 a CA10). Verifica com `pnpm vitest run src/componentes src/paginas/FichaCliente.test.tsx`.
 - [x] 5.5 Playwright `e2e/mensagens.e2e.ts`: a orientação da perícia da Maria pelo Chatwoot, com o registro no card; a falha da Nair na tela e no histórico; o aviso favorável da Lúcia com o texto aprovado e o do Antônio travado (G8); o convite pela central (CA1 a CA10); tema escuro e fonte grande. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5187 pnpm exec playwright test mensagens --workers=1`.
 - [ ] 5.6 Ligar no Chatwoot: as chamadas da tabela "Ponta para ligar no Chatwoot" da design, com a conta, a caixa e o token da configuração do ambiente, e o webhook `message_updated` para o status. Depende do token que o Pedro manda. **Fica aberta nesta história.**
+- [x] 5.7 CA11 · `beneficioParaOCliente` e `problemasDaMensagem` com "de Não sei ainda" (regra pura), com teste em `src/regras/mensagens.test.ts`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.8 CA11 · Servidor (`apps/api/src/rotas/mensagens.ts`) e o servidor falso dos testes: as boas-vindas travadas sem caso e a cobrança sem o benefício em aberto; o envio recusa o texto com ele. Teste em `rotas/mensagens.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 5.9 CA11 · O selo da janela "O portal preencheu"; teste da janela; verifica com `pnpm --filter @ggv/web test`.
+- [x] 5.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
 
 ## GGVP-111 · Terceiro não se passa pelo cliente
 
@@ -63,6 +67,16 @@
 - [x] 6.4 Telas: a verificação no formulário da ficha (`EdicaoCliente.tsx`) e na conferência (`ConferirConversa.tsx`); o cartão "Dados bancários para o repasse" (`CartaoDadosBancarios.tsx`) no card; o roteiro de segurança na conversa por ligação ou com quem não é o cliente (`Conversa.tsx`); o lembrete nas mensagens da perícia (`MensagemAoCliente.tsx`); "o cliente me ligou" no chat da Central (`LaudoPeloChat.tsx`, com o `ChatIA` avisando o resto como antes). Teste em `CartaoDadosBancarios.test.tsx`, `FichaCliente.test.tsx`, `ConferirConversa.test.tsx`, `Conversa.test.tsx` e `LaudoPeloChat.test.tsx` (CA1 a CA8). Verifica com `pnpm vitest run src/componentes src/paginas`.
 - [x] 6.5 Playwright `e2e/seguranca.e2e.ts`: o telefone do Antônio com a verificação; a conta da Lúcia com a segunda confirmação, o aviso e o alerta da advogada; o roteiro na ligação e o lembrete no chat; a frase da senha na mensagem (CA1 a CA7). A conferência da ligação em `e2e/conversa.e2e.ts` passa a marcar a verificação. Verifica com `PORTA_E2E_API=3151 PORTA_E2E_WEB=5187 pnpm exec playwright test seguranca conversa --workers=1`.
 - [ ] 6.6 Ligar no servidor: os endpoints da design (`PATCH /api/fichas/:id` com a verificação e os de dados bancários), a segunda confirmação pela matriz de perfis, o alerta na Central do Financeiro quando ela existir e o aviso pelo Chatwoot de verdade (5.6). **Fica aberta nesta história.**
+- [x] 6.7 CA9 · `packages/campos`: `formatarConta`, `validarConta`, `formatarAgencia` e `validarAgencia`, com o dígito X; teste em `packages/campos/test/campos.test.ts`; verifica com `pnpm --filter @ggv/campos test`.
+- [x] 6.8 CA9 · `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens (tela e servidor). Teste da regra e da rota; verifica com `pnpm --filter @ggv/web test` e `pnpm --filter @ggv/api test`.
+- [x] 6.9 CA9 · O cartão "Dados bancários para o repasse" formata a agência e a conta a cada tecla. Teste Vitest em `CartaoDadosBancarios.test.tsx`; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.10 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.11 CA5 (opção B, 14/10) · Servidor: a confirmação não manda o aviso; abre para o Atendimento a tarefa "Avisar o cliente da mudança bancária", com o link `?mensagem=aviso-de-mudanca`; o servidor falso dos testes faz o mesmo. Teste em `rotas/seguranca.test.ts`; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.12 CA5 · O aviso que sai pela "Mensagem ao cliente" fecha a tarefa; o que não sai a deixa aberta (servidor e servidor falso). Teste; verifica com `pnpm --filter @ggv/api test`.
+- [x] 6.13 CA5 · Tela: a ficha abre a "Mensagem ao cliente" pelo link `?mensagem=`; o cartão diz que o Atendimento recebeu a tarefa; o roteiro de teste do Lucas atualizado. Testes Vitest; verifica com `pnpm --filter @ggv/web test`.
+- [x] 6.14 Playwright `e2e/seguranca.e2e.ts`: a confirmação sem mensagem, a tarefa do Atendimento e o aviso enviado pela janela, que fecha a tarefa. Verifica com `pnpm --filter @ggv/web e2e`.
+- [x] 6.15 Rodar typecheck, lint, testes e Playwright; colar a saída; perguntar "Agora ok?".
+- [x] 6.16 CA5 (decisão do Pedro, 15/10) · A mudança bancária fica só no histórico: saem a tarefa "Avisar o cliente da mudança bancária", o link `?mensagem=` da ficha e o fecho da tarefa pelo envio (6.11 a 6.14 substituídas). Testes em `rotas/seguranca.test.ts`, `CartaoDadosBancarios.test.tsx` e `e2e/seguranca.e2e.ts`.
 
 ## GGVP-138 · Ligar no servidor as telas do Relacionamento (Pedro, 08/10)
 

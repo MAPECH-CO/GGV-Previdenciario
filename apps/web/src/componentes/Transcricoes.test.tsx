@@ -105,6 +105,35 @@ describe('Transcrições do caso · janela', () => {
     expect(screen.queryByRole('link', { name: 'Abrir o texto final' })).toBeNull()
   })
 
+  it('GGVP-133 (Pedro, 14/10) · com a transcrição falhada, "Abrir áudio" mostra o player, que já abre com a duração', async () => {
+    mudarGravacao('antonio-entrevista', (g) => {
+      g.audio = { ...g.audio!, documentos: [{ id: 'parte-1', inicio: 0 }] }
+      g.transcricao = 'falhou'
+      g.motivoDaFalha = 'o serviço de transcrição não respondeu'
+    })
+    await abrir('antonio-exemplo', 'juridico')
+    fireEvent.click(itemDaLista(/Entrevista com a advogada/))
+    expect(screen.getByRole('alert').textContent).toContain('A transcrição falhou')
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir áudio' }))
+    const audio = screen.getByRole('group', { name: /^Áudio: / }).querySelector('audio')!
+    expect([audio.getAttribute('src'), audio.getAttribute('preload')]).toEqual(['/api/gravacoes/antonio-entrevista/arquivos/parte-1', 'metadata'])
+  })
+
+  it('GGVP-133 (Pedro, 14/10) · o áudio que não toca no navegador vira o aviso e "Baixar o áudio"', async () => {
+    mudarGravacao('antonio-entrevista', (g) => {
+      g.audio = { ...g.audio!, documentos: [{ id: 'parte-1', inicio: 0 }] }
+    })
+    await abrir('antonio-exemplo', 'juridico')
+    fireEvent.click(itemDaLista(/Entrevista com a advogada/))
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir áudio' }))
+    const player = screen.getByRole('group', { name: /^Áudio: / })
+    fireEvent.error(player.querySelector('audio')!)
+    expect(player.querySelector('audio')).toBeNull()
+    expect(within(player).getByRole('status').textContent).toMatch(/^Não deu para tocar este áudio aqui \(.+\)\. Baixar o áudio$/)
+    const baixar = within(player).getByRole('link', { name: 'Baixar o áudio' })
+    expect([baixar.getAttribute('href'), baixar.hasAttribute('download')]).toEqual(['/api/gravacoes/antonio-entrevista/arquivos/parte-1', true])
+  })
+
   it('GGVP-133 · sem a IA, a tela diz o motivo e segue manual, sem resumo inventado', async () => {
     mudarGravacao('antonio-entrevista', (g) => {
       g.semIa = 'a IA não está autorizada a ler dado de saúde neste ambiente'

@@ -5,8 +5,7 @@
 // servidor: trocar o corpo de cada função por fetch no endpoint da design.md (change ggvp-12).
 import { hojeIso, hora } from '../../regras/datas.ts'
 import { COMO, diaFalado, horaFalada, mensagemDoConvite } from '../../regras/agenda.ts'
-import { MODELOS_DE_MENSAGEM, comAvisoDaSenha, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../../regras/mensagens.ts'
-import { nomeBeneficio } from '../../dados/catalogos.ts'
+import { MODELOS_DE_MENSAGEM, beneficioParaOCliente, comAvisoDaSenha, ordenarConversas, problemasDaMensagem, type IdDoModelo } from '../../regras/mensagens.ts'
 import { buscarContatos, conversasDoContato, enviarNaConversa, type ContatoChatwoot, type ConversaChatwoot } from '../../dados/chatwoot.ts'
 import { obterCobranca } from '../../dados/cobranca.ts'
 import { obterComplemento } from '../../dados/complemento.ts'
@@ -74,7 +73,9 @@ async function textoDoModelo(banco: Banco, fichaId: string, modelo: IdDoModelo, 
   const processo = ficha.processos.find((p) => p.id === processoId) ?? ficha.processos[0]
   const primeiro = ficha.nome.split(' ')[0]
   const hoje = hojeIso(agora())
-  const beneficio = nomeBeneficio(processo?.beneficio ?? ficha.beneficioInteresse) || 'benefício'
+  // GGVP-102 CA11 (Pedro, 14/10): como o servidor, o benefício só quando é conhecido.
+  const beneficio = beneficioParaOCliente(processo?.beneficio ?? ficha.beneficioInteresse)
+  const doCaso = beneficio ? ` de ${beneficio}` : ''
   const pronto = (texto: string, editavel = true) => ({ texto, editavel, trava: null })
   const travado = (trava: string) => ({ texto: '', editavel: false, trava })
   const entrevista = ficha.agendamentos.filter((a) => a.data >= hoje && (a.estado ?? 'marcado') === 'marcado').sort((a, b) => a.data.localeCompare(b.data))[0]
@@ -96,10 +97,11 @@ async function textoDoModelo(banco: Banco, fichaId: string, modelo: IdDoModelo, 
       return complemento ? pronto(complemento.mensagem) : travado('Sem pedido de complemento aberto no processo.')
     }
     case 'boas-vindas':
-      return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso de ${beneficio} começou. Qualquer dúvida, fale com a gente por aqui.`)
+      if (!processo) return travado('As boas-vindas saem quando o caso começa, depois do fechamento.')
+      return pronto(`Olá, ${primeiro}! Boas-vindas ao escritório GGV. Seu caso${doCaso} começou. Qualquer dúvida, fale com a gente por aqui.`)
     case 'cobranca': {
       const cobranca = processo && (await obterCobranca(processo.id))
-      return pronto(cobranca?.mensagem ?? `Olá, ${primeiro}! Para seguir com o seu caso de ${beneficio}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
+      return pronto(cobranca?.mensagem ?? `Olá, ${primeiro}! Para seguir com o seu caso${doCaso}, faltam documentos. Pode trazer aqui ou mandar foto por esta conversa?`)
     }
     case 'resultado-favoravel': {
       const ok = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'favoravel')

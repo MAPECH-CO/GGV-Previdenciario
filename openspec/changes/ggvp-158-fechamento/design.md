@@ -440,6 +440,7 @@ O que já está feito e não entra: o juízo, a vara e o juiz no resumo do proce
     - A linha guarda o detalhe que a tela mostrava (`tarefa.detalhe`, na 0034), e a Central mostra esse detalhe no lugar do benefício.
     - A Central geral (`/api/tarefas`) lê também a linha da pessoa sem caso (o cliente vem da linha ou do caso), e a tela de cada passo vem do passo.
     - O id que a Central devolve para essas linhas é a chave que a tela já usa (`cobrar-<caso>` e as outras), para a atribuição do líder (GGVP-147) seguir valendo; o contrato da linha aceita esse id. As fontes da tela (`dados/`) deixam de calcular os casos do servidor, como já fazem com o D1.24.
+    - **Ajuste do teste do Pedro (14/10):** "Confirmar se a entrevista aconteceu" (D1.03) entra no mesmo módulo, pela regra pura da agenda: o compromisso em aberto (`emAberto`: sem realizado, falta, desistência nem remarcação) cujo dia passou. A chave é a da pessoa (`confirmar-<pessoa>`); o prazo é o dia do compromisso mais antigo, e o detalhe é o que a tela mostrava. A virada do dia entra pela rodada de 5 minutos, e marcar realizado ou falta guarda a ficha, que fecha a linha. `tarefasDeConfirmar` (tela) deixa de calcular a ficha do servidor.
 69. **O chat** (P7.3).
     - `criar_tarefa` só entra nas ferramentas de quem tem `tarefa.atribuir`, e a execução confere de novo.
     - `pedir_peca` confere a "Pedir a petição" (D3.05) aberta pelo despacho. Sem ela: "A petição é pedida depois do despacho da Sênior.". Com ela, não cria outra: devolve o link da petição e registra o pedido no histórico.
@@ -565,6 +566,23 @@ Decisões do Mateus em 14/10:
     - o monitor;
     - o backup, a restauração e a chave do cofre;
     - a limpeza do PrevGGVLucas e a mudança da homologação.
+
+### Parte 10 · A história do sistema (pedido do Mateus, 15/10)
+
+Os cartões de fechamento de 11/10 dizem que o portal fica pronto "pela definição de pronto da história do sistema: a Dona Maria do balcão ao dinheiro, com o login de cada perfil". O texto dessa história não está no repositório nem no Jira, só esse resumo. Em 15/10, o Mateus pediu para escrevê-lo no repositório, passo a passo por perfil. Só documentação: sem código, sem migração e sem matriz nova.
+
+86. **A história do sistema fica em `docs/scrum/historia-do-sistema.md`** (P10.1).
+    - Fica ao lado da definição de pronto da história, que aponta para ela, e entra no resumo do Scrum.
+    - Segue o caminho do BPMN em capítulos: o balcão, a entrevista, o contrato e os documentos, o INSS, a perícia, a Justiça, o desfecho e o dinheiro, e o que vale ao longo do caminho.
+    - Cada passo diz:
+      - o perfil que faz, com o próprio login;
+      - o que acontece;
+      - o passo do BPMN, o portão e a fonte da regra.
+
+      Cada capítulo aponta as jornadas do roteiro do teste que o conferem.
+    - Abre com quando o portal está pronto. Fecha com o que fica fora hoje e com o que a produção pede além do código.
+    - Só junta o que já está decidido: os perfis, os portões, o BPMN, o roteiro, os cartões e as respostas do Lucas. Decisão nova não entra; muda primeiro no cartão.
+    - Sem andamento: ele fica no Jira e no roteiro.
 
 ## Campos de formulário
 

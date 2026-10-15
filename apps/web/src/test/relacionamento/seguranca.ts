@@ -17,9 +17,8 @@ import {
 } from '../../regras/seguranca.ts'
 import { papelDoPerfil } from '../../regras/conversa.ts'
 import type { QuemAge } from './conversa.ts'
-import { enviarMensagem, prepararMensagem } from './mensagens.ts'
 import { agora, esperar, evento, gravar, ler, salvarFicha, type Banco } from '../../dados/servidor.ts'
-import type { EdicaoFicha, Ficha, TarefaEncaminhada } from '../../dados/tipos.ts'
+import type { EdicaoFicha, TarefaEncaminhada } from '../../dados/tipos.ts'
 
 // O que a edição muda de telefone e e-mail é regra pura, que o servidor também usa (GGVP-138).
 export { camposProtegidosQueMudam }
@@ -66,7 +65,7 @@ export async function pedirMudancaBancaria(fichaId: string, pedido: { dados: Dad
 
 /**
  * POST /api/fichas/:id/dados-bancarios/confirmacao. A segunda pessoa confirma (CA5): os dados mudam, e a mudança fica no
- * histórico, sem os números (CA1); o contato anterior recebe o aviso pelo Chatwoot (CA5); perto da prestação de contas, a advogada e o
+ * histórico, sem os números (CA1), e não vira tarefa nem mensagem ao cliente (CA5); perto da prestação de contas, a advogada e o
  * Financeiro recebem o alerta antes do OK e do repasse (CA2).
  */
 export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): Promise<RegistroBancario> {
@@ -103,15 +102,9 @@ export async function confirmarMudancaBancaria(fichaId: string, por: QuemAge): P
       banco.tarefas.push(alerta)
     }
   }
+  // CA5 (decisão do Pedro, 15/10), como o servidor: a mudança fica só no histórico; sem tarefa nem mensagem ao cliente.
   gravar(banco)
-  await avisarContatoAnterior(ficha, por)
   return novo
-}
-
-/** O aviso ao contato cadastrado, pelo Chatwoot: se não foi o cliente, ele liga para o escritório (CA5). */
-async function avisarContatoAnterior(ficha: Ficha, por: QuemAge) {
-  const pronta = await prepararMensagem(ficha.id, 'aviso-de-mudanca')
-  await enviarMensagem(ficha.id, { modelo: 'aviso-de-mudanca', texto: pronta.texto, conversa: pronta.conversas[0]?.id ?? 0 }, por)
 }
 
 /**
