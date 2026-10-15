@@ -163,12 +163,12 @@ describe('Avisar e agendar a ida ao banco (GGVP-44 e GGVP-98, Financeiro)', () =
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
-  it('CA3, CA11 · mostra a mensagem do modelo para revisar; sem o OK da advogada, não registra o envio (G8)', async () => {
+  it('CA3, CA11 · mostra a mensagem do modelo para revisar; sem o OK da Sênior, não registra o envio (G8)', async () => {
     servidor({ ...banco, okAdvogada: false, agendamento: { id: '11111111-1111-4111-8111-111111111111', data: '15/10/2026', hora: '10:00', local: 'Caixa', acompanhante: 'Ana' }, mensagem: 'Olá, Vera!' })
     render(<IdaAoBanco casoId={CASO} />)
     expect((await screen.findByLabelText('Mensagem')).textContent).toBe('Olá, Vera!')
     expect((screen.getByRole('button', { name: 'Registrar ligação feita' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText(/só sai depois do OK da advogada/)).toBeTruthy()
+    expect(screen.getByText(/só sai depois do OK da Sênior/)).toBeTruthy()
   })
 })
 

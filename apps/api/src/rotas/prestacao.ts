@@ -1,4 +1,4 @@
-// Benefício deferido (GGVP-44) e caso ganho (GGVP-98): prestação de contas da advogada (G8), recebimento do Financeiro,
+// Benefício deferido (GGVP-44) e caso ganho (GGVP-98): prestação de contas da Sênior (G8; Mateus, 14/10), recebimento do Financeiro,
 // e o Financeiro avisa o cliente e marca a ida ao banco (Lucas, 06/10); o Atendimento leva. Um caminho para o INSS e
 // para a Justiça (Mateus, 07/10).
 import { and, arrayOverlaps, asc, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
@@ -27,7 +27,7 @@ import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
-export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da advogada na prestação de contas (G8).'
+export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da Sênior na prestação de contas (G8).'
 export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
 /** O texto padrão do modelo (o da semente, sem a marca de exemplo). A Sênior ajusta na Configuração (GGVP-158 P6.4). */
 export const TEXTO_PADRAO_IDA_AO_BANCO =
@@ -79,21 +79,9 @@ const FUSO = 'America/Sao_Paulo'
 const dataBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric' }).format(d)
 const horaBr = (d: Date) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(d)
 
-export const MSG_OUTRA_ADVOGADA = 'A prestação de contas é da advogada responsável pelo caso.'
-
 export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = () => new Date(), correio }: Opcoes) {
   const { fichas } = criarFichario(banco, agora)
   const bloqueio = registrarBloqueio(banco, agora)
-  /** GGVP-44 CA13: com advogada responsável, a prestação é só dela; o Financeiro e o caso sem responsável seguem como estão. */
-  async function deOutraAdvogada(pedido: FastifyRequest, casoId: string) {
-    if (pedido.perfilAtivo !== 'advogada') return false
-    const [c] = await banco.select({ responsavel: caso.advogadaResponsavelId }).from(caso).where(eq(caso.id, casoId))
-    if (!c?.responsavel || c.responsavel === pedido.usuario!.id) return false
-    await banco
-      .insert(eventoAuditoria)
-      .values({ quem: pedido.usuario!.id, acao: 'acesso_negado', alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, perfil: 'advogada', motivo: 'advogada_responsavel', casoId } })
-    return true
-  }
   /** O histórico na mesma transação da mudança: os dois ficam, ou nenhum. */
   const noHistorico = (tx: Tx, quem: string, acao: string, pedido: FastifyRequest, casoId: string, detalhe: Record<string, unknown> = {}) =>
     tx.insert(eventoAuditoria).values({ quem, acao, alvo: `caso:${casoId}`, quando: agora(), detalhe: { ip: pedido.ip, ...detalhe } })
@@ -156,12 +144,11 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     return (id: string | null) => linhas.find((l) => l.id === id)?.nome ?? null
   }
 
-  // CA2, CA4, CA5, CA8: valores só para o Financeiro e a advogada que faz a prestação (`prestacao.ver`; Pedro, 06/10), com a carta e as versões.
+  // CA2, CA4, CA5, CA8, CA13: valores só para o Financeiro, a Sênior, que faz a prestação, e o Sócio (`prestacao.ver`; Mateus, 14/10), com a carta e as versões.
   app.get<{ Params: { id: string } }>('/api/casos/:id/prestacao', { preHandler: exigir(banco, 'prestacao.ver', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
     const c = await clienteDo(casoId)
     if (!c) return negar(resposta, 404, 'Caso não encontrado.')
-    if (await deOutraAdvogada(pedido, casoId)) return negar(resposta, 403, MSG_OUTRA_ADVOGADA)
     const def = await deferimento(casoId)
     const [carta] = def?.documentoId ? await banco.select({ id: documento.id, nome: documento.nomeOriginal }).from(documento).where(eq(documento.id, def.documentoId)) : []
     const percentualContrato = await percentualDoContrato(casoId)
@@ -204,10 +191,9 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     })
   })
 
-  // CA1, CA5, CA6: concluir grava a versão com o OK da advogada e abre o recebimento do Financeiro (o aviso vem depois, GGVP-98 CA4).
+  // CA1, CA5, CA6, CA13: concluir grava a versão com o OK da Sênior e abre o recebimento do Financeiro (o aviso vem depois, GGVP-98 CA4).
   app.post<{ Params: { id: string } }>('/api/casos/:id/prestacao', { preHandler: exigir(banco, 'prestacao.dar_ok', agora) }, async (pedido, resposta) => {
     const casoId = pedido.params.id
-    if (await deOutraAdvogada(pedido, casoId)) return negar(resposta, 403, MSG_OUTRA_ADVOGADA)
     const entrada = SalvarPrestacao.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const def = await deferimento(casoId)
@@ -260,7 +246,8 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
       await tx
         .update(tarefa)
         .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
-        .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06'), eq(tarefa.perfilDono, 'advogada'), isNull(tarefa.concluidaEm)))
+        // CA13: fecha o passo da prestação de qualquer dono, também a tarefa que nasceu com a advogada antes de 14/10.
+        .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06'), isNull(tarefa.concluidaEm)))
       // CA7: a tarefa do Financeiro só nasce aqui. Nova versão reabre o recebimento (CA6).
       const [doFinanceiro] = await tx
         .select({ id: tarefa.id })
@@ -277,7 +264,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
   })
 
   // CA9 e GGVP-98 CA3, CA4, CA8: recebido com os valores conferidos (quem e quando) abre o aviso do Financeiro; divergência
-  // volta à advogada com o motivo. Quem deu o OK não recebe: recusa e registro.
+  // volta à Sênior com o motivo. Quem deu o OK não recebe: recusa e registro.
   app.post<{ Params: { id: string } }>(
     '/api/casos/:id/prestacao/recebimento',
     { preHandler: exigir(banco, 'prestacao.registrar_recebimento', agora) },
@@ -307,7 +294,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
           .set({ situacao: 'concluida', concluidaEm: agora(), concluidaPor: quem })
           .where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06r'), isNull(tarefa.concluidaEm)))
         if (d.resultado === 'divergencia')
-          await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: `Corrigir a prestação: ${d.motivo}`, perfilDono: 'advogada' })
+          await tx.insert(tarefa).values({ casoId, passo: 'D2.06', titulo: `Corrigir a prestação: ${d.motivo}`, perfilDono: 'senior' })
         else {
           // GGVP-98 CA1, CA4: só depois do recebimento nasce o aviso, uma vez por caso.
           const [doAviso] = await tx.select({ id: tarefa.id }).from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.passo, 'D2.06b')))

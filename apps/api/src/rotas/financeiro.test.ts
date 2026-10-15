@@ -81,7 +81,7 @@ describe('GGVP-78 · GET /api/financeiro', () => {
     expect(r.porMes.at(-1)).toEqual({ mes: '2026-10', recebido: '3703.70', previsto: '2500.00' })
     expect(r.porOrigem).toEqual([{ origem: 'inss', valor: '3703.70', fatia: 100 }])
     expect(r.lancamentos.map((l: { cliente: string; status: string; valor: string | null; responsavel: string; origem: string }) => [l.cliente, l.status, l.valor, l.responsavel, l.origem])).toEqual([
-      ['Lúcia Prado', 'aguardando_ok', null, 'Advogada · gabi', 'inss'],
+      ['Lúcia Prado', 'aguardando_ok', null, 'Sênior', 'inss'],
       ['Otávio Nery', 'a_lancar', '2000.00', 'Financeiro', 'justica'],
       ['Célia Moura', 'atrasado', '500.00', 'Financeiro · julia', 'inss'],
       ['Vera Lúcia', 'recebido', '3703.70', 'Financeiro · julia', 'inss'],

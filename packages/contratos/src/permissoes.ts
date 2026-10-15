@@ -18,16 +18,17 @@ export const ROTULO_PERFIL: Record<Perfil, string> = {
 const JURIDICO: Perfil[] = ['advogada', 'senior', 'juridico_adm']
 /**
  * A Sênior é advogada com mais poderes (Pedro, 07/10): faz os passos jurídicos da advogada. Ficam só com a advogada a decisão
- * no limite da perícia e o resultado dela (G15: "nunca a Sênior", Lucas 29/09) e tudo de valores (a prestação de contas).
+ * no limite da perícia e o resultado dela (G15: "nunca a Sênior", Lucas 29/09). A prestação de contas é só da Sênior
+ * (Mateus, 14/10).
  */
 const ADVOGADAS: Perfil[] = ['advogada', 'senior']
 
 // Ordem de entrada de 08/10: Jurimetria 11 e 12, Recepção no servidor 13, Desfecho 14, IA 15, Relacionamento no servidor
 // 16, Perícia no servidor 17, documentação médica no servidor 18, glossário 19, Recepção blocos 3b a 4c 20, levar ao banco
 // 21, acesso por perfil 22 (09/10), recurso 23, o Sócio lê tudo 24, a Sênior vê a prestação 25, a decisão da cobrança da
-// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10), quem abre o processo 32 (14/10). Quem entrar depois
+// Recepção 26, a chance 27, o kit de verdade 28, toda rota /api com trava 29 (11/10), a jurimetria do Jurídico 30 (13/10), a taxa por advogada só do Sócio 31 (13/10), quem abre o processo 32 (14/10), a prestação da Sênior 33 (14/10). Quem entrar depois
 // renumera.
-export const VERSAO_MATRIZ = 32
+export const VERSAO_MATRIZ = 33
 
 /** Ação → perfis que podem. Lista vazia: só o sistema faz (CA6). Fonte: cartão da GGVP-96 e respostas do PO de 02/10. */
 export const MATRIZ = {
@@ -37,15 +38,17 @@ export const MATRIZ = {
   'laudo.ver': ['atendimento', 'atendimento_lider', 'documentacao', ...JURIDICO, 'socio'],
   'dado_saude.ver_detalhe': [...JURIDICO, 'socio'],
   'peticao.ver': [...JURIDICO, 'socio'],
-  // O financeiro do escritório é do Financeiro (Pedro, 06/10). A advogada vê os valores só na prestação de contas, que é
-  // ela quem faz. O Sócio tem acesso total de leitura, inclusive os valores de cada cliente (Lucas, 07/10) e o dado de
+  // O financeiro do escritório é do Financeiro (Pedro, 06/10). A Sênior vê os valores só na prestação de contas, que é
+  // ela quem faz (Mateus, 14/10). O Sócio tem acesso total de leitura, inclusive os valores de cada cliente (Lucas, 07/10) e o dado de
   // saúde (Pedro, 09/10), sem fazer passo. Valor da causa e renda per capita do LOAS não são financeiro do escritório: são dado jurídico e
-  // seguem para a advogada (Pedro, 07/10). A Sênior não vê valores.
+  // seguem para a advogada (Pedro, 07/10). Fora da prestação, a Sênior não vê valores.
   'valores.ver': ['financeiro', 'socio'],
   /** Os totais em dinheiro do painel de resultados (GGVP-75 CA4): honorários recebidos e tempo até o dinheiro. */
   'valores.ver_totais': ['socio', 'financeiro'],
-  // Versão 25 (Pedro, 09/10): a Sênior vê a prestação de contas, só ela; os outros valores do caso continuam fora.
-  'prestacao.ver': ['financeiro', 'advogada', 'senior', 'socio'],
+  // Versão 33 (Pedro e Mateus, 14/10): a prestação de contas é só da Sênior; a advogada não vê. O Financeiro recebe e o Sócio lê.
+  'prestacao.ver': ['financeiro', 'senior', 'socio'],
+  /** A rota dos valores do caso (GGVP-158 P7.6): quem pode pedir; a regra de valores (`podeVerValor`) decide cada valor. */
+  'valores_do_caso.ver': ['financeiro', 'advogada', 'senior', 'socio'],
   /** Prazos, tentativas bloqueadas, uso do cofre, configuração e a exportação da trilha. O Financeiro vê só os Resultados (Figma). */
   'gestao.ver': ['socio', 'senior', 'atendimento_lider'],
   /** Ver o caso só para leitura (GGVP-23 CA4). O Sócio lê tudo (Lucas, 07/10); o Financeiro vê a prestação e os Resultados, não o caso. */
@@ -73,7 +76,7 @@ export const MATRIZ = {
   'exigencia_juiz.analisar': ['advogada', 'senior'],
   'peticao.pedir': ADVOGADAS,
   'peticao.aprovar': ADVOGADAS,
-  'prestacao.dar_ok': ['advogada'],
+  'prestacao.dar_ok': ['senior'],
   'prestacao.registrar_recebimento': ['financeiro'],
   'tarefa.atribuir': ['atendimento_lider', 'senior'],
   'perfis.atribuir': ['socio'],

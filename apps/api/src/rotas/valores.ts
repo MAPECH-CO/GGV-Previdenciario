@@ -1,6 +1,6 @@
 // GGVP-158 P7.6: o valor da causa (da petição) e a renda por pessoa do LOAS (da ficha e da entrevista), no servidor, pela
 // regra de valores do Pedro (06/10, `podeVerValor` das telas): o Financeiro e o Sócio veem tudo; a advogada, o valor da
-// causa e a renda, e a prestação só no caso dela e na prestação de contas; o Atendimento, a Documentação e a Sênior, nada.
+// causa e a renda; a Sênior, a prestação enquanto o caso está nela (Mateus, 14/10); o Atendimento e a Documentação, nada.
 // Só a advogada grava. O histórico diz que mudou, sem o valor.
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
@@ -23,9 +23,9 @@ const negar = (resposta: FastifyReply, status: number, erro: string) => resposta
  * Os valores do caso que o perfil pode ver; `null` quando não vê nenhum. A página do processo usa a mesma conta para o
  * valor da causa e a renda.
  */
-export async function valoresVisiveis(banco: Banco, casoId: string, perfil: string | null, usuarioId: string) {
+export async function valoresVisiveis(banco: Banco, casoId: string, perfil: string | null) {
   const [c] = await banco
-    .select({ causa: caso.valorCausa, advogada: caso.advogadaResponsavelId, renda: pessoa.rendaPorPessoa })
+    .select({ causa: caso.valorCausa, renda: pessoa.rendaPorPessoa })
     .from(caso)
     .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
     .where(eq(caso.id, casoId))
@@ -35,7 +35,7 @@ export async function valoresVisiveis(banco: Banco, casoId: string, perfil: stri
     .from(tarefa)
     .where(and(eq(tarefa.casoId, casoId), inArray(tarefa.passo, DA_PRESTACAO), isNull(tarefa.concluidaEm)))
     .limit(1)
-  const regra = { advogadaDoCaso: c.advogada === usuarioId, naPrestacaoDeContas: Boolean(naPrestacao) }
+  const regra = { naPrestacaoDeContas: Boolean(naPrestacao) }
   const ve = (tipo: 'causa' | 'renda-por-pessoa' | 'prestacao-de-contas') => podeVerValor(perfil ?? undefined, tipo, regra)
   if (!ve('causa') && !ve('renda-por-pessoa') && !ve('prestacao-de-contas')) return null
   const [pc] = ve('prestacao-de-contas')
@@ -52,14 +52,14 @@ export async function valoresVisiveis(banco: Banco, casoId: string, perfil: stri
 
 export function registrarRotasValores(app: FastifyInstance, { banco, agora = () => new Date() }: Opcoes) {
   const historico = registrarHistorico(banco, agora)
-  // A trava da rota é a de quem pode ver a prestação (Financeiro, advogada, Sênior e Sócio); a regra de valores decide o
-  // resto, e quem não vê nenhum recebe 403.
-  const ver = { preHandler: exigir(banco, 'prestacao.ver', agora) }
+  // A trava da rota é a de quem pode pedir os valores do caso (Financeiro, advogada, Sênior e Sócio); a regra de valores
+  // decide cada um, e quem não vê nenhum recebe 403.
+  const ver = { preHandler: exigir(banco, 'valores_do_caso.ver', agora) }
   const gravar = { preHandler: exigir(banco, 'caso.ver', agora) }
 
   app.get<{ Params: { id: string } }>('/api/casos/:id/valores', ver, async (pedido, resposta) => {
     if (!UUID.test(pedido.params.id)) return negar(resposta, 404, 'Caso não encontrado.')
-    const valores = await valoresVisiveis(banco, pedido.params.id, pedido.perfilAtivo, pedido.usuario!.id)
+    const valores = await valoresVisiveis(banco, pedido.params.id, pedido.perfilAtivo)
     if (valores === undefined) return negar(resposta, 404, 'Caso não encontrado.')
     if (valores === null) return negar(resposta, 403, MSG_SEM_VALOR)
     return ValoresDoCaso.parse({ casoId: pedido.params.id, ...valores, podeEditar: pedido.perfilAtivo === 'advogada' })

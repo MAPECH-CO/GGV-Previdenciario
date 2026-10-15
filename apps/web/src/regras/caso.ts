@@ -149,11 +149,11 @@ export function visaoDoPerfil(perfil: string | undefined): VisaoDoCaso {
 export type TipoDeValor = 'causa' | 'renda-por-pessoa' | 'prestacao-de-contas'
 
 /**
- * Valores só para o Financeiro e o Sócio. Exceções da advogada: o valor da causa e a renda por pessoa do LOAS; os valores da
- * prestação de contas só no caso dela e quando o caso está na prestação de contas. O chat segue a mesma regra.
+ * Valores só para o Financeiro e o Sócio. Exceções: a advogada vê o valor da causa e a renda por pessoa do LOAS; a Sênior,
+ * que faz a prestação de contas (Mateus, 14/10), vê os valores dela quando o caso está na prestação. O chat segue a mesma regra.
  */
-export function podeVerValor(perfil: string | undefined, tipo: TipoDeValor, o: { advogadaDoCaso: boolean; naPrestacaoDeContas: boolean }): boolean {
+export function podeVerValor(perfil: string | undefined, tipo: TipoDeValor, o: { naPrestacaoDeContas: boolean }): boolean {
   if (perfil === 'financeiro' || perfil === 'socio') return true
-  if (perfil !== 'advogada') return false
-  return tipo === 'prestacao-de-contas' ? o.advogadaDoCaso && o.naPrestacaoDeContas : true
+  if (tipo === 'prestacao-de-contas') return perfil === 'senior' && o.naPrestacaoDeContas
+  return perfil === 'advogada'
 }

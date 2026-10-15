@@ -60,7 +60,7 @@ describe('tentativas bloqueadas (GGVP-109)', () => {
     const lista = (await tentativas('rui')).json().tentativas
     expect(lista.map((t: { quem: string; descricao: string }) => [t.quem, t.descricao])).toEqual([
       ['gabi', 'Manifestar no processo sem prova em todos os itens (G21)'],
-      ['ana', 'Avisar o cliente antes do OK da advogada na prestação de contas (G8)'],
+      ['ana', 'Avisar o cliente antes do OK da Sênior na prestação de contas (G8)'],
     ])
   })
 

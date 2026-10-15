@@ -23,7 +23,6 @@ import {
   perito,
   pessoa,
   prazo,
-  prestacaoContas,
   publicacao,
   tarefa,
   usuario,
@@ -213,11 +212,6 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
         ? { oQue: `Esperando: ${esperando.aguardando}`, setor: null, prazo: null, tela: null }
         : null
 
-    // Valores: o Financeiro, o Sócio e a advogada que faz a prestação do caso (a que não foi definida ainda conta como a da
-    // prestação, como na rota dela). A Sênior vê a prestação na tela dela, não os valores aqui (Pedro, 09/10).
-    const daAdvogada = (c.caso.advogadaResponsavelId ?? quem) === quem
-    const veValores = pode(perfil, 'valores.ver') || (pode(perfil, 'prestacao.dar_ok') && daAdvogada)
-    const [pc] = veValores ? await banco.select().from(prestacaoContas).where(eq(prestacaoContas.casoId, casoId)).orderBy(desc(prestacaoContas.versao)).limit(1) : []
 
     let saude = null
     if (veSaude) {
@@ -241,7 +235,7 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
     const [cofre] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, c.pessoa.id))
 
     // GGVP-158 P7.6: os valores que a regra de valores deixa o perfil ver; os outros não vêm.
-    const visiveis = await valoresVisiveis(banco, casoId, perfil, quem)
+    const visiveis = await valoresVisiveis(banco, casoId, perfil)
     return ProcessoDoCaso.parse({
       casoId,
       pessoa: { id: c.pessoa.id, nome: c.pessoa.nome, cpf: c.pessoa.cpf, nascimento: c.pessoa.dataNascimento },
@@ -267,7 +261,11 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       prazos,
       publicacoes,
       proximoPasso,
-      valores: pc ? { versao: pc.versao, recebido: pc.valorRecebido, honorarios: pc.honorarios, cliente: pc.valorCliente } : null,
+      // Os valores da prestação pela mesma regra de valores (GGVP-44 CA13, Mateus 14/10): o Financeiro, o Sócio e a Sênior,
+      // esta enquanto o caso está na prestação de contas; a advogada, não.
+      valores: visiveis && 'prestacao' in visiveis && visiveis.prestacao
+        ? { versao: visiveis.prestacao.versao, recebido: visiveis.prestacao.recebido, honorarios: visiveis.prestacao.honorarios, cliente: visiveis.prestacao.repasse }
+        : null,
       saude,
     })
   })

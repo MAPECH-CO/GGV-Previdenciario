@@ -96,7 +96,7 @@ describe('GGVP-142 · as travas antes do modelo, como código (CA2)', () => {
   it('16.2 · "o que é o G8?" sai da regra, com a fonte', async () => {
     const r = await perguntar('julia', 'O que é o G8?')
     expect(r.tipo).toBe('resposta')
-    expect(r.sugestao.texto).toMatch(/^G8: O aviso ao cliente só nasce depois do OK da advogada/)
+    expect(r.sugestao.texto).toMatch(/^G8: O aviso ao cliente só nasce depois do OK da Sênior/)
     expect(r.sugestao.fontes).toEqual([{ tipo: 'regra', referencia: 'G8' }])
   })
 

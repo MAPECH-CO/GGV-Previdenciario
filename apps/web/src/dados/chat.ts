@@ -211,10 +211,10 @@ async function consultarValor(texto: string, quem: QuemPergunta, processoId?: st
   const tipo = /prestac|rpv|atrasad|recebe/.test(t) ? 'prestacao-de-contas' : /renda/.test(t) ? 'renda-por-pessoa' : 'causa'
   const banco = ler()
   const c = achado && !('erro' in achado) && achado.processoId ? complementoDo(banco, achado.processoId) : undefined
-  const pode = podeVerValor(quem.id, tipo, { advogadaDoCaso: !!c && quem.usuario === c.advogada, naPrestacaoDeContas: !!c?.naPrestacaoDeContas })
+  const pode = podeVerValor(quem.id, tipo, { naPrestacaoDeContas: !!c?.naPrestacaoDeContas })
   if (!pode) {
     return recusa(
-      `Seu perfil (${rotuloDoPerfil(quem.id)}) não tem acesso a esse valor: valores são do Financeiro e do Sócio${tipo === 'prestacao-de-contas' ? ' (a advogada vê a prestação de contas do caso dela)' : ''}. Não posso mostrar o dado.`,
+      `Seu perfil (${rotuloDoPerfil(quem.id)}) não tem acesso a esse valor: valores são do Financeiro e do Sócio${tipo === 'prestacao-de-contas' ? ' (a Sênior vê a prestação de contas, que é ela quem faz)' : ''}. Não posso mostrar o dado.`,
     )
   }
   if (!achado || 'erro' in achado || !achado.processoId) return resposta('De qual cliente? Escreva o nome completo.')
@@ -459,9 +459,9 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
         titulo: `${cliente.nome} · Lançar prestação de contas`,
         cliente: { id: cliente.id, nome: cliente.nome },
         processoId: caso?.id,
-        passos: [`Subir ${arquivo.nome} na pasta do processo`, 'Lançar na prestação de contas o valor que está no comprovante: você confere', `Pedir o OK da advogada na prestação de contas (tarefa «${tituloDaTarefa(cliente.nome, 'Aprovar prestação de contas')}»)`],
+        passos: [`Subir ${arquivo.nome} na pasta do processo`, 'Lançar na prestação de contas o valor que está no comprovante: você confere', `Pedir o OK da Sênior na prestação de contas (tarefa «${tituloDaTarefa(cliente.nome, 'Aprovar prestação de contas')}»)`],
         conferir: ['O cliente e o processo do comprovante', 'O valor e a data, no próprio comprovante'],
-        travas: ['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da advogada (G8)'],
+        travas: ['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da Sênior (G8)'],
         rotuloConfirmar: 'Confirmar e lançar',
       },
       quem,
@@ -596,17 +596,17 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
     case 'jurimetria':
       return jurimetria(texto, quem)
     case 'prestacoes': {
-      if (!podeVerValor(quem.id, 'prestacao-de-contas', { advogadaDoCaso: quem.id === 'advogada', naPrestacaoDeContas: true })) {
+      if (!podeVerValor(quem.id, 'prestacao-de-contas', { naPrestacaoDeContas: true })) {
         return recusa(`Seu perfil (${rotuloDoPerfil(quem.id)}) não tem acesso à prestação de contas: é do Financeiro e do Sócio. Não posso mostrar o dado.`)
       }
       const banco = ler()
-      const casos = (banco.casos ?? []).filter((c) => c.naPrestacaoDeContas && (quem.id !== 'advogada' || c.advogada === quem.usuario))
+      const casos = (banco.casos ?? []).filter((c) => c.naPrestacaoDeContas)
       const links = casos.map((c) => {
         const ficha = banco.fichas.find((f) => f.processos.some((x) => x.id === c.processoId))!
-        return { rotulo: tituloDaTarefa(ficha.nome, 'Lançar prestação de contas'), sub: 'aguardando o OK da advogada (G8)', href: `/casos/${c.processoId}` }
+        return { rotulo: tituloDaTarefa(ficha.nome, 'Lançar prestação de contas'), sub: 'aguardando o OK da Sênior (G8)', href: `/casos/${c.processoId}` }
       })
       return resposta(
-        casos.length ? `${casos.length === 1 ? 'Uma prestação espera' : `${casos.length} prestações esperam`} o OK da advogada antes do lançamento (G8).` : 'Nenhuma prestação de contas chegou.',
+        casos.length ? `${casos.length === 1 ? 'Uma prestação espera' : `${casos.length} prestações esperam`} o OK da Sênior antes do lançamento (G8).` : 'Nenhuma prestação de contas chegou.',
         links,
       )
     }
@@ -719,11 +719,12 @@ export async function confirmarAcao(
     case 'lancar-comprovante': {
       const enviado = await enviarArquivos(acao.cliente!.id, { origem: 'chat', arquivos: [await arquivo(String(p.dados.arquivo), 'outro')] })
       if (enviado.resultado !== 'enviado') return { estado: 'sem-pasta', texto: '', links: [] }
-      const advogada = complementoDo(ler(), acao.processoId ?? '').advogada ?? advogadaDoCaso()
+      // GGVP-44 CA13 (Mateus, 14/10): o OK da prestação é da Sênior.
+      const senior = PESSOAS_POR_PERFIL.find((p) => p.id === 'senior')!.usuario
       const titulo = tituloDaTarefa(acao.cliente!.nome, 'Aprovar prestação de contas')
-      criarTarefa({ processoId: acao.processoId, cliente: acao.cliente, acao: 'Aprovar prestação de contas', titulo, detalhe: 'comprovante lançado pelo Financeiro · o aviso ao cliente só depois do OK (G8)', responsavel: advogada, setor: 'Jurídico', criadaPor: quem.usuario })
-      registrarNoCaso(acao.processoId, quem.usuario, 'Lançou o comprovante na prestação de contas; pediu o OK da advogada (G8)', 'D3b.02')
-      r = { estado: 'feito', texto: `✓ Feito: o comprovante está na pasta e a advogada recebeu «${titulo}». O aviso ao cliente só sai depois do OK dela (G8).`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
+      criarTarefa({ processoId: acao.processoId, cliente: acao.cliente, acao: 'Aprovar prestação de contas', titulo, detalhe: 'comprovante lançado pelo Financeiro · o aviso ao cliente só depois do OK (G8)', responsavel: senior, setor: 'Jurídico', criadaPor: quem.usuario })
+      registrarNoCaso(acao.processoId, quem.usuario, 'Lançou o comprovante na prestação de contas; pediu o OK da Sênior (G8)', 'D3b.02')
+      r = { estado: 'feito', texto: `✓ Feito: o comprovante está na pasta e a Sênior recebeu «${titulo}». O aviso ao cliente só sai depois do OK dela (G8).`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
       break
     }
     case 'enviar-documento': {

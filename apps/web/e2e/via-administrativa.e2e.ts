@@ -132,10 +132,10 @@ test('GGVP-35 · a advogada registra um deferido e uma exigência, com o passo s
   await expect(page.getByRole('alert')).toHaveText('Anexe a comunicação do INSS (PDF ou imagem, até 25 MB).')
   await page.getByLabel('Comunicação do INSS', { exact: true }).setInputFiles(PDF)
   await page.getByRole('button', { name: 'Registrar' }).click()
-  await expect(page.getByRole('status')).toContainText('Prestar contas')
+  await expect(page.getByRole('status')).toContainText('O sistema abriu "Prestar contas" para a Sênior.')
   await expect(page.getByRole('list', { name: 'Registros' })).toContainText('Deferido · Gabi (exemplo)')
-  // Ajuste do Mateus (06/10): o passo seguinte da advogada aparece na mesma tela, se ela quiser seguir.
-  await expect(page.getByRole('region', { name: 'Prestar contas' }).getByLabel('Valor recebido (atrasados)')).toBeVisible()
+  // GGVP-44 CA13 (Mateus, 14/10): a prestação é da Sênior; a advogada não segue para ela na mesma tela.
+  await expect(page.getByRole('region', { name: 'Prestar contas' })).toHaveCount(0)
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Teresa Dias (exemplo) · Trazer a resposta do INSS' }).click()
@@ -224,8 +224,8 @@ test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a
   await expect(page.getByText(/Esperando: INSS analisar a resposta/)).toBeVisible()
 })
 
-test('GGVP-44 e GGVP-98 · a advogada conclui; o Financeiro recebe, avisa, marca a ida ao banco e confirma; o Atendimento leva', async ({ page }) => {
-  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+test('GGVP-44 e GGVP-98 · a Sênior conclui (Mateus, 14/10); o Financeiro recebe, avisa, marca a ida ao banco e confirma; o Atendimento leva', async ({ page }) => {
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Vera Lúcia (exemplo) · Prestar contas' }).click()
   await expect(page.getByText('Carta de concessão (exemplo).pdf')).toBeVisible()

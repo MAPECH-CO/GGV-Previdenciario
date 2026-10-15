@@ -190,15 +190,23 @@ describe('A resposta do INSS e o passo seguinte numa tela só (ajuste de 06/10)'
     expect(screen.queryByRole('button', { name: 'Registrar' })).toBeNull()
   })
 
-  it('deferido: a advogada presta contas ali mesmo', async () => {
+  it('deferido: a Sênior presta contas ali mesmo; a advogada vê só que o sistema abriu "Prestar contas" para a Sênior (GGVP-44 CA13)', async () => {
+    const deferir = async () => {
+      fireEvent.click(await screen.findByLabelText('Deferido'))
+      fireEvent.change(screen.getByLabelText('Texto da comunicação do INSS'), { target: { value: 'Benefício concedido' } })
+      fireEvent.change(screen.getByLabelText('Comunicação do INSS'), { target: { files: [pdf()] } })
+      fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
+    }
     servidorDoCaso('prestacao')
-    render(comPerfil('advogada', <Vigilia casoId={CASO} />))
-    fireEvent.click(await screen.findByLabelText('Deferido'))
-    fireEvent.change(screen.getByLabelText('Texto da comunicação do INSS'), { target: { value: 'Benefício concedido' } })
-    fireEvent.change(screen.getByLabelText('Comunicação do INSS'), { target: { files: [pdf()] } })
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
+    const { unmount } = render(comPerfil('senior', <Vigilia casoId={CASO} />))
+    await deferir()
     const prestar = await screen.findByRole('region', { name: 'Prestar contas' })
     expect(await within(prestar).findByLabelText('Valor recebido (atrasados)')).toBeTruthy()
+    unmount()
+    render(comPerfil('advogada', <Vigilia casoId={CASO} />))
+    await deferir()
+    expect((await screen.findByRole('status')).textContent).toContain('O sistema abriu "Prestar contas" para a Sênior.')
+    expect(screen.queryByRole('region', { name: 'Prestar contas' })).toBeNull()
   })
 
   it('quem não faz o passo seguinte (Jurídico administrativo) vê só o que o sistema abriu', async () => {

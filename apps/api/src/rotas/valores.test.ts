@@ -80,15 +80,18 @@ describe('GGVP-158 P7.6 · o valor da causa e a renda por pessoa do LOAS', () =>
     expect((await banco.select({ r: pessoa.rendaPorPessoa }).from(pessoa).where(eq(pessoa.id, pessoaId)))[0].r).toBeNull()
   })
 
-  it('a prestação só para a advogada do caso e na prestação de contas; o resumo do processo traz os valores que o perfil vê', async () => {
+  it('GGVP-44 CA13 (Mateus, 14/10) · a prestação só para a Sênior e na prestação de contas; a advogada vê o valor da causa, nunca a prestação; o resumo do processo traz os valores que o perfil vê', async () => {
     await chamar('gabi', 'PUT', `/api/casos/${casoId}/valor-da-causa`, { valor: '15.000,00' })
     await banco.insert(prestacaoContas).values({ casoId, valorRecebido: '10000.00', honorarios: '3000.00', valorCliente: '7000.00', percentualHonorarios: '30.00' })
-    expect((await valores('gabi')).json().prestacao).toBeUndefined()
-    await banco.insert(tarefa).values({ casoId, passo: 'D3b.02', titulo: 'Prestar contas', perfilDono: 'advogada' })
-    expect((await valores('gabi')).json().prestacao).toEqual({ versao: 1, recebido: '10000.00', honorarios: '3000.00', repasse: '7000.00' })
-    // A outra advogada vê o valor da causa, mas não a prestação de um caso que não é dela.
-    const outra = (await valores('maria')).json()
-    expect([outra.causa, outra.prestacao]).toEqual(['15000.00', undefined])
+    // Fora da prestação, a Sênior não vê valor nenhum.
+    expect([(await valores('helena')).statusCode, (await valores('gabi')).json().prestacao]).toEqual([403, undefined])
+    await banco.insert(tarefa).values({ casoId, passo: 'D3b.02', titulo: 'Prestar contas', perfilDono: 'senior' })
+    expect((await valores('helena')).json().prestacao).toEqual({ versao: 1, recebido: '10000.00', honorarios: '3000.00', repasse: '7000.00' })
+    // As advogadas, mesmo a do caso, veem o valor da causa, mas não a prestação.
+    for (const apelido of ['gabi', 'maria']) {
+      const r = (await valores(apelido)).json()
+      expect([apelido, r.causa, r.prestacao]).toEqual([apelido, '15000.00', undefined])
+    }
     const daAdvogada = (await chamar('gabi', 'GET', `/api/casos/${casoId}/processo`)).json()
     expect([daAdvogada.valorDaCausa, daAdvogada.rendaPorPessoa]).toEqual(['15000.00', null])
     // O Atendimento nem abre o resumo do processo (GGVP-162).

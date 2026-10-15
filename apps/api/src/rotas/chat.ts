@@ -182,7 +182,7 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
       links: doCaso('/pericia', 'Abrir a perícia'),
     },
     'comprovante-rpv': {
-      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da advogada (G8).',
+      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da Sênior (G8).',
       links: doCaso('/prestacao', 'Abrir a prestação de contas'),
     },
     documento: { texto: 'Para enviar o documento, abra o caso e suba pela pasta do cliente: a Documentação confere a leitura.', links: abrir },

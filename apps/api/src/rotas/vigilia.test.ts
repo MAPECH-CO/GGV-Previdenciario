@@ -34,6 +34,8 @@ const registrar = async (campos: Record<string, string>, arquivo: typeof PDF | n
 const ver = async (apelido = 'gabi') => app.inject({ method: 'GET', url: `/api/casos/${casoId}/vigilia`, cookies: await cookieDe(apelido) })
 const abertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => [t.passo, t.titulo]).sort()
+/** GGVP-44 CA13 (Mateus, 14/10): de quem é a tarefa aberta com este título. */
+const donoDe = async (titulo: string) => (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), eq(tarefa.titulo, titulo), isNull(tarefa.concluidaEm))))[0]?.perfilDono
 const DEFERIDO = { tipo: 'decisao', resultado: 'deferido', texto: 'Benefício concedido.' }
 const INDEFERIDO = {
   tipo: 'decisao',
@@ -73,6 +75,7 @@ describe('GGVP-35 · vigiar o Meu INSS', () => {
   it('CA3 e CA10 · deferido: guarda a comunicação, fecha a vigília, abre "Prestar contas" e registra no histórico', async () => {
     expect((await registrar(DEFERIDO)).statusCode).toBe(201)
     expect(await abertas()).toEqual([['D2.06', 'Prestar contas']])
+    expect(await donoDe('Prestar contas')).toBe('senior')
     const [res] = await banco.select().from(resultadoInss).where(eq(resultadoInss.casoId, casoId))
     expect([res.resultado, res.documentoId !== null]).toEqual(['deferido', true])
     const [e] = await banco.select().from(etapa).where(eq(etapa.passo, 'D2.04'))
@@ -87,6 +90,7 @@ describe('GGVP-35 · vigiar o Meu INSS', () => {
   it('CA3 · deferido diferente do pedido abre a análise, não a prestação de contas', async () => {
     await registrar({ ...DEFERIDO, diferenteDoPedido: 'true' })
     expect(await abertas()).toEqual([['D2.06', 'Analisar deferimento diferente do pedido']])
+    expect(await donoDe('Analisar deferimento diferente do pedido')).toBe('senior')
   })
 
   it('CA6 e CA8 · exigência: texto e data obrigatórios, prazo a calcular, e o caso continua vigiado', async () => {
