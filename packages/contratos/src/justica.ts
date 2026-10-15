@@ -155,7 +155,8 @@ export type VincularPublicacao = z.input<typeof VincularPublicacao>
 /** GET /api/vigilia (GGVP-30 CA2, CA4, CA5, CA12; GGVP-26 CA6). */
 export const PainelDaVigilia = z.object({
   dia: z.string(),
-  situacaoDoDia: z.enum(['ok', 'incompleta', 'sem_publicacao', 'em_andamento']),
+  /** GGVP-158 I19: `sem_fonte` quando a vigília está sem fonte ligada e o dia não tem rodada (G13). */
+  situacaoDoDia: z.enum(['ok', 'incompleta', 'sem_publicacao', 'em_andamento', 'sem_fonte']),
   rodadas: z.array(
     z.object({
       id: z.uuid(),

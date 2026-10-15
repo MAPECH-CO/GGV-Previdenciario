@@ -23,12 +23,12 @@
 
 ## GGVP-158 · 3. Diário (DJEN e AASP)
 
-- [ ] 3.1 I13 · Motivo seguro: `apps/api/src/vigilia/rodadas.ts` (`rodar`) e `apps/api/src/vigilia/djen.ts` (a resposta que não é JSON). Teste em `src/vigilia/rodadas.test.ts`: o erro com o texto da publicação não chega à rodada nem ao suporte.
-- [ ] 3.2 I14 · A frase do suporte pelas entregas: `apps/api/src/vigilia/rodadas.ts` (`semFonteHoje`) e `apps/api/src/rotas/vigilia-diario.ts`. Teste em `src/rotas/vigilia-diario.test.ts`.
-- [ ] 3.3 I15 · AASP fora do formato: `apps/api/src/vigilia/aasp.ts`. Teste em `src/vigilia/aasp.test.ts`.
-- [ ] 3.4 I16 · DJEN fora do formato ou parado antes do total: `apps/api/src/vigilia/djen.ts`. Teste em `src/vigilia/djen.test.ts`.
-- [ ] 3.5 I17 · AASP com CNJ fora do formato vai à fila: `apps/api/src/vigilia/aasp.ts`. Teste em `src/vigilia/aasp.test.ts`.
-- [ ] 3.6 I18 e I19 · O painel: contrato `PainelDaVigilia` com `sem_fonte` (`packages/contratos`); `GET /api/vigilia` (`apps/api/src/rotas/vigilia-diario.ts`); a tela `apps/web/src/paginas/PainelVigilia.tsx` (o texto e o tom do `sem_fonte`; a falha do reprocessar como erro). Testes em `src/rotas/vigilia-diario.test.ts` e `apps/web/src/paginas/PainelVigilia.test.tsx`. Antes, conferir os PRs abertos.
+- [x] 3.1 I13 · Motivo seguro: `apps/api/src/vigilia/rodadas.ts` (`rodar`) e `apps/api/src/vigilia/djen.ts` (a resposta que não é JSON). Teste em `src/vigilia/rodadas.test.ts`: o erro com o texto da publicação não chega à rodada nem ao suporte.
+- [x] 3.2 I14 · A frase do suporte pelas entregas: `apps/api/src/vigilia/rodadas.ts` (`semFonteHoje`) e `apps/api/src/rotas/vigilia-diario.ts`. Teste em `src/rotas/vigilia-diario.test.ts`.
+- [x] 3.3 I15 · AASP fora do formato: `apps/api/src/vigilia/aasp.ts`. Teste em `src/vigilia/aasp.test.ts`.
+- [x] 3.4 I16 · DJEN fora do formato ou parado antes do total: `apps/api/src/vigilia/djen.ts`. Teste em `src/vigilia/djen.test.ts`.
+- [x] 3.5 I17 · AASP com CNJ fora do formato vai à fila: `apps/api/src/vigilia/aasp.ts`. Teste em `src/vigilia/aasp.test.ts`.
+- [x] 3.6 I18 e I19 · O painel: contrato `PainelDaVigilia` com `sem_fonte` (`packages/contratos`); `GET /api/vigilia` (`apps/api/src/rotas/vigilia-diario.ts`); a tela `apps/web/src/paginas/PainelVigilia.tsx` (o texto e o tom do `sem_fonte`; a falha do reprocessar como erro). Testes em `src/rotas/vigilia-diario.test.ts` e `apps/web/src/paginas/PainelVigilia.test.tsx`. Antes, conferir os PRs abertos.
 
 ## GGVP-158 · 4. Tela sem resposta do servidor
 

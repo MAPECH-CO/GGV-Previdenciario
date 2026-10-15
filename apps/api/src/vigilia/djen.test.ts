@@ -83,6 +83,21 @@ describe('fonte DJEN (grupo 4, decisões 44 e 47)', () => {
     expect(esperas).toEqual([500])
   })
 
+  it('GGVP-158 I16 · a resposta fora do formato e a página vazia antes do total são falha, e não um dia com menos publicações', async () => {
+    const cinquenta = Array.from({ length: 50 }, (_, i) => comunicacao(i + 1))
+    const falha = (respostas: Response[]) =>
+      fonteDjen([OAB], ['TRF3'], redeGravada(respostas).rede)
+        .buscar(DE, ATE)
+        .then(
+          () => 'sem erro',
+          (e: Error) => e.message,
+        )
+    expect(await falha([json({ items: cinquenta })])).toBe('api: o DJEN respondeu fora do formato')
+    expect(await falha([json({ count: 1, items: null })])).toBe('api: o DJEN respondeu fora do formato')
+    expect(await falha([new Response('<html>Fulano de Tal (exemplo)</html>', { status: 200 })])).toBe('api: o DJEN respondeu fora do formato')
+    expect(await falha([json({ count: 60, items: cinquenta }), json({ count: 60, items: [] })])).toBe('api: o DJEN parou antes do total (50 de 60)')
+  })
+
   it('a cancelada fica de fora, e a mesma comunicação achada por duas OABs conta uma vez', async () => {
     const { rede } = redeGravada([
       json({ count: 3, items: [comunicacao(1), comunicacao(2, { ativo: false }), comunicacao(3, { data_cancelamento: '2026-10-06' })] }),

@@ -66,6 +66,28 @@ describe('fonte AASP (grupo 4, decisões 45 e 47)', () => {
     ])
   })
 
+  it('GGVP-158 I15 · a resposta sem a lista de intimações é falha, e não um dia sem publicação (G13)', async () => {
+    for (const corpo of [{ status: 'erro' }, { erro: false, status: `Chave ${CHAVE} inválida` }, { intimacoes: 'formato novo', erro: false, status: 'Sucesso' }]) {
+      const { rede } = redeGravada([json(corpo)])
+      const mensagem = await fonteAasp([CHAVE], ['TRF3'], rede)
+        .buscar(DE, DE)
+        .then(
+          () => 'sem erro',
+          (e: Error) => e.message,
+        )
+      expect(mensagem).toMatch(/^api: a AASP respondeu fora do formato \(/)
+      expect(mensagem).not.toContain(CHAVE)
+    }
+  })
+
+  it('GGVP-158 I17 · o número de processo fora do formato (sem os 20 dígitos) vai para a fila de revisão, em vez de sumir', async () => {
+    const { rede } = redeGravada([
+      json({ intimacoes: [intimacao('0001234-96.2026.4.03.630', 'Número cortado (exemplo).'), intimacao('1000999-11.2026.5.02.0001', 'Da Justiça do Trabalho (exemplo).')], erro: false, status: 'Sucesso' }),
+    ])
+    const lista = await fonteAasp([CHAVE], ['TRF3'], rede).buscar(DE, new Date('2026-10-06T20:00:00Z'))
+    expect(lista.map((p) => [p.numeroCnj, p.texto])).toEqual([[null, 'Número cortado (exemplo).']])
+  })
+
   it('chave recusada vira falha de credencial, que avisa o suporte, sem a chave nem a URL na mensagem (GGVP-30 CA8)', async () => {
     const { rede } = redeGravada([json({}, 401)])
     const erro = await fonteAasp(['outra', CHAVE], ['TRF3'], rede)

@@ -37,12 +37,12 @@ export function fonteAasp(chaves: string[], tribunais: string[], { buscar, esper
     }
     if (resposta.status === 401 || resposta.status === 403) throw new Error(`credencial: a AASP recusou a chave ${posicao} (HTTP ${resposta.status})`)
     if (!resposta.ok) throw new Error(`api: a AASP respondeu ${resposta.status}`)
-    const corpo = (await resposta.json().catch(() => null)) as { intimacoes?: Intimacao[]; erro?: boolean; status?: string } | null
-    if (!corpo || corpo.erro) {
-      const status = String(corpo?.status ?? 'resposta fora do formato').replaceAll(chave, '***').slice(0, 100)
-      throw new Error(`api: a AASP respondeu com erro (${status})`)
-    }
-    return corpo.intimacoes ?? []
+    const corpo = (await resposta.json().catch(() => null)) as { intimacoes?: unknown; erro?: boolean; status?: string } | null
+    const status = String(corpo?.status ?? 'resposta fora do formato').replaceAll(chave, '***').slice(0, 100)
+    if (!corpo || corpo.erro) throw new Error(`api: a AASP respondeu com erro (${status})`)
+    // GGVP-158 I15 (G13): sem a lista, a resposta não diz "nenhuma intimação": é falha, e o dia não parece sem publicação.
+    if (!Array.isArray(corpo.intimacoes)) throw new Error(`api: a AASP respondeu fora do formato (${status})`)
+    return corpo.intimacoes as Intimacao[]
   }
 
   return {
@@ -57,10 +57,11 @@ export function fonteAasp(chaves: string[], tribunais: string[], { buscar, esper
           for (const intimacao of await intimacoes(chave, `${i + 1} de ${chaves.length}`, dia)) {
             const cnj = (intimacao.numeroUnicoProcesso ?? '').replace(/\D/g, '')
             // De outro tribunal (a Justiça do Trabalho, por exemplo), fica de fora; sem CNJ, segue para a fila de revisão.
-            if (cnj && !doTribunal(cnj)) continue
+            // GGVP-158 I17: o número fora do formato (sem os 20 dígitos) também vai para a fila, sem número, e não some.
+            if (cnj.length === 20 && !doTribunal(cnj)) continue
             publicacoes.push({
               fonte: 'aasp',
-              numeroCnj: cnj || null,
+              numeroCnj: cnj.length === 20 ? cnj : null,
               disponibilizadaEm: intimacao.jornal?.dataDisponibilizacao_Publicacao?.slice(0, 10) || dia,
               texto: textoDoHtml(intimacao.textoPublicacao ?? ''),
               partes: null,
