@@ -149,7 +149,7 @@ export function IdaAoBanco({ casoId }: { casoId: string }) {
           <h2 className={styles.cartaoTitulo}>Ligação do Financeiro ao cliente</h2>
           <p>A mensagem pelo Chatwoot complementa a ligação. Ela não saiu pelo portal: o envio para a ida ao banco ainda está indisponível.</p>
           <button type="button" className={styles.botaoSecundario} disabled>Enviar complemento pelo Chatwoot</button>
-          {!b.okAdvogada && <p className={styles.dica}>O aviso só sai depois do OK da advogada na prestação de contas (G8).</p>}
+          {!b.okAdvogada && <p className={styles.dica}>O aviso só sai depois do OK da Sênior na prestação de contas (G8).</p>}
           {b.mensagem ? (
             <>
               <p className={styles.dica}>Use o texto aprovado na ligação. Registre somente depois de falar com o cliente.</p>

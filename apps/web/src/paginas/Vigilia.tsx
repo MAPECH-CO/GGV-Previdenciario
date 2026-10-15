@@ -103,8 +103,8 @@ export function Vigilia({ casoId }: { casoId: string }) {
     setErro('')
     setFeito(
       {
-        prestacao: 'Deferido registrado. O sistema abriu "Prestar contas" para a advogada.',
-        analise: 'Deferido diferente do pedido. O sistema abriu a análise para a advogada.',
+        prestacao: 'Deferido registrado. O sistema abriu "Prestar contas" para a Sênior.',
+        analise: 'Deferido diferente do pedido. O sistema abriu a análise para a Sênior.',
         justica: 'Indeferido registrado com o seu motivo. O caso foi para a Justiça e a Sênior recebeu "Despachar caso".',
         exigencia: 'Exigência registrada. O sistema abriu "Tratar exigência do INSS"; o caso continua vigiado.',
       }[r.dados.aberto] ?? 'Registrado.',

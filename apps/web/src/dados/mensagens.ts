@@ -12,7 +12,7 @@ export const STATUS_DA_MENSAGEM: Record<StatusDaMensagem, string> = { enviada: '
 /** O registro de cada envio (CA4): o texto final, o canal, a data e a hora, e o status de entrega quando o canal informa. */
 export type MensagemAoCliente = MensagemDoContrato
 
-/** O texto do resultado que o Jurídico aprovou: o favorável com o OK da advogada na prestação de contas (G8). */
+/** O texto do resultado que o Jurídico aprovou: o favorável com o OK da Sênior na prestação de contas (G8). */
 export type AvisoAprovado = { processoId: string; tipo: 'favoravel' | 'desfavoravel'; texto: string; quem: string; quando: string }
 
 /** A mensagem pronta para revisar (CA1): o texto, se pode editar, a trava e o cliente no Chatwoot (CA6). */

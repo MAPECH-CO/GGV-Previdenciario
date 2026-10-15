@@ -144,10 +144,10 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     expect(within(cartao).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
       '1 Subir rpv_lucia.pdf na pasta do processo',
       '2 Lançar na prestação de contas o valor que está no comprovante: você confere',
-      '3 Pedir o OK da advogada na prestação de contas (tarefa «Lúcia Exemplo · Aprovar prestação de contas»)',
+      '3 Pedir o OK da Sênior na prestação de contas (tarefa «Lúcia Exemplo · Aprovar prestação de contas»)',
     ])
     expect(cartao.textContent).toContain('O valor vem do comprovante; a IA não calcula honorários (G19)')
-    expect(cartao.textContent).toContain('O aviso ao cliente só sai depois do OK da advogada (G8)')
+    expect(cartao.textContent).toContain('O aviso ao cliente só sai depois do OK da Sênior (G8)')
     fireEvent.click(within(cartao).getByRole('button', { name: 'Confirmar e lançar' }))
     expect(await screen.findByText(/✓ Feito: o comprovante está na pasta/)).toBeTruthy()
   })
@@ -184,7 +184,7 @@ describe('GGVP-82 CA6 · o Suporte nas outras telas', () => {
     expect(await within(suporte).findByText(/^Pedro Exemplo \(loas idoso\) está em INSS/)).toBeTruthy()
     fireEvent.change(within(suporte).getByLabelText('✦ Pergunte ou peça'), { target: { value: 'O que é o G8?' } })
     fireEvent.click(within(suporte).getByRole('button', { name: 'Enviar' }))
-    expect(await within(suporte).findByText(/^G8: O aviso ao cliente só nasce depois do OK da advogada/)).toBeTruthy()
+    expect(await within(suporte).findByText(/^G8: O aviso ao cliente só nasce depois do OK da Sênior/)).toBeTruthy()
     window.history.pushState({}, '', '/')
   })
 })

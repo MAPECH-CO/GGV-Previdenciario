@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { ADVOGADA, entrarPelaApi } from './entrar.ts'
+import { entrarPelaApi } from './entrar.ts'
 const id = '11111111-1111-4111-8111-111111111111'
 test('a prestação mantém valores editáveis antes do OK e sinaliza o contrato ainda indisponível', async ({ page }) => {
-  await entrarPelaApi(page, ADVOGADA)
+  // GGVP-44 CA13 (Mateus, 14/10): a prestação é da Sênior.
+  await entrarPelaApi(page, 'senior@exemplo.ggv')
   let enviados = 0
   await page.route('**/api/casos/' + id + '/prestacao', r => {
     if (r.request().method() === 'POST') { enviados++; return r.fulfill({ json: { ok: true, versao: 1 } }) }

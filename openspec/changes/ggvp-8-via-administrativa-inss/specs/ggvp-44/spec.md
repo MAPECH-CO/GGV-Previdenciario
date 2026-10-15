@@ -102,15 +102,15 @@ Remarcar a ida ao banco SHALL atualizar o que o Financeiro vê e preparar o novo
 - **Quando** o Atendimento registra a nova data
 - **Então** o Financeiro é atualizado e o cliente recebe o novo convite
 
-### Requirement: CA13 · A prestação é da advogada responsável pelo caso
-Quando o caso tem advogada responsável, a prestação de contas (ver, salvar e dar o OK) MUST ficar só com ela; outra advogada SHALL ser recusada, e a recusa fica no histórico. O Financeiro segue vendo os valores (CA8). Caso sem advogada responsável definida segue aberto a quem tem o perfil de advogada (orquestrador, 09/10: a rota conferia só o perfil).
+### Requirement: CA13 · A prestação de contas é da Sênior (Mateus, 14/10)
+A prestação de contas SHALL ser só da Sênior (pedido do Pedro, 14/10; decisão do Mateus, 14/10, opção A), no lugar da advogada responsável (orquestrador, 09/10). As tarefas do passo da prestação (D2.06: "Prestar contas", "Corrigir a prestação" e "Analisar deferimento diferente do pedido", que abre a mesma tela) SHALL nascer para a Sênior; só ela SHALL dar o OK (`prestacao.dar_ok`), e ver a prestação SHALL ficar com a Sênior, o Financeiro e o Sócio (`prestacao.ver`). A Sênior SHALL ver os valores da prestação enquanto o caso está na prestação de contas; fora dela, continua sem os valores do caso. A advogada MUST NOT ver a prestação nem dar o OK; a tentativa por outro caminho é recusada e fica no histórico. O G8 passa a ser "o aviso ao cliente só nasce depois do OK da Sênior na prestação de contas"; onde outras specs dizem "OK da advogada" na prestação (GGVP-92, GGVP-98, GGVP-102, GGVP-109, GGVP-158), vale o OK da Sênior.
 
-#### Scenario: CA13 · Outra advogada
-- **Dado** um caso deferido com a advogada responsável Gabi
-- **Quando** outra advogada abre ou conclui a prestação
+#### Scenario: CA13 · A Sênior faz a prestação
+- **Dado** um caso deferido
+- **Quando** o INSS defere
+- **Então** "Prestar contas" nasce para a Sênior, que vê os valores, confere e dá o OK; o Financeiro recebe depois do OK dela
+
+#### Scenario: CA13 · A advogada não faz a prestação
+- **Dado** o mesmo caso, com a advogada responsável Gabi
+- **Quando** a Gabi tenta abrir ou concluir a prestação
 - **Então** é recusada, e a recusa fica no histórico
-
-#### Scenario: CA13 · A advogada responsável
-- **Dado** o mesmo caso
-- **Quando** a Gabi abre e conclui a prestação
-- **Então** vê os valores e conclui, como antes

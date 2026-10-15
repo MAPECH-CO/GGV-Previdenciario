@@ -34,7 +34,7 @@ export const ROTULO_ORIGEM_DA_RECEITA: Record<OrigemDaReceita, string> = {
 const Dinheiro = z.string()
 const Data = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
-/** Uma linha por caso: a versão atual da prestação, ou o caso que ainda espera o OK da advogada. */
+/** Uma linha por caso: a versão atual da prestação, ou o caso que ainda espera o OK da Sênior. */
 export const LancamentoFinanceiro = z.object({
   casoId: z.uuid(),
   cliente: z.string(),
@@ -63,7 +63,7 @@ export const PainelFinanceiro = z.object({
   processosAReceber: z.number(),
   emAtraso: Dinheiro,
   processosEmAtraso: z.number(),
-  /** As prestações a lançar: com o OK da advogada e sem o lançamento do Financeiro, mais as que esperam o OK. */
+  /** As prestações a lançar: com o OK da Sênior e sem o lançamento do Financeiro, mais as que esperam o OK. */
   aLancar: z.number(),
   aguardandoOk: z.number(),
   /** De janeiro ao mês do período: o recebido (pelo dia da confirmação) e o previsto (pelo prazo de pagamento). */
