@@ -117,6 +117,9 @@ export * from './bases.ts'
 // O painel Financeiro (GGVP-78): as contas das prestações de contas, por mês e por origem, e os lançamentos.
 export * from './financeiro.ts'
 
+// As custas do processo (GGVP-157): o gasto do escritório em cada caso, o lucro e a aprovação do Financeiro.
+export * from './custas.ts'
+
 // Os modelos do kit, com versão, subidos pela Sênior na Configuração (GGVP-136).
 export * from './modelos.ts'
 

@@ -88,7 +88,7 @@ describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 19
 
   it('o Atendimento só tem a Agenda; o Financeiro, sem ver o caso, fica com os Resultados (GGVP-96) e o painel Financeiro; sem sessão, nada muda', () => {
     expect(ids('atendimento')).toEqual(['inicio', 'agenda'])
-    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'resultados', 'financeiro'])
+    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'resultados', 'financeiro', 'custas'])
     expect(ids(null)).toEqual(['inicio', 'agenda'])
   })
 
@@ -111,15 +111,22 @@ describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 19
       'resultados',
       'configuracao',
       'financeiro',
+      'custas',
     ])
     expect(ids('socio', [...itens, ...ITENS_DE_CONSULTA_DO_SOCIO])).toEqual(ids('socio'))
     for (const perfil of ['advogada', 'senior', 'juridico_adm', 'atendimento_lider']) expect(ids(perfil)).not.toContain('vigilia')
   })
 
   it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {
-    expect(ids('socio').at(-1)).toBe('financeiro')
+    expect(ids('socio').at(-2)).toBe('financeiro')
     expect(ids('senior')).not.toContain('financeiro')
     expect(ids('advogada')).not.toContain('financeiro')
+  })
+
+  it('GGVP-157 · as Custas no topo de quem vê valores: o Financeiro e, na Gestão, o Sócio; os líderes veem a Gestão sem valores', () => {
+    expect(ids('socio').at(-1)).toBe('custas')
+    expect(ids('financeiro').at(-1)).toBe('custas')
+    for (const perfil of ['senior', 'atendimento_lider', 'advogada', 'juridico_adm', 'atendimento', 'documentacao']) expect(ids(perfil), perfil).not.toContain('custas')
   })
 
   it('o que a tela já trouxe não se repete', () => {

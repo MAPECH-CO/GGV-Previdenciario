@@ -253,6 +253,13 @@
       "when": 1791989559511,
       "tag": "0035_chamada_ia_so_cresce",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792074934228,
+      "tag": "0036_custas_do_processo",
+      "breakpoints": true
     }
   ]
 }

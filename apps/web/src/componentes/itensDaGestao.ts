@@ -30,6 +30,9 @@ const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro', '
 /** O painel Financeiro (GGVP-78, Figma 1930:4), para quem vê os totais em dinheiro: o Financeiro e o Sócio. */
 export const ITEM_DO_FINANCEIRO: ItemNavegacao = { id: 'financeiro', rotulo: 'Financeiro', href: '/financeiro' }
 
+/** As custas dos processos (GGVP-157), para quem vê valores: o Financeiro e, na Gestão, o Sócio; os líderes, não. */
+export const ITEM_DAS_CUSTAS: ItemNavegacao = { id: 'custas', rotulo: 'Custas', href: '/custas' }
+
 /**
  * GGVP-162 CA9 (Mateus, 14/10): o Sócio só vê, e vê tudo. Em toda tela, ele chega pelo topo às telas de consulta que a
  * matriz já lhe deixa ver e que nos outros perfis ficam numa Central ou num alarme da fila: os estudos de caso, os roteiros
@@ -44,7 +47,7 @@ export const ITENS_DE_CONSULTA_DO_SOCIO: ItemNavegacao[] = [
 /**
  * O topo de toda tela pelo perfil da sessão (GGVP-78): Clientes e Processos depois do Início e da Agenda, se a matriz deixa
  * ver o caso, e as telas de consulta do Sócio depois deles (GGVP-162 CA9); a Gestão no fim, para quem tem `gestao.ver`, e o
- * Financeiro depois dela, para quem vê os totais em dinheiro.
+ * Financeiro depois dela, para quem vê os totais em dinheiro, e as Custas no fim, para quem vê valores (GGVP-157).
  * O que a tela já trouxe não se repete.
  */
 export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | undefined): ItemNavegacao[] {
@@ -61,7 +64,8 @@ export function itensDoPerfil(itens: ItemNavegacao[], perfil: string | null | un
     ? tem(ITENS_DA_GESTAO) ? [] : ITENS_DA_GESTAO
     : pode(perfil, 'resultados.ver') && !tem(resultados) ? resultados : []
   const financeiro = pode(perfil, 'valores.ver_totais') && !tem([ITEM_DO_FINANCEIRO]) ? [ITEM_DO_FINANCEIRO] : []
+  const custas = pode(perfil, 'valores.ver') && !tem([ITEM_DAS_CUSTAS]) ? [ITEM_DAS_CUSTAS] : []
   const depois = itens.findIndex((i) => i.id !== 'inicio' && i.id !== 'agenda')
   const corte = depois < 0 ? itens.length : depois
-  return [...itens.slice(0, corte), ...bases, ...consulta, ...itens.slice(corte), ...gestao, ...financeiro]
+  return [...itens.slice(0, corte), ...bases, ...consulta, ...itens.slice(corte), ...gestao, ...financeiro, ...custas]
 }

@@ -266,6 +266,38 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     vi.unstubAllGlobals()
   })
 
+  it('GGVP-157 · o card "Custas do processo" para a Sênior e os sócios; o resto do Jurídico nem pergunta ao servidor', async () => {
+    const custas = { casoId: CASO, cliente: 'Vera Teste', beneficio: null, origem: 'inss', totais: { ganhos: '0.00', custos: '0.00', lucro: '0.00', esperando: '0.00' }, lancamentos: [], podeLancar: false, podeAprovar: false }
+    const ligar = () =>
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) =>
+          url === `/api/casos/${CASO}/processo`
+            ? new Response(JSON.stringify(doBanco()), { status: 200 })
+            : url === `/api/casos/${CASO}/custas`
+              ? new Response(JSON.stringify(custas), { status: 200 })
+              : new Response('{}', { status: 404 }),
+        ),
+      )
+    configurarExemplo({ servidor: true })
+    for (const perfil of ['senior', 'socio']) {
+      ligar()
+      entrarComo(perfil)
+      render(comSessao(<PaginaDoCaso processoId={CASO} />))
+      expect(await screen.findByRole('region', { name: 'Custas do processo' }), perfil).toBeTruthy()
+      cleanup()
+    }
+    for (const perfil of ['advogada', 'juridico_adm']) {
+      ligar()
+      entrarComo(perfil)
+      render(comSessao(<PaginaDoCaso processoId={CASO} />))
+      await screen.findByRole('heading', { level: 1, name: /^NB/ })
+      expect(screen.queryByRole('region', { name: 'Custas do processo' }), perfil).toBeNull()
+      expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0])), perfil).not.toContain(`/api/casos/${CASO}/custas`)
+      cleanup()
+    }
+  })
+
   it('GGVP-44 · a prestação de contas tem atalho no cabeçalho para quem pode ver, quando ela já existe', async () => {
     const comPrestacao = (versoes: object[]) =>
       vi.stubGlobal(
