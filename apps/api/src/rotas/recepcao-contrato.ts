@@ -19,6 +19,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { resumoDoErro } from '../servidor.ts'
 import { caso, contratoRecepcao, documento, documentoMedico, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
@@ -457,7 +458,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     await guardar(ficha)
     if (!leitor.simulada) {
       const hash = ficha.arquivos.find((a) => a.nome === assinatura.arquivo)?.hash
-      const lido = await lerContrato(processo.id, await assinadoGuardado(processo.id, hash), pedido.usuario!.id)
+      const lido = await lerContrato(processo.id, await assinadoParaLer(pedido, processo.id, hash), pedido.usuario!.id)
       if (lido) return { contrato: lido.contrato, ficha: await fichaPeloId(ficha.id) }
     }
     return { contrato, ficha: await fichaPeloId(ficha.id) }
@@ -473,6 +474,15 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       .limit(1)
     return d && !d.chave.startsWith('drive:') ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
   }
+  /**
+   * GGVP-158 I10: para a leitura do contrato, o armazenamento que falha não derruba o pedido depois de gravar a etapa: sem o
+   * conteúdo, o contrato vai à conferência do Atendimento, com o motivo, e o erro fica no log (o código e o tipo).
+   */
+  const assinadoParaLer = (pedido: FastifyRequest, casoId: string, hash?: string) =>
+    assinadoGuardado(casoId, hash).catch((e: unknown) => {
+      pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(e) }, 'o contrato assinado não foi lido no armazenamento')
+      return undefined
+    })
 
   // GGVP-158 P4.4: o contrato assinado guardado, para imprimir a cópia do cliente (GGVP-89). Sai como o kit: o navegador
   // não adivinha o tipo nem roda script do arquivo.

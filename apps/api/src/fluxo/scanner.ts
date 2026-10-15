@@ -21,6 +21,11 @@ import type { Conteudo, Leitor } from './leitura.ts'
 
 /** Onde fica a marca da lista de mudanças do Drive, na `configuracao`. */
 export const MARCA_DO_SCANNER = 'drive:mudancas'
+/**
+ * GGVP-158 I12: o arquivo novo numa pasta sem ficha única fica guardado aqui e volta a cada rodada, até a pasta ser ligada
+ * (ADR-017: "o arquivo não entra até alguém ligar a pasta pela ficha"). A marca anda; o arquivo não some com ela.
+ */
+export const DE_FORA_DO_SCANNER = 'drive:de-fora'
 const SCANNER = 'Automação do scanner'
 const LAUDOS = ['laudo', 'relatorio-medico', 'prontuario']
 const documentos = (n: number) => (n === 1 ? '1 documento' : `${n} documentos`)
@@ -50,9 +55,12 @@ export async function olharOScanner({ banco, drive, pastas, leitor, agora = () =
     return conta
   }
 
-  // Fica fora: pasta, lixeira, outro tipo de arquivo, o que o portal mandou e o que está em "A REVISAR".
+  const [guardadosDeFora] = await banco.select().from(configuracao).where(eq(configuracao.chave, DE_FORA_DO_SCANNER))
+  const deFora: ItemMudado[] = []
+  // Fica fora: pasta, lixeira, outro tipo de arquivo, o que o portal mandou e o que está em "A REVISAR". O que ficou de fora
+  // nas rodadas anteriores volta junto, depois das mudanças novas.
   const vistos = new Set<string>()
-  const candidatos = itens.filter((i) => !i.fora && !i.doPortal && TIPOS_DE_ANEXO.includes(i.mime) && i.pais.length > 0 && !i.pais.includes(pastas.revisar) && !vistos.has(i.id) && vistos.add(i.id))
+  const candidatos = [...itens, ...((guardadosDeFora?.valor as ItemMudado[] | undefined) ?? [])].filter((i) => !i.fora && !i.doPortal && TIPOS_DE_ANEXO.includes(i.mime) && i.pais.length > 0 && !i.pais.includes(pastas.revisar) && !vistos.has(i.id) && vistos.add(i.id))
   const conhecidos = new Set(
     candidatos.length === 0
       ? []
@@ -88,6 +96,7 @@ export async function olharOScanner({ banco, drive, pastas, leitor, agora = () =
       const fichaId = await dono(item.pais[0])
       if (!fichaId) {
         conta.ficaramDeFora++
+        deFora.push(item)
         continue
       }
       const conteudo = { bytes: await drive.baixar(item.id), mime: item.mime }
@@ -151,5 +160,9 @@ export async function olharOScanner({ banco, drive, pastas, leitor, agora = () =
     await lerArquivosNovos(ficha, leitor, null, new Map(novos.map(({ arquivo, conteudo }) => [arquivo.nome, conteudo])))
   }
   if (conta.falhas === 0) await guardarMarca()
+  await banco
+    .insert(configuracao)
+    .values({ chave: DE_FORA_DO_SCANNER, valor: deFora })
+    .onConflictDoUpdate({ target: configuracao.chave, set: { valor: deFora, atualizadoEm: agora() } })
   return conta
 }

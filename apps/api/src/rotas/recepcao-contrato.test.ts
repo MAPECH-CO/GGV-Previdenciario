@@ -557,6 +557,20 @@ describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guarda
     expect(concluido.contrato).toMatchObject({ etapa: 'conferir', leitura: { faltam: ['pág. 4 (rubrica)'] } })
   })
 
+  it('GGVP-158 I10 · o armazenamento que falha ao ler o assinado não prende o contrato em "leitura": vai à conferência', async () => {
+    await app.close()
+    let fora = false
+    const ler = async (chave: string) => (fora ? Promise.reject(new Error('Supabase Storage respondeu 502')) : arquivos.ler(chave))
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: { ...arquivos, ler }, conversor: null, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai' }, fetch, agora: () => relogio }) })
+    const base = await gerado(await lead())
+    await json('ana', 'POST', `${base}/impressao`)
+    await digitalizar(base, PDF)
+    fora = true
+    const r = await chamar('ana', 'POST', `${base}/assinatura-em-papel`)
+    expect(r.statusCode).toBe(200)
+    expect(r.json().contrato).toMatchObject({ etapa: 'conferir', leitura: { pendencias: [MSG_CONTRATO_SEM_IA] } })
+  })
+
   it('sem IA: o contrato vai à conferência, com o motivo', async () => {
     await reabrir(TUDO_CERTO, {})
     const { concluido } = await assinar()

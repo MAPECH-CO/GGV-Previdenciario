@@ -13,7 +13,7 @@ import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
-import { MSG_CITADO_DE_OUTRO_CASO, MSG_CITADO_NAO_FALTA, MSG_CNJ_DE_OUTRO_CASO, MSG_DOCUMENTO_QUE_FALTA, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_PROTOCOLADA, MSG_SO_A_ULTIMA } from './peticao.ts'
+import { MSG_CITADO_DE_OUTRO_CASO, MSG_CITADO_NAO_FALTA, MSG_CNJ_DE_OUTRO_CASO, MSG_DOCUMENTO_QUE_FALTA, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_PACOTE_SEM_LEITURA, MSG_PROTOCOLADA, MSG_SO_A_ULTIMA } from './peticao.ts'
 
 // A petição inicial (GGVP-63, 67, 71), do pedido ao protocolo, pelas rotas de verdade desde o registro do indeferido.
 const SENHA = 'senha-do-portal-1'
@@ -571,6 +571,19 @@ describe('GGVP-71 · protocolar no tribunal', () => {
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pacote_divergente'))
     expect(ev.detalhe).toMatchObject({ arquivos: ['carta.pdf'], versao: 1 })
     expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+  })
+
+  it('GGVP-158 I9 · o armazenamento que falha na leitura não vira "pacote mudou": 503, sem bloqueio G7, e o protocolo segue depois', async () => {
+    await app.close()
+    let fora = true
+    const instavel: Armazenamento = { ...arquivos, ler: async (chave) => (fora ? Promise.reject(new Error('Supabase Storage respondeu 502')) : arquivos.ler(chave)) }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: instavel })
+    const r = await protocolar()
+    expect([r.statusCode, r.json().erro]).toEqual([503, MSG_PACOTE_SEM_LEITURA])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pacote_divergente'))).toEqual([])
+    expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+    fora = false
+    expect((await protocolar()).statusCode).toBe(201)
   })
 
   it('o mesmo número de processo não vai para dois casos', async () => {

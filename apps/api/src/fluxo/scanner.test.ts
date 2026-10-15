@@ -8,7 +8,7 @@ import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { criarLeitor } from './leitura.ts'
-import { MARCA_DO_SCANNER, olharOScanner, tipoPeloNome } from './scanner.ts'
+import { DE_FORA_DO_SCANNER, MARCA_DO_SCANNER, olharOScanner, tipoPeloNome } from './scanner.ts'
 
 // GGVP-158 P4.3: o papel do scanner entra pelo Drive, pela lista de mudanças; o n8n não muda.
 
@@ -126,6 +126,24 @@ describe('GGVP-158 P4.3 · o papel do scanner entra pelo Drive', () => {
     expect(await rodar()).toEqual({ entraram: 1, ficaramDeFora: 1, falhas: 0 })
     expect((await banco.select().from(pessoa).where(eq(pessoa.id, joana)))[0].drivePastaId).toBe('pasta-x')
     expect(d.baixados).toEqual(['a'])
+  })
+
+  it('GGVP-158 I12 · o arquivo que ficou de fora (pasta de duas fichas) não se perde: ligada a pasta, ele entra na rodada seguinte', async () => {
+    const { d, drive } = driveDoScanner()
+    const maria = await lead('Maria Souza')
+    await lead('Maria Souza')
+    const rodar = () => olharOScanner({ banco, drive, pastas: PASTAS, leitor: leitor(), agora: () => relogio })
+    await rodar()
+    d.pastas.set('pasta-maria', { nome: 'Maria Souza X LOAS - Ab12cd', pais: ['clientes'] })
+    d.mudancas.push(arquivo('b', 'RG - Maria Souza - 2026-10-13.pdf', ['pasta-maria']))
+    expect(await rodar()).toEqual({ entraram: 0, ficaramDeFora: 1, falhas: 0 })
+    expect((await banco.select().from(configuracao).where(eq(configuracao.chave, DE_FORA_DO_SCANNER)))[0].valor).toMatchObject([{ id: 'b' }])
+    // A marca andou; a lista de mudanças não traz mais o arquivo. Alguém liga a pasta à ficha certa.
+    await ligarPasta(maria, 'pasta-maria')
+    expect(await rodar()).toEqual({ entraram: 1, ficaramDeFora: 0, falhas: 0 })
+    expect((await fichaDe(maria)).arquivos).toMatchObject([{ nome: 'RG - Maria Souza - 2026-10-13.pdf', origem: 'scanner' }])
+    expect((await banco.select().from(configuracao).where(eq(configuracao.chave, DE_FORA_DO_SCANNER)))[0].valor).toEqual([])
+    expect(await rodar()).toEqual({ entraram: 0, ficaramDeFora: 0, falhas: 0 })
   })
 
   it('o lote vai à tarefa "Receber documento" aberta, e o laudo que chega avisa o Jurídico', async () => {

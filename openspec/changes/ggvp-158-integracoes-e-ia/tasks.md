@@ -14,12 +14,12 @@
 
 ## GGVP-158 · 2. Drive, armazenamento e PDF
 
-- [ ] 2.1 I7 · O registro digital só com o conteúdo guardado: `apps/api/src/rotas/recepcao-documentos.ts` (`/api/tarefas/:id/registro`). Teste em `src/rotas/recepcao-documentos.test.ts`.
-- [ ] 2.2 I8 · Sem a lista do Drive, nada de pasta nova: `apps/api/src/rotas/recepcao.ts` (`/api/fichas/:id/pasta`). Teste em `src/rotas/recepcao.test.ts` com o Drive falso que falha na lista.
-- [ ] 2.3 I9 · A leitura que falha no protocolo é 503, sem bloqueio: `apps/api/src/rotas/peticao.ts`. Teste em `src/rotas/peticao.test.ts` com o armazenamento que falha na leitura.
-- [ ] 2.4 I10 · O contrato não fica preso: `apps/api/src/rotas/recepcao-documentos.ts` (`conteudoGuardado` sem derrubar o arquivamento). Teste em `src/rotas/recepcao-documentos.test.ts` ou `src/rotas/recepcao-contrato.test.ts`.
-- [ ] 2.5 I11 · O Gotenberg sem PDF é falha: `apps/api/src/kit/pdf.ts`. Teste em `src/kit/pdf.test.ts`.
-- [ ] 2.6 I12 · O que o scanner deixou de fora volta na rodada seguinte: `apps/api/src/fluxo/scanner.ts` (`drive:de-fora` na `configuracao`). Teste em `src/fluxo/scanner.test.ts`: a pasta ligada depois traz o arquivo.
+- [x] 2.1 I7 · O registro digital só com o conteúdo guardado: `apps/api/src/rotas/recepcao-documentos.ts` (`/api/tarefas/:id/registro`). Teste em `src/rotas/recepcao-documentos.test.ts`.
+- [x] 2.2 I8 · Sem a lista do Drive, nada de pasta nova: `apps/api/src/rotas/recepcao.ts` (`/api/fichas/:id/pasta`). Teste em `src/rotas/recepcao.test.ts` com o Drive falso que falha na lista.
+- [x] 2.3 I9 · A leitura que falha no protocolo é 503, sem bloqueio: `apps/api/src/rotas/peticao.ts`. Teste em `src/rotas/peticao.test.ts` com o armazenamento que falha na leitura.
+- [x] 2.4 I10 · O contrato não fica preso: `apps/api/src/rotas/recepcao-contrato.ts` (a leitura do assinado na assinatura em papel) e `apps/api/src/rotas/recepcao-documentos.ts` (`conteudoGuardado` no arquivamento), sem derrubar o pedido depois de gravar. Teste em `src/rotas/recepcao-contrato.test.ts`: com o armazenamento fora, 200 e o contrato na conferência.
+- [x] 2.5 I11 · O Gotenberg sem PDF é falha: `apps/api/src/kit/pdf.ts`. Teste em `src/kit/pdf.test.ts`.
+- [x] 2.6 I12 · O que o scanner deixou de fora volta na rodada seguinte: `apps/api/src/fluxo/scanner.ts` (`drive:de-fora` na `configuracao`). Teste em `src/fluxo/scanner.test.ts`: a pasta ligada depois traz o arquivo.
 
 ## GGVP-158 · 3. Diário (DJEN e AASP)
 
