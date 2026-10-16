@@ -57,5 +57,5 @@
 
 ## GGVP-158 · 5. Fechamento
 
-- [ ] 5.1 typecheck, lint e a suíte da API; `openspec validate ggvp-158-provas-que-faltam --strict`.
-- [ ] 5.2 PR para a main, com cada critério como "provado" ou "lacuna confirmada" (arquivo e linha).
+- [x] 5.1 typecheck, lint e a suíte da API; `openspec validate ggvp-158-provas-que-faltam --strict`.
+- [x] 5.2 PR para a main (#105), com cada critério como "provado" ou "lacuna confirmada" (arquivo e linha).
