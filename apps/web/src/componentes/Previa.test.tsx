@@ -100,4 +100,66 @@ describe('Previa', () => {
     act(() => vi.advanceTimersByTime(100))
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
+
+  it('com uma prévia aberta, a próxima abre quase na hora e fecha a anterior: uma de cada vez', () => {
+    vi.useFakeTimers()
+    render(
+      <>
+        <Previa rotulo="Primeira" conteudo={() => <p>um</p>}>
+          <button type="button">Um</button>
+        </Previa>
+        <Previa rotulo="Segunda" conteudo={() => <p>dois</p>}>
+          <button type="button">Dois</button>
+        </Previa>
+      </>,
+    )
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Um' }))
+    act(() => vi.advanceTimersByTime(450))
+    fireEvent.mouseLeave(screen.getByRole('button', { name: 'Um' }))
+    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Dois' }))
+    act(() => vi.advanceTimersByTime(100))
+    expect(screen.getAllByRole('tooltip').map((c) => c.getAttribute('aria-label'))).toEqual(['Segunda'])
+  })
+})
+
+describe('Previa ao lado (o balão da tarefa, Pedro, 16/10)', () => {
+  const linha = { left: 100, right: 600, top: 300, bottom: 350, width: 500, height: 50, x: 100, y: 300, toJSON: () => ({}) }
+  beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(320)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(160)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
+  })
+
+  function abrirAoLado(largura: number) {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: largura })
+    render(
+      <Previa lado="direita" rotulo="Maria · Cobrar documento" conteudo={conteudo}>
+        <button type="button">Maria</button>
+      </Previa>,
+    )
+    vi.spyOn(gatilho(), 'getBoundingClientRect').mockReturnValue(linha as DOMRect)
+    act(() => gatilho().focus())
+    return screen.getByRole('tooltip')
+  }
+
+  it('abre à direita da linha, centrado nela, e o contorno começa na ponta, que aponta para o meio da linha', () => {
+    const balao = abrirAoLado(1280)
+    expect([balao.style.left, balao.style.top]).toEqual(['614px', '245px'])
+    expect(balao.querySelector('path')?.getAttribute('d')).toMatch(/^M0 80 L8 73 /)
+  })
+
+  it('sem espaço à direita da linha, o balão encosta na borda da tela, por cima do fim da linha', () => {
+    const balao = abrirAoLado(700)
+    expect([balao.style.left, balao.style.top]).toEqual(['372px', '245px'])
+    expect(balao.querySelector('path')).toBeTruthy()
+  })
+
+  it('na tela mais estreita que o balão, vira o cartão de baixo, sem a ponta', () => {
+    const balao = abrirAoLado(300)
+    expect(balao.querySelector('svg')).toBeNull()
+    expect(balao.style.top).toBe('358px')
+  })
 })

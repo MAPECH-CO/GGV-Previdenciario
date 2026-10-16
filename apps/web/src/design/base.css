@@ -83,6 +83,8 @@ button {
   --sombra-1: 0 1px 2px rgb(21 23 28 / 0.05);
   --sombra-2: 0 1px 2px rgb(21 23 28 / 0.04), 0 8px 20px -6px rgb(21 23 28 / 0.12);
   --sombra-3: 0 2px 6px rgb(21 23 28 / 0.06), 0 24px 48px -12px rgb(21 23 28 / 0.28);
+  /* O balão da tarefa (Previa): drop-shadow aceita uma sombra só. */
+  --sombra-balao: 0 12px 20px rgb(21 23 28 / 0.16);
   --sombra-acento: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 1px 2px color-mix(in srgb, var(--cor-acento) 40%, transparent);
   --camada-passar: rgb(21 23 28 / 0.05);
   --camada-apertar: rgb(21 23 28 / 0.1);
@@ -98,6 +100,7 @@ button {
   --sombra-1: 0 1px 2px rgb(0 0 0 / 0.4);
   --sombra-2: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 20px -6px rgb(0 0 0 / 0.55);
   --sombra-3: 0 2px 8px rgb(0 0 0 / 0.45), 0 24px 48px -12px rgb(0 0 0 / 0.7);
+  --sombra-balao: 0 12px 20px rgb(0 0 0 / 0.55);
   --sombra-acento: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.45);
   --camada-passar: rgb(255 255 255 / 0.06);
   --camada-apertar: rgb(255 255 255 / 0.1);

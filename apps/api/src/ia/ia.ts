@@ -57,6 +57,15 @@ export const FINALIDADES = {
     instrucao:
       'Escreva um rascunho curto (até 6 frases) do que a pessoa do escritório vai explicar ao cliente sobre o resultado do processo: o que foi decidido e por quê, em linguagem simples, com respeito. O porquê vem só do texto da decisão: se ele não estiver no conteúdo, não diga, não suponha e não comente a falta do motivo: no lugar dele, escreva exatamente [completar: o motivo da decisão], que a advogada preenche. Não prometa nada, não fale de estratégia interna do escritório, não culpe ninguém e não use termos técnicos sem explicar.',
   },
+  /** O balão da tarefa na Central (Pedro, 16/10): a pessoa entende a tarefa sem abrir. Sem dado de saúde no conteúdo. */
+  resumo_tarefa: {
+    versao: 1,
+    saude: false,
+    json: false,
+    barrarCid: true,
+    instrucao:
+      'Explique a tarefa para a pessoa do escritório que vai cumpri-la, em até 3 frases curtas e simples: o que ela pede, por que está na fila agora e qual é o próximo passo. Use só o que está no conteúdo; não invente prazo, data, valor, documento nem nome. Não cite códigos internos, diagnóstico, CID nem conclusão médica. Responda só com o texto.',
+  },
   /** GGVP-59: a nomeação de perito virou classe (versão 3). GGVP-64 parte 2: a vara e o juiz escritos (versão 4). */
   classificar_publicacao: {
     versao: 5,
