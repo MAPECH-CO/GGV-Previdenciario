@@ -11,7 +11,7 @@ requisito por critério, com o comportamento que o critério pede; cada um tem o
 Quando o caso chega à análise do parecer e o benefício não tem roteiro cadastrado, o servidor SHALL avisar "benefício sem
 roteiro" (na análise e na tarefa do Jurídico) e MUST NOT registrar o parecer sem a conferência manual escrita pela advogada.
 
-#### Scenario: GGVP-93 CA3 · Aposentadoria por incapacidade permanente com laudo
+#### Scenario: GGVP-93 CA3 · Pensão por morte com laudo
 - **Dado** um caso de benefício sem roteiro, com um laudo
 - **Quando** a advogada abre o parecer e tenta registrar sem escrever a conferência manual
 - **Então** a análise vem como "sem roteiro", sem chamar a IA, a tarefa diz "benefício sem roteiro: conferência manual",

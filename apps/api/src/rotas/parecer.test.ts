@@ -357,3 +357,29 @@ describe('GGVP-132 · a dispensa do parecer por duas Sêniores no servidor (GGVP
     expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)')
   })
 })
+
+describe('GGVP-93 · o roteiro de conteúdo mínimo no parecer', () => {
+  it('GGVP-93 CA3 · benefício sem roteiro: a análise avisa, sem a IA; a tarefa pede a conferência manual, e o registro só grava com ela', async () => {
+    // A pensão por morte (o dependente inválido traz laudo) não tem roteiro na régua do escritório.
+    const [c] = await banco.insert(caso).values({ pessoaId, beneficio: 'pensao_morte', fase: 'atendimento' }).returning()
+    await laudo(c.id, RITA)
+    const tela = (await ver('gabi', c.id)).json()
+    expect([tela.semRoteiro, tela.roteiro, tela.situacao, tela.juridico.analise.sugestao, tela.juridico.analise.itens]).toEqual([true, undefined, 'pendente', 'sem-roteiro', []])
+    expect(servico).not.toHaveBeenCalled()
+    const tarefas = (await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('gabi') })).json().tarefas
+    expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe])).toEqual([
+      ['Dar parecer médico', expect.stringContaining('benefício sem roteiro: conferência manual · confira item a item (G17)')],
+    ])
+
+    const url = `/api/processos/${c.id}/parecer`
+    const { analise } = tela.juridico
+    const semConferencia = await postar('gabi', url, { analise: analise.quando, conferidos: {}, decisao: 'suficiente' })
+    expect([semConferencia.statusCode, semConferencia.json().erro]).toEqual([400, 'O benefício não tem roteiro: escreva o que você conferiu nos documentos (conferência manual).'])
+    expect(await banco.select().from(parecerMedico)).toEqual([])
+    const CONFERENCIA = 'Li o laudo inteiro: traz o início do quadro e as limitações para o trabalho.'
+    expect((await postar('gabi', url, { analise: analise.quando, conferidos: {}, decisao: 'suficiente', conferenciaManual: CONFERENCIA })).statusCode).toBe(201)
+    const [registrado] = await banco.select().from(parecerMedico).where(eq(parecerMedico.casoId, c.id))
+    expect([registrado.resultado, registrado.roteiroVersao, registrado.confirmadoPor]).toEqual(['suficiente', 0, ids.gabi])
+    expect((await ver('gabi', c.id)).json().juridico.registro.conferenciaManual).toBe(CONFERENCIA)
+  })
+})

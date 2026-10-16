@@ -13,6 +13,7 @@ import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { MSG_SENHA_FORA_DO_COFRE } from './recepcao-decisoes.ts'
 import { calcularCnis } from '@ggv/contratos'
 import { pontosDoCnis, pontosFalados, tempoDosDias, tempoFalado } from '../../../web/src/regras/calculo.ts'
+import { pontosDeAtencao } from '../../../web/src/regras/preparacao.ts'
 
 const SENHA = 'senha-do-portal-1'
 /** Senha de teste do gov.br: não pode aparecer na ficha (G9). */
@@ -471,5 +472,85 @@ describe('GGVP-158 P7.2 · a entrevista que passou sem registro é linha da Cent
     await depois.sincronizarRecepcao()
     await depois.close()
     expect(await confirmar(fichaId)).toEqual([])
+  })
+})
+
+describe('GGVP-36 e GGVP-28 · a análise da ficha abre as pendências do Atendimento, no servidor', () => {
+  type Pendencia = { acao: string; setor: string; codigo: string; prazo: string; urgente: boolean; detalhe: string; href: string; cliente: { id: string } }
+  const PENDENCIAS = ['Renovar senha do gov.br', 'Preencher segunda ficha']
+  /** As pendências da análise que o Atendimento tem abertas, na lista da Recepção que a Central dele lê. */
+  const doAtendimento = async (fichaId: string) =>
+    ((await json('ana', 'GET', '/api/recepcao')).tarefas as Pendencia[]).filter((t) => t.cliente.id === fichaId && PENDENCIAS.includes(t.acao))
+  const analisar = (agendamentoId: string, acidentario: boolean) => json('gabi', 'POST', `/api/entrevistas/${agendamentoId}/analise`, { acidentario })
+  async function comSenhaNoCofre(fichaId: string) {
+    expect((await chamar('ana', 'POST', `/api/pessoas/${fichaId}/cofre`, { senha: SENHA_GOV })).statusCode).toBe(201)
+    await json('ana', 'POST', `/api/fichas/${fichaId}/cofre/gov`, { acao: 'guardou' })
+  }
+  /** O que a advogada vê da senha na preparação da entrevista: a ficha do servidor pela regra da tela. */
+  const pontoDaSenha = async (fichaId: string) => pontosDeAtencao((await json('gabi', 'GET', `/api/fichas/${fichaId}`)) as Ficha, '2026-10-08').find((p) => p.tipo === 'senha')?.texto
+
+  it('GGVP-36 CA1 · a análise de quem está sem senha abre "Renovar senha do gov.br" para o Atendimento; com a senha no cofre, não', async () => {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    await analisar(agendamentoId, false)
+    expect((await doAtendimento(fichaId)).map((t) => [t.acao, t.setor, t.codigo, t.href])).toEqual([
+      ['Renovar senha do gov.br', 'Atendimento', 'D1.08', `/entrevista/${agendamentoId}/renovar-senha`],
+    ])
+    const outra = await entrevistaFeita('Marta Lima', '11955554444')
+    await comSenhaNoCofre(outra.fichaId)
+    expect((await analisar(outra.agendamentoId, false)).abertas).toEqual([])
+    expect(await doAtendimento(outra.fichaId)).toEqual([])
+  })
+
+  it('GGVP-36 CA4 · o prazo da renovação é o horário da entrevista: amanhã com a data; hoje, só a hora e urgente', async () => {
+    const amanha = await entrevistaFeita()
+    await analisar(amanha.agendamentoId, false)
+    expect((await doAtendimento(amanha.fichaId)).map((t) => [t.acao, t.prazo, t.urgente])).toEqual([['Renovar senha do gov.br', 'até 09/10 14:00', false]])
+    const fichaId = await lead('Marta Lima', '11955554444')
+    const HOJE = { tipo: 'presencial', data: '2026-10-08', hora: '16:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: true }
+    const agendamentoId = (await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, HOJE)).agendamento.id as string
+    await analisar(agendamentoId, false)
+    expect((await doAtendimento(fichaId)).map((t) => [t.acao, t.prazo, t.urgente])).toEqual([['Renovar senha do gov.br', 'até 16:00', true]])
+  })
+
+  it('GGVP-36 CA7 · a advogada vê o resultado da renovação na ficha da entrevista: "não conseguiu", com o motivo, e depois "renovou"', async () => {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    await analisar(agendamentoId, false)
+    expect(await pontoDaSenha(fichaId)).toBe('Sem senha do gov.br · o Atendimento ainda não tentou renovar')
+    const renovacao = `/api/entrevistas/${agendamentoId}/renovacao`
+    await json('ana', 'POST', renovacao, { resultado: 'nao-conseguiu', motivo: 'Esqueceu o e-mail da conta', aviseiOCliente: true })
+    expect((await json('gabi', 'GET', `/api/fichas/${fichaId}`)).renovacao).toMatchObject({ resultado: 'nao-conseguiu', motivo: 'Esqueceu o e-mail da conta', quem: 'ana' })
+    expect(await pontoDaSenha(fichaId)).toBe('Sem senha do gov.br · o Atendimento tentou renovar e não conseguiu: Esqueceu o e-mail da conta')
+    // A renovação feita fecha a pendência do Atendimento.
+    expect((await doAtendimento(fichaId)).map((t) => t.acao)).toEqual([])
+    expect((await chamar('ana', 'POST', `/api/pessoas/${fichaId}/cofre`, { senha: SENHA_GOV })).statusCode).toBe(201)
+    await json('ana', 'POST', renovacao, { resultado: 'renovou', conferiMeuInss: true })
+    expect((await json('gabi', 'GET', `/api/fichas/${fichaId}`)).renovacao).toMatchObject({ resultado: 'renovou', quem: 'ana' })
+    expect(await pontoDaSenha(fichaId)).toBe('Senha do gov.br no cofre · funcionou pela última vez em 08/10')
+    expect(JSON.stringify(await json('gabi', 'GET', `/api/fichas/${fichaId}`))).not.toContain(SENHA_GOV)
+  })
+
+  it('GGVP-28 CA1 · "pode ser acidentário" abre para o Atendimento a pendência de passar a segunda ficha, uma só; "não é", não abre', async () => {
+    const { fichaId, agendamentoId } = await entrevistaFeita()
+    await comSenhaNoCofre(fichaId)
+    const analise = await analisar(agendamentoId, true)
+    expect(analise.ficha.analise).toMatchObject({ acidentario: true, quem: 'gabi' })
+    const esperada = [
+      'Preencher segunda ficha',
+      'Atendimento',
+      'D1.07',
+      'até 09/10 14:00',
+      'FICHA DE ATENDIMENTO AUXILIO ACIDENTE em papel, preenchida pela cliente e escaneada antes da entrevista',
+      `/clientes/${fichaId}/segunda-ficha`,
+    ]
+    const resumo = (t: Pendencia) => [t.acao, t.setor, t.codigo, t.prazo, t.detalhe, t.href]
+    expect(analise.abertas.map(resumo)).toEqual([esperada])
+    expect((await doAtendimento(fichaId)).map(resumo)).toEqual([esperada])
+    await analisar(agendamentoId, true)
+    expect(await doAtendimento(fichaId)).toHaveLength(1)
+
+    const outra = await entrevistaFeita('Marta Lima', '11955554444')
+    await comSenhaNoCofre(outra.fichaId)
+    expect((await analisar(outra.agendamentoId, false)).abertas).toEqual([])
+    expect(await doAtendimento(outra.fichaId)).toEqual([])
   })
 })
