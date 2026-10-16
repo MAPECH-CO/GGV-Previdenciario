@@ -80,7 +80,7 @@ describe('GGVP-87 · manifestar', () => {
     expect([r.faltam.sort(), r.podeAnexar, r.podeProtocolar]).toEqual([['Atendimento', 'Documentação'], true, false])
     await anexarEAprovar()
     const p = await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })
-    expect([p.statusCode, p.json().erro]).toEqual([409, 'Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento, Documentação.'])
+    expect([p.statusCode, p.json().erro]).toEqual([409, 'Sem prova em todos os itens, não se manifesta. Falta: Atendimento, Documentação.'])
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(b.detalhe).toMatchObject({ portao: 'G21', passo: 'D3a.04', faltam: 2, perfil: 'advogada' })
   })
@@ -102,7 +102,7 @@ describe('GGVP-87 · manifestar', () => {
     expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json().erro).toBe(MSG_VERSAO_NAO_APROVADA)
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'protocolo_bloqueado'))).length).toBe(1)
     expect((await chamar('gabi', 'POST', '/manifestacao/versoes/1/aprovacao', { aprovei: true })).json().erro).toBe('Aprove a última versão anexada.')
-    expect((await chamar('gabi', 'POST', '/manifestacao/versoes/2/aprovacao', { aprovei: false })).json().erro).toBe('Marque "Aprovei a versão da manifestação (G6)"')
+    expect((await chamar('gabi', 'POST', '/manifestacao/versoes/2/aprovacao', { aprovei: false })).json().erro).toBe('Marque "Aprovei a versão da manifestação"')
   })
 
   it('CA2, CA3, CA10 · data e comprovante obrigatórios; protocolado, a exigência se cumpre e o processo volta para a vigília', async () => {
@@ -209,7 +209,7 @@ describe('GGVP-87 · manifestar sem uma prova (ajuste de 06/10)', () => {
     const [doc] = (await pendentes()).filter((p) => p.setor === 'Documentação')
     await encerrar({ alvo: 'item', id: doc.id, motivo: 'Documento não existe', semSaida: 'O documento nunca existiu.' })
     await anexarEAprovar()
-    expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json().erro).toBe('Sem prova em todos os itens, não se manifesta (G21). Falta: Atendimento.')
+    expect((await enviar('gabi', '/manifestacao/protocolo', { dataProtocolo: '05/10/2026' })).json().erro).toBe('Sem prova em todos os itens, não se manifesta. Falta: Atendimento.')
   })
 })
 
@@ -269,7 +269,7 @@ describe('GGVP-158 P5.12 · número de jurimetria fora da manifestação e da di
   it('a versão lida com a taxa e a base do portal não se aprova, e o portão fica registrado', async () => {
     servidorQueLe('Excelência, este juízo julga procedentes 71% em 34 processos · base de 07/10.')
     const r = await aprovar()
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria (G22): tire antes de aprovar.'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria: tire antes de aprovar.'])
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'jurimetria_no_texto'))
     expect(b.detalhe).toMatchObject({ portao: 'G22', passo: 'D3a.04', versao: 1 })
   })
@@ -283,7 +283,7 @@ describe('GGVP-158 P5.12 · número de jurimetria fora da manifestação e da di
   it('sem a IA, aprova com o aviso para a advogada conferir à mão', async () => {
     servidorQueLe(null)
     const r = await aprovar()
-    expect([r.statusCode, r.json().aviso]).toEqual([201, 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'])
+    expect([r.statusCode, r.json().aviso]).toEqual([201, 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria.'])
     const [a] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'manifestacao_aprovada'))
     expect(a.detalhe).toMatchObject({ jurimetriaConferida: false })
   })

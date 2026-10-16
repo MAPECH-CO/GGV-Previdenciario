@@ -23,6 +23,7 @@ import { agora, doServidor, obterFicha } from '../dados/servidor.ts'
 import { resumoParaAFicha } from '../dados/parecer.ts'
 import type { Ficha, RespostaEnvio } from '../dados/tipos.ts'
 import { dataCurta, dataHora, hojeIso } from '../regras/datas.ts'
+import { podeAbrir } from '../regras/acesso.ts'
 import { usePode, useSessao } from '../sessao.ts'
 import { canalDoContato, eventoDaMensagem } from '../regras/registroDeMensagem.ts'
 import styles from './FichaCliente.module.css'
@@ -48,8 +49,12 @@ export function FichaCliente({ id }: { id: string }) {
   const hoje = hojeIso(agora())
   // GGVP-111 e GGVP-96 (LGPD, minimização): os dados bancários, só quem pede ou confirma a mudança e o Financeiro. Sem
   // sessão (teste de uma tela sozinha), como foi desenhada.
-  const semSessao = useSessao() === null
+  const sessao = useSessao()
+  const semSessao = sessao === null
+  const perfil = sessao?.perfilAtivo
   const veDadosBancarios = usePode('dados_bancarios.ver') || semSessao
+  // A mensagem ao cliente só para quem pode enviar: o Sócio lê, não fala com o cliente por aqui.
+  const podeMandarMensagem = usePode('mensagem.enviar') || semSessao
 
   useEffect(() => {
     let valendo = true
@@ -98,25 +103,29 @@ export function FichaCliente({ id }: { id: string }) {
     <>
       <title>{`${ficha.nome} · GGV Previdenciário`}</title>
       <TopoFicha
-        titulo="Cliente"
-        chips={[
-          { texto: `${ficha.situacao} desde ${ficha.desde}`, tom: 'neutro' },
-          { texto: 'Atendimento não vê petição nem valores', tom: 'acento' },
-        ]}
+        titulo={ficha.nome}
+        chips={[{ texto: `${ficha.situacao} desde ${ficha.desde}`, tom: 'neutro' }]}
         acao={
           <>
-            {ficha.situacao === 'cliente' && (
-              <a className={styles.novaDemanda} href={`/clientes/${ficha.id}/nova-demanda`}>
+            {ficha.situacao === 'cliente' && podeAbrir(perfil, `/clientes/${ficha.id}/nova-demanda`) && (
+              <a className={styles.acaoTopo} href={`/clientes/${ficha.id}/nova-demanda`}>
                 + Nova demanda
               </a>
             )}
-            {ficha.situacao === 'lead' && !ficha.agendamentos.some(a => a.oQue === 'Entrevista' && a.estado === 'realizado') && (
-              <a className={styles.novaDemanda} href={`/clientes/${ficha.id}/fechamento?antes-da-entrevista=1`}>Registrar desistência antes da entrevista</a>
+            {ficha.situacao === 'lead' &&
+              !ficha.agendamentos.some((a) => a.oQue === 'Entrevista' && a.estado === 'realizado') &&
+              podeAbrir(perfil, `/clientes/${ficha.id}/fechamento`) && (
+                <a className={styles.acaoTopo} href={`/clientes/${ficha.id}/fechamento?antes-da-entrevista=1`}>
+                  Registrar desistência antes da entrevista
+                </a>
+              )}
+            {podeMandarMensagem && (
+              <button type="button" className={styles.acaoTopo} onClick={() => setMensagem(true)}>
+                Mensagem ao cliente
+              </button>
             )}
-            <button type="button" className={styles.novaDemanda} onClick={() => setMensagem(true)}>
-              Mensagem ao cliente
-            </button>
-            <button type="button" className={styles.transcricoes} onClick={() => setTranscricoes(true)}>
+            {/* Sem transcrição, o botão fica discreto: o que pede atenção é o que tem conteúdo. */}
+            <button type="button" className={ficha.transcricoes ? styles.acaoTopo : styles.acaoTopoDiscreta} onClick={() => setTranscricoes(true)}>
               <span aria-hidden="true">▶ </span>Transcrições ({ficha.transcricoes})
             </button>
           </>

@@ -119,7 +119,7 @@ export function LerPublicacao({ publicacaoId }: { publicacaoId: string }) {
           )}
           {p.prazo && (
             <p className={styles.dica}>
-              Contado pelo sistema, pelo lado seguro (G12): {p.prazo.regra} · regra versão {p.prazo.versao}.
+              Contado pelo sistema, pelo lado seguro: {p.prazo.regra} · regra versão {p.prazo.versao}.
             </p>
           )}
         </section>

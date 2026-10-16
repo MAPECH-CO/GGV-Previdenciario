@@ -45,13 +45,13 @@ test('CA1, CA2, CA5, CA8 e o perfil do perito · favorável: o resumo da IA, a j
   await page.getByLabel(/Laudo ou registro do GERID/).setInputFiles([pdf('laudo_pericia_antonio.pdf')])
   const resumo = page.getByRole('region', { name: 'Resumo do laudo pela IA' })
   await expect(resumo).toContainText('Favorável · incapacidade para o trabalho habitual')
-  await expect(resumo).toContainText(/71% · 24 de 34 laudos · base de \d\d\/\d\d \(G22\)/)
+  await expect(resumo).toContainText(/71% · 24 de 34 laudos · base de \d\d\/\d\d/)
   await page.getByRole('radio', { name: 'Favorável — seguir' }).click()
   await expect(page.getByText('Marque as conferências antes de registrar.')).toBeVisible()
   await conferirTudo(page)
   await page.getByRole('button', { name: 'Registrar resultado' }).click()
   await expect(page.getByRole('heading', { name: '✓ Resultado registrado: favorável' })).toBeVisible()
-  await expect(page.getByText(/volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/)).toBeVisible()
+  await expect(page.getByText(/volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias\)/)).toBeVisible()
   // GGVP-73: o laudo entrou no perfil do perito, um registro a mais (CA1, CA3).
   await expect(page.getByRole('region', { name: 'Perfil do perito' })).toContainText('versão 35, formada por 35 laudos')
   await page.getByRole('button', { name: 'Ver o perfil do perito' }).click()
@@ -62,7 +62,7 @@ test('CA1, CA2, CA5, CA8 e o perfil do perito · favorável: o resumo da IA, a j
   // A primeira abertura da página do processo compila a tela no servidor de desenvolvimento: nesta máquina passa dos 5 s.
   await expect(page.getByRole('heading', { name: 'Perícias' })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('region', { name: 'Perícias' })).toContainText('Favorável')
-  await expect(page.getByRole('region', { name: 'Prazos' })).toContainText('Manifestação sobre o laudo (15 dias, G12)')
+  await expect(page.getByRole('region', { name: 'Prazos' })).toContainText('Manifestação sobre o laudo (15 dias)')
 })
 
 test('CA3 · desfavorável: a indicação da IA, a advogada pede nova perícia e o Jurídico administrativo marca de novo', async ({ page }) => {

@@ -50,7 +50,7 @@ describe('Cobrança dos documentos pendentes (GGVP-101)', () => {
     expect(motivoParaNaoCobrar(c, HOJE)).toBeNull()
     expect(motivoParaNaoCobrar(cobranca({ tentativas: [tentativa(HOJE)] }), HOJE)).toBe('A próxima tentativa é em 08/10, 3 dias depois da última.')
     expect(urgente(cobranca({ tentativas: [tentativa(HOJE)] }), HOJE)).toBe(false)
-    expect(motivoParaNaoCobrar(cobranca({ tentativas: [tentativa('2026-10-01'), tentativa(HOJE)] }), HOJE)).toBe('Passou do limite de 2 tentativas: a sênior decide (G15).')
+    expect(motivoParaNaoCobrar(cobranca({ tentativas: [tentativa('2026-10-01'), tentativa(HOJE)] }), HOJE)).toBe('Passou do limite de 2 tentativas: a sênior decide.')
   })
 
   it('CA12 · com prazo do juiz, a próxima cabe antes dele e a tarefa é urgente', () => {
@@ -73,7 +73,7 @@ describe('Cobrança dos documentos pendentes (GGVP-101)', () => {
     expect(proximaTentativa(duas, l)).toBe('2026-10-10')
     expect(motivoParaNaoCobrar(duas, HOJE, l)).toBe('A próxima tentativa é em 10/10, 5 dias depois da última.')
     expect(motivoParaNaoCobrar(cobranca({ tentativas: [tentativa('2026-09-20'), tentativa('2026-09-28'), tentativa(HOJE)] }), HOJE, l)).toBe(
-      'Passou do limite de 3 tentativas: a sênior decide (G15).',
+      'Passou do limite de 3 tentativas: a sênior decide.',
     )
     expect(proximaTentativa(cobranca({ tentativas: [tentativa(HOJE)], prazo: { de: 'juiz', data: '2026-10-07' } }), l)).toBe('2026-10-06')
     expect([ateQuando(HOJE, undefined, l), ateQuando(HOJE, { de: 'INSS', data: '2026-10-07' }, l)]).toEqual(['2026-10-10', '2026-10-06'])

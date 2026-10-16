@@ -68,7 +68,7 @@ test('CA1, CA6 e CA7 · da leitura ao OK: a Rita completa o checklist, a Documen
   const botao = page.getByRole('button', { name: 'Liberar ao Jurídico' })
   await expect(botao).toBeDisabled()
   await page.getByRole('checkbox', { name: /Checklist do LOAS Deficiente: 9 de 9 itens recebidos/ }).check()
-  await expect(page.getByRole('checkbox', { name: /Parecer médico Suficiente \(G17\)/ })).toBeChecked()
+  await expect(page.getByRole('checkbox', { name: /Parecer médico Suficiente/ })).toBeChecked()
   await page.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }).check()
   await botao.click()
   await expect(page.getByRole('heading', { name: /✓ Liberado ao Jurídico às/ })).toBeVisible()

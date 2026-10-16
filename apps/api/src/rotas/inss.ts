@@ -47,7 +47,7 @@ import { MSG_TRAVADO, exigir, registrarBloqueio, registrarHistorico } from '../s
 import { podeMarcar, type Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 
-export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
+export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior.'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 export const MSG_COFRE_SEM_TAREFA = 'A senha do gov.br só abre com uma tarefa aberta que use o gov.br: protocolar no Meu INSS ou marcar a perícia.'
 const TAMANHO_MAXIMO = 25 * 1024 * 1024

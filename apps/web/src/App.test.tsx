@@ -53,7 +53,7 @@ describe('App', () => {
   it('em /clientes/:id abre a ficha daquele cliente; id que não existe avisa', async () => {
     zerarExemplo()
     render(<App caminho="/clientes/antonio-exemplo" />)
-    expect(await screen.findByRole('heading', { level: 2, name: 'Antônio Exemplo' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo' })).toBeTruthy()
     cleanup()
     render(<App caminho="/clientes/ninguem" />)
     expect(await screen.findByRole('heading', { name: 'Ficha não encontrada' })).toBeTruthy()
@@ -298,7 +298,7 @@ describe('App', () => {
     cleanup()
     // A busca leva à ficha do cliente: o Sócio abre para ler.
     render(<App caminho="/clientes/antonio-exemplo" />)
-    expect(await screen.findByRole('heading', { level: 2, name: 'Antônio Exemplo' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Antônio Exemplo' })).toBeTruthy()
     cleanup()
     // O resto da Recepção, não.
     for (const caminho of ['/balcao', '/clientes/novo']) {

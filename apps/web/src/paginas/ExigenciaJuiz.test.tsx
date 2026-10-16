@@ -230,7 +230,7 @@ describe('Exigência do juiz · sugestão da IA (épico IA, GGVP-79 CA3)', () =>
   it('ao abrir, a sugestão aparece pronta e preenche o formulário sem o prazo interno; a decisão leva a chamada', async () => {
     const fetch = servidor(exigenciaDoJuiz, undefined, resposta)
     render(<AnalisarExigenciaJuiz casoId={CASO} />)
-    expect(await screen.findByText('Sugestão da IA · quem decide é você (G5)')).toBeTruthy()
+    expect(await screen.findByText('Sugestão da IA · quem decide é você')).toBeTruthy()
     expect(screen.getByText('Sugere: Atendimento: Pedir o laudo ao cliente (prova: Laudo recente)')).toBeTruthy()
     expect(screen.getByText(resposta.aviso)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Sugerir com a IA|Usar a sugestão/ })).toBeNull()

@@ -108,7 +108,7 @@ describe('GGVP-83 · laço do setor', () => {
 
 describe('GGVP-87 · manifestar e protocolar', () => {
   it('aprovar pede a marcação (G6); protocolar pede a data, não futura', () => {
-    expect(erro(AprovarVersao.safeParse({ aprovei: false }))).toBe('Marque "Aprovei a versão da manifestação (G6)"')
+    expect(erro(AprovarVersao.safeParse({ aprovei: false }))).toBe('Marque "Aprovei a versão da manifestação"')
     expect(ProtocolarManifestacao.parse({ dataProtocolo: '05/10/2026' })).toEqual({ dataProtocolo: '2026-10-05' })
     expect(erro(ProtocolarManifestacao.safeParse({ dataProtocolo: '01/01/2099' }))).toBe('A data do protocolo não pode ser no futuro')
   })
@@ -206,7 +206,7 @@ describe('GGVP-67 · conferir a petição', () => {
   it('CA5, CA9 (G6, G18) · aprovar pede as três marcações, uma por uma', () => {
     expect(erro(AprovarPeticao.safeParse({}))).toBe('Marque "Li a petição na íntegra"')
     expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true }))).toBe('Marque "Fundamentos, pedidos e valores conferem com o caso"')
-    expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true, conferem: true }))).toBe('Marque "Nada contradiz o requisito do benefício (G18)"')
+    expect(erro(AprovarPeticao.safeParse({ liNaIntegra: true, conferem: true }))).toBe('Marque "Nada contradiz o requisito do benefício"')
     expect(AprovarPeticao.parse({ liNaIntegra: true, conferem: true, nadaContradiz: true })).toEqual({ liNaIntegra: true, conferem: true, nadaContradiz: true })
   })
 })

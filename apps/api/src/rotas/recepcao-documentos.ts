@@ -379,7 +379,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     const registro = evento(`Arquivou ${documentos(arquivados.length)} lidos pela IA (${tipos})${descarte}; conferiu a leitura`, quem)
     ficha.historico.push(registro)
     const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
-    if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)', quem))
+    if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato', quem))
     if (virouLaudo) await avisarLaudoNovo(ficha, casoDoLaudo, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
     await guardar(ficha)
     const conferidos: { id: string; tipo: string }[] = []

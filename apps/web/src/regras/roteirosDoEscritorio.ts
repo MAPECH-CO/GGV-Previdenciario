@@ -29,8 +29,8 @@ export function roteirosDoEscritorio(): Roteiro[] {
         'Barreiras: dependência de terceiros, acompanhamento contínuo, transporte, tratamento',
         'O paciente depende de outra pessoa, de acompanhamento contínuo, de transporte ou de tratamento? Com que frequência?',
       ),
-      x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
-      c('menor-de-16', 'Menor de 16 anos: o caso usa o roteiro infantil, com os relatórios por condição e os cuidados que limitam o trabalho dos responsáveis (GGVP-50)'),
+      x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código)'),
+      c('menor-de-16', 'Menor de 16 anos: o caso usa o roteiro infantil, com os relatórios por condição e os cuidados que limitam o trabalho dos responsáveis'),
       c('gastos', 'Provas de gastos que levam à miserabilidade: aluguel, remédios, gastos hospitalares, alimentação'),
     ]),
     roteiro('pcd', 'Aposentadoria da Pessoa com Deficiência', ['aposentadoria-pcd', 'aposentadoria-pcd-idade'], true, ESCRITORIO, '2026-09-26', [
@@ -59,7 +59,7 @@ export function roteirosDoEscritorio(): Roteiro[] {
         'Tratamento em curso e cirurgia, procedimento ou exame aguardado, com previsão',
         'Que tratamento o paciente faz hoje? Aguarda cirurgia, procedimento ou exame? Para quando?',
       ),
-      x('sem-correlacao', 'Soma de atestados de doenças sem correlação clínica, ou fora da janela de 60 dias (calculada por código, G19)'),
+      x('sem-correlacao', 'Soma de atestados de doenças sem correlação clínica, ou fora da janela de 60 dias (calculada por código)'),
       c('atestados', 'Atestados, exames, comprovante de agendamento de cirurgia ou procedimento'),
     ]),
     roteiro(
@@ -138,7 +138,7 @@ export function roteirosDoEscritorio(): Roteiro[] {
         'Necessidade de cuidados que limitam o trabalho dos responsáveis',
         'A criança precisa de cuidados ou de acompanhamento que impedem ou limitam o trabalho dos responsáveis? Com que frequência?',
       ),
-      x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'),
+      x('menos-de-24-meses', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código)'),
       c(
         'relatorios',
         'Relatórios por condição: o escolar se a criança vai à escola ou à creche; o do CAPS na saúde mental; o da neurologia na paralisia cerebral, na má formação e parecidos; fono, terapia ocupacional e psicologia conforme a terapia que a criança faz',

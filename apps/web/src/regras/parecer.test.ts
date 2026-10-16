@@ -105,7 +105,7 @@ describe('Parecer de suficiência (GGVP-20)', () => {
     const conferidos: Conferidos = { natureza: 'presente', prognostico: 'ausente', 'menos-de-24-meses': 'ausente' }
     expect(motivoParaNaoRegistrar({ ...base, conferidos })).toBe('Responda: a documentação médica é suficiente para o benefício?')
     expect(motivoParaNaoRegistrar({ ...base, conferidos, decisao: 'suficiente' })).toBe('Para "Suficiente", todo item obrigatório tem de estar presente.')
-    expect(motivoParaNaoRegistrar({ ...base, conferidos, decisao: 'insuficiente' })).toBe('Escreva o que o documento deve abordar (G20).')
+    expect(motivoParaNaoRegistrar({ ...base, conferidos, decisao: 'insuficiente' })).toBe('Escreva o que o documento deve abordar.')
     expect(motivoParaNaoRegistrar({ ...base, conferidos, decisao: 'insuficiente', abordar: 'Confirmar o CID M54.5 no relatório' })).toMatch(/CID/)
     expect(motivoParaNaoRegistrar({ ...base, conferidos, decisao: 'insuficiente', abordar: 'Qual a previsão de duração do quadro?' })).toBeNull()
     // A advogada corrige: o prognóstico estava, sim, no laudo.
@@ -117,7 +117,7 @@ describe('Parecer de suficiência (GGVP-20)', () => {
     const conferidos: Conferidos = { natureza: 'presente', prognostico: 'presente', 'menos-de-24-meses': 'contraditorio' }
     expect(situacaoFinal(r.itens, conferidos, 'insuficiente')).toBe('contraditorio')
     expect(motivoParaNaoRegistrar({ itens: r.itens, conferidos, decisao: 'suficiente', abordar: '', semRoteiro: false, conferenciaManual: '' })).toBe(
-      'Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).',
+      'Há contradição conferida: o parecer fica Contraditório e o caso não avança.',
     )
     // A advogada corrige: não havia contradição.
     expect(situacaoFinal(r.itens, { ...conferidos, 'menos-de-24-meses': 'ausente' }, 'suficiente')).toBe('suficiente')
@@ -160,7 +160,7 @@ describe('Parecer de suficiência (GGVP-20)', () => {
     expect(motivoParaNaoPedirDispensa('curta')).toMatch(/justificativa é obrigatória/)
     expect(motivoParaNaoPedirDispensa('Prazo do juiz vence amanhã e o médico só atende em novembro.')).toBeNull()
     const pedido = { justificativa: 'prazo do juiz', pedidaPor: 'Dra. Renata (exemplo)', pedidaEm: '2026-10-06T15:00:00.000Z' }
-    expect(motivoParaNaoAprovarDispensa(pedido, 'Dra. Renata (exemplo)')).toBe('Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).')
+    expect(motivoParaNaoAprovarDispensa(pedido, 'Dra. Renata (exemplo)')).toBe('Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior.')
     expect(motivoParaNaoAprovarDispensa(pedido, 'Dr. Otávio (exemplo)')).toBeNull()
     expect(motivoParaNaoAprovarDispensa({ ...pedido, aprovadaPor: 'Dr. Otávio (exemplo)' }, 'Dra. Clara')).toBe('O pedido de dispensa já foi respondido.')
     expect(motivoParaNaoAprovarDispensa(undefined, 'Dr. Otávio (exemplo)')).toBe('Não há pedido de dispensa.')
@@ -168,7 +168,7 @@ describe('Parecer de suficiência (GGVP-20)', () => {
 
   it('GGVP-33 CA3 · o chat recusa pular o parecer e diz o portão; outro pedido passa', () => {
     for (const pedido of ['pula o parecer da Rita', 'Libera o caso da Rita sem o parecer', 'dispensar parecer do Antônio', 'segue sem parecer mesmo']) {
-      expect(recusaDoChat(pedido), pedido).toMatch(/^Não posso pular o parecer médico\..*\(G17\)/)
+      expect(recusaDoChat(pedido), pedido).toMatch(/^Não posso pular o parecer médico\..*/)
     }
     expect(recusaDoChat('Resumo do caso da Rita')).toBeNull()
     expect(recusaDoChat('qual o parecer da Rita?')).toBeNull()

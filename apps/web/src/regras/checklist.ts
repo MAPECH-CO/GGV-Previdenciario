@@ -70,8 +70,8 @@ function situacao(tipo: string, documentos: DocumentoDoCaso[]): Pick<ItemDoCheck
   const valem = doTipo.filter((d) => !d.quarentena)
   if (valem.some((d) => !d.semAssinatura && !d.dataEmBranco)) return { situacao: 'recebido' }
   // G1: sem assinatura ou com data em branco não vale (CA2).
-  if (valem.some((d) => d.semAssinatura)) return { situacao: 'pendente', motivo: 'chegou sem assinatura (G1)' }
-  if (valem.length > 0) return { situacao: 'pendente', motivo: 'chegou com a data em branco (G1)' }
+  if (valem.some((d) => d.semAssinatura)) return { situacao: 'pendente', motivo: 'chegou sem assinatura' }
+  if (valem.length > 0) return { situacao: 'pendente', motivo: 'chegou com a data em branco' }
   // Em quarentena não conta (GGVP-81, CA10).
   if (doTipo.length > 0) return { situacao: 'problema', motivo: 'chegou, mas está em quarentena: confira de quem é' }
   return { situacao: 'pendente', motivo: 'falta' }
@@ -141,7 +141,7 @@ export function juntar(itens: string[]): string {
 /** Por que o caso não pode ser liberado ao Jurídico; pronto, null (CA3, CA6). */
 export function motivoParaNaoLiberar(checklist: Checklist, beneficio: string): string | null {
   if (!checklist.temLista) {
-    return `${beneficio} ainda não tem lista de documentos obrigatórios aprovada pelo escritório (configuração, GGVP-104): o caso não pode ser liberado.`
+    return `${beneficio} ainda não tem lista de documentos obrigatórios aprovada pelo escritório (configuração): o caso não pode ser liberado.`
   }
   if (checklist.bloqueio) return checklist.bloqueio
   if (!checklist.completo) return `O checklist está incompleto. Falta: ${juntar(checklist.faltam)}.`

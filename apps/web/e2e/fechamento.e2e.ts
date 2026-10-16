@@ -25,7 +25,7 @@ test('GGVP-60 CA1, CA2, CA5, CA6, CA8 e CA12 · não fechou com recontato: a dat
   const registrar = page.getByRole('button', { name: 'Registrar e agendar retorno' })
   await expect(registrar).toBeDisabled()
   await page.getByRole('radio', { name: 'Não fechou' }).click()
-  await expect(page.getByText('Escolha o motivo: sem ele o lead não pode ser encerrado (G16).')).toBeVisible()
+  await expect(page.getByText('Escolha o motivo: sem ele o lead não pode ser encerrado.')).toBeVisible()
   await page.getByLabel('Motivo *').selectOption('preco')
   await page.getByLabel('Detalhe do motivo (opcional)').fill('achou o valor alto')
   await page.getByRole('radio', { name: 'Sim, agendar recontato' }).click()

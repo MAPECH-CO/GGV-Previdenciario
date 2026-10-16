@@ -327,7 +327,7 @@ export function NovaDemanda({ fichaId }: { fichaId: string }) {
             A IA preenche só o que é do processo novo. Dado pessoal que mudou vem como sugestão para alguém conferir, e o valor antigo fica
             no histórico.
           </p>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.ladoSub}>«Abrir a nova demanda» só habilita com a decisão respondida e os campos com * preenchidos.</p>
         </aside>
       </main>

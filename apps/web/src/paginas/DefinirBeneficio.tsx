@@ -124,7 +124,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                   <div className={proprio.linha}>
                     <dt>Citado por você</dt>
                     <dd>
-                      <strong>{nomeBeneficio(sugestao.citado)}</strong> · prevalece (G3)
+                      <strong>{nomeBeneficio(sugestao.citado)}</strong> · prevalece
                     </dd>
                   </div>
                 )}
@@ -166,7 +166,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                 )}
                 <div className={proprio.linha}>
                   <dt>Se você citar outro</dt>
-                  <dd>prevalece o seu; a sugestão da IA fica só como sugestão (G3)</dd>
+                  <dd>prevalece o seu; a sugestão da IA fica só como sugestão</dd>
                 </div>
               </dl>
             )}
@@ -192,11 +192,11 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
                   ))}
                 </ul>
               )}
-              <p className={styles.nota}>Os números vêm do código, com teste, nunca da IA (G19).</p>
+              <p className={styles.nota}>Os números vêm do código, com teste, nunca da IA.</p>
             </section>
           )}
 
-          <p className={styles.trava}>A IA sugere; se a advogada citou um, prevalece o dela (G3).</p>
+          <p className={styles.trava}>A IA sugere; se a advogada citou um, prevalece o dela.</p>
 
           {feito ? (
             <section className={styles.feito} aria-labelledby="definido">
@@ -287,7 +287,7 @@ export function DefinirBeneficio({ agendamentoId }: { agendamentoId: string }) {
           <ul className={styles.ladoLista}>
             <li>• Benefício definido* (a lista do escritório, a mesma de todo o portal, com LOAS Idoso e LOAS Deficiente separados)</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p>Conferir: Conferi a recomendação com a entrevista</p>
           <p className={styles.ladoSub}>«Confirmar benefício» só habilita com os campos com * preenchidos e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>

@@ -40,7 +40,7 @@ describe('faltaCompletar (GGVP-22 CA6, GGVP-67 CA12)', () => {
 })
 
 describe('GGVP-158 P5.12 · número de jurimetria fora do texto da peça (G22)', () => {
-  const MOTIVO = 'O texto cita número de jurimetria (G22): tire antes de aprovar.'
+  const MOTIVO = 'O texto cita número de jurimetria: tire antes de aprovar.'
   it('os formatos do portal acusam: a taxa com os casos, a base, a chance e o tempo médio', () => {
     for (const trecho of [
       'Este juízo julga procedentes 71% em 34 processos · base de 07/10.',

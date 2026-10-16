@@ -287,7 +287,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
 
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId}>
             Situação do checklist calculada pelo sistema a partir dos documentos arquivados e registro das boas-vindas. Confira cada
-            item: documento sem assinatura ou com a data em branco não vale (G1), e documento em quarentena não conta.
+            item: documento sem assinatura ou com a data em branco não vale, e documento em quarentena não conta.
           </InstrucoesPasso>
 
           {processo.beneficio === 'auxilio-acidente' && <CartaoDoAcidente processoId={processoId} aoSalvar={() => setRecarga((r) => r + 1)} />}
@@ -305,7 +305,7 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
             {!checklist.temLista && (
               <p className={styles.aviso}>
                 {beneficio} ainda não tem lista de documentos obrigatórios aprovada. O escritório monta a lista na configuração
-                (GGVP-104); até lá, o caso não pode ser liberado ao Jurídico. <a href="/configuracao">Abrir Configuração</a>
+               ; até lá, o caso não pode ser liberado ao Jurídico. <a href="/configuracao">Abrir Configuração</a>
               </p>
             )}
             {checklist.bloqueio && <p className={styles.aviso}>{checklist.bloqueio}</p>}
@@ -331,10 +331,10 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
           {trava && <p className={styles.trava}>Liberar ao Jurídico: bloqueado. {trava}</p>}
 
           <p className={proprio.nota}>
-            Lista de documentos de cada benefício: configuração do escritório (GGVP-104), com os nomes da lista única de
+            Lista de documentos de cada benefício: configuração do escritório, com os nomes da lista única de
             documentos. O portal nasce com a do LOAS; as declarações de moradia, união estável e separação de fato entram quando o
             caso pede. O Auxílio-Acidente tem o kit e a tabela por circunstância: os desejáveis aparecem, mas não contam para o
-            completo (G1).
+            completo.
           </p>
 
           {feito ? (

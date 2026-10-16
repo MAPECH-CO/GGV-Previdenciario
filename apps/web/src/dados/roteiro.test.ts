@@ -34,7 +34,7 @@ describe('Roteiros · servidor de exemplo', () => {
       ['obrigatorio', 'Prognóstico: duração prevista ou permanente'],
       ['obrigatorio', 'Limitações funcionais concretas'],
       ['obrigatorio', 'Barreiras: dependência de terceiros, acompanhamento contínuo, transporte, tratamento'],
-      ['contradicao', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código, G19)'],
+      ['contradicao', 'Soma do início até a cessação prevista menor que 24 meses (calculada por código)'],
       ['complementar', expect.stringContaining('Menor de 16 anos')],
       ['complementar', expect.stringContaining('Provas de gastos')],
     ])

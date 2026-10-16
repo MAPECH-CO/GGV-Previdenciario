@@ -87,7 +87,7 @@ function LinhaDoItem({ casoId, item, aoMudar }: { casoId: string; item: Item; ao
 
 /**
  * Cumprir exigência do INSS (GGVP-39, Documentação): cobra o cliente (G15), junta a prova de cada item e entrega ao
- * Jurídico, que responde no portal do INSS. "Entregar ao Jurídico" só libera com documento em todos os itens (G21).
+ * Jurídico, que responde no portal do INSS. "Entregar ao Jurídico" só libera com documento em todos os itens.
  */
 export function CumprirExigencia({ casoId }: { casoId: string }) {
   const ids = { canal: useId(), resultado: useId() }
@@ -221,7 +221,7 @@ export function CumprirExigencia({ casoId }: { casoId: string }) {
           <section className={styles.cartao} aria-label="Entregar ao Jurídico">
             <h2 className={styles.cartaoTitulo}>Entregar ao Jurídico</h2>
             <p className={styles.dica}>
-              Quem responde no portal do INSS é o Jurídico. {tudoComProva ? 'Todos os itens têm documento.' : 'Só libera com documento em todos os itens (G21).'}
+              Quem responde no portal do INSS é o Jurídico. {tudoComProva ? 'Todos os itens têm documento.' : 'Só libera com documento em todos os itens.'}
             </p>
             <div className={styles.acoes}>
               <button type="button" className={styles.botao} disabled={!tudoComProva} onClick={() => void entregar()}>

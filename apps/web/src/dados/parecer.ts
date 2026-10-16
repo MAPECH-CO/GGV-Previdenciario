@@ -308,7 +308,7 @@ export async function registrarParecer(processoId: string, pedido: PedidoDeParec
   const corrigidos = registro.itens.filter((i) => i.corrigido).length
   ficha.historico.push(
     evento(
-      `Registrou o parecer médico do ${nomeBeneficio(processo.beneficio)}: ${NOMES_DO_PARECER[situacao]} (G17)${corrigidos > 0 ? `; corrigiu ${corrigidos} ${corrigidos === 1 ? 'item' : 'itens'} da IA` : ''}`,
+      `Registrou o parecer médico do ${nomeBeneficio(processo.beneficio)}: ${NOMES_DO_PARECER[situacao]}${corrigidos > 0 ? `; corrigiu ${corrigidos} ${corrigidos === 1 ? 'item' : 'itens'} da IA` : ''}`,
       quem.nome,
     ),
   )
@@ -364,7 +364,7 @@ export async function pedirDispensa(processoId: string, justificativa: string, q
   const ultima = p.dispensas?.at(-1)
   if (ultima && !ultima.aprovadaPor && !ultima.recusadaPor) throw new Error('Já há um pedido de dispensa esperando a segunda sênior.')
   p.dispensas = [...(p.dispensas ?? []), { justificativa: justificativa.trim(), pedidaPor: quem.nome, pedidaEm: agora().toISOString() }]
-  caso.ficha.historico.push(evento(`Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: ${justificativa.trim()}`, quem.nome))
+  caso.ficha.historico.push(evento(`Pediu a dispensa do parecer médico (1ª aprovação da sênior). Justificativa: ${justificativa.trim()}`, quem.nome))
   gravar(banco)
   return naTela(banco, caso.ficha, caso.processo, p, 'juridico')
 }
@@ -387,8 +387,8 @@ export async function responderDispensa(processoId: string, aprova: boolean, que
   caso.ficha.historico.push(
     evento(
       aprova
-        ? `Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por ${dispensa!.pedidaPor} e ${quem.nome} (G17)`
-        : `Recusou a dispensa do parecer médico pedida por ${dispensa!.pedidaPor}: o caso continua esperando o parecer (G17)`,
+        ? `Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por ${dispensa!.pedidaPor} e ${quem.nome}`
+        : `Recusou a dispensa do parecer médico pedida por ${dispensa!.pedidaPor}: o caso continua esperando o parecer`,
       quem.nome,
     ),
   )
@@ -410,8 +410,8 @@ export function resumoParaAFicha(fichaId: string): string | undefined {
     const n = analise.documentos.length
     const docs = `${n} ${n === 1 ? 'documento médico' : 'documentos médicos'}`
     const parecer = registro
-      ? `parecer "${NOMES_DO_PARECER[registro.situacao]}" confirmado por ${registro.quem} em ${dataCurta(quandoCurto(registro.quando), hojeIso(agora()))} (G17)`
-      : 'parecer aguardando a conferência do Jurídico (G17)'
+      ? `parecer "${NOMES_DO_PARECER[registro.situacao]}" confirmado por ${registro.quem} em ${dataCurta(quandoCurto(registro.quando), hojeIso(agora()))}`
+      : 'parecer aguardando a conferência do Jurídico'
     return [`${docs} · ${parecer}`]
   })
   gravar(banco)

@@ -177,11 +177,11 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
   // Do lead ao contrato liberado: a mesma entrada para os casos que já passaram do D1.
   const entrevista = (base: number, beneficio: string): EventoDoCaso[] => [
     e(base, BRUNA, 'pessoa', 'Lead chegou por indicação; entrevista marcada', 'D1.01', 'entrevista'),
-    e(base + 3, DRA_PAULA, 'pessoa', `Entrevista gravada e transcrita; benefício definido: ${beneficio} (a IA sugeriu, a advogada decidiu, G3)`, 'D1.09', 'entrevista', {
+    e(base + 3, DRA_PAULA, 'pessoa', `Entrevista gravada e transcrita; benefício definido: ${beneficio} (a IA sugeriu, a advogada decidiu)`, 'D1.09', 'entrevista', {
       documentos: ['transcricao-entrevista.pdf'],
     }),
     e(base + 5, 'ZapSign', 'sistema', 'Contrato assinado no ZapSign; cópia enviada ao cliente', 'D1.17', 'entrevista', { documentos: ['contrato-zapsign.pdf'] }),
-    e(base + 8, JESSICA, 'pessoa', 'Caso liberado ao Jurídico pela Documentação, com parecer médico "Suficiente" (G17)', 'D1.24', 'entrevista', { documentos: ['cnis.pdf'] }),
+    e(base + 8, JESSICA, 'pessoa', 'Caso liberado ao Jurídico pela Documentação, com parecer médico "Suficiente"', 'D1.24', 'entrevista', { documentos: ['cnis.pdf'] }),
   ]
   return [
     {
@@ -192,12 +192,12 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       passoAtual: 'exigência do juiz',
       linha: [
         ...entrevista(-455, 'aposentadoria por incapacidade permanente'),
-        e(-445, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido (G2)', 'D2.01', 'inss'),
+        e(-445, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido', 'D2.01', 'inss'),
         e(-433, IGOR, 'pessoa', 'Protocolado no Meu INSS · NB 456.123.789-5', 'D2.02', 'inss', { documentos: ['requerimento-meu-inss.pdf'] }),
         e(-405, 'INSS', 'sistema', 'Perícia do INSS: desfavorável', 'DP.10', 'inss'),
         e(-390, 'Vigília do Meu INSS', 'sistema', 'Indeferido: carência não comprovada', 'D2.07', 'inss', { documentos: ['carta-de-indeferimento.pdf'] }),
         e(-385, 'IA', 'ia', 'Analisou o motivo do indeferimento e sugeriu ajuizar', 'D3.02', 'justica', { restrito: true }),
-        e(-384, DRA_RENATA, 'pessoa', 'Despacho da sênior: ajuizar (G4)', 'D3.03', 'justica', { restrito: true }),
+        e(-384, DRA_RENATA, 'pessoa', 'Despacho da sênior: ajuizar', 'D3.03', 'justica', { restrito: true }),
         e(-378, DRA_PAULA, 'pessoa', 'Petição inicial protocolada; travas G7 conferidas (Tema 350, pacote, CPF)', 'D3.07', 'justica', {
           documentos: ['peticao-inicial.pdf'],
           restrito: true,
@@ -224,8 +224,8 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
         { setor: 'Jurídico', titulo: 'Antônio Exemplo · Analisar laudo novo', responsavel: DRA_PAULA, prazo: dia(1), href: '/casos/antonio-exemplo-1/laudo-novo' },
       ],
       prazos: [
-        { tipo: 'prazo', quando: dia(2), oQue: 'Exigência do juiz — manifestar (G12)', urgente: true },
-        { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações, 3×/dia (G13)' },
+        { tipo: 'prazo', quando: dia(2), oQue: 'Exigência do juiz — manifestar', urgente: true },
+        { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações, 3×/dia' },
         { tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS' },
       ],
       documentos: [
@@ -239,7 +239,7 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       advogada: DRA_PAULA,
       valores: [{ tipo: 'causa', rotulo: 'Valor da causa', valor: 'R$ 21.480,00 (exemplo)' }],
       estrategia: 'Provar o vínculo rural com as notas e a testemunha; o laudo judicial decide a incapacidade.',
-      saude: '3 laudos · parecer Suficiente (G17) · laudo novo a conferir',
+      saude: '3 laudos · parecer Suficiente · laudo novo a conferir',
     },
     {
       processoId: 'maria-exemplo-1',
@@ -248,17 +248,17 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       passoAtual: 'perícia do INSS',
       linha: [
         ...entrevista(-60, 'auxílio por incapacidade temporária'),
-        e(-24, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido (G2)', 'D2.01', 'inss'),
+        e(-24, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido', 'D2.01', 'inss'),
         e(-20, IGOR, 'pessoa', 'Protocolado no Meu INSS · protocolo 1.802.334.556', 'D2.02', 'inss', { documentos: ['requerimento-meu-inss.pdf'] }),
       ],
       esperas: [],
       tarefas: [],
-      prazos: [{ tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS (G13)' }, { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações' }],
+      prazos: [{ tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS' }, { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações' }],
       documentos: [
         { nome: 'requerimento-meu-inss.pdf', tipo: 'requerimento', origem: 'Meu INSS', data: dia(-20), passo: 'D2.02' },
         { nome: 'laudo-clinico.pdf', tipo: 'laudo', origem: 'Scanner', data: dia(-40), passo: 'D1.18', saude: true },
       ],
-      saude: '2 laudos · parecer Suficiente (G17)',
+      saude: '2 laudos · parecer Suficiente',
     },
     {
       processoId: 'pedro-exemplo-1',
@@ -269,7 +269,7 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       passoAtual: 'exigência do INSS',
       linha: [
         ...entrevista(-110, 'BPC/LOAS idoso'),
-        e(-74, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido (G2)', 'D2.01', 'inss'),
+        e(-74, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido', 'D2.01', 'inss'),
         e(-70, IGOR, 'pessoa', 'Protocolado no Meu INSS · NB 456.123.789-6', 'D2.02', 'inss', { documentos: ['requerimento-meu-inss.pdf'] }),
         e(-6, 'Vigília do Meu INSS', 'sistema', 'Exigência do INSS aberta: avaliação social e composição do grupo familiar', 'D2.05', 'inss', {
           documentos: ['exigencia-inss.pdf'],
@@ -286,8 +286,8 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       },
       tarefas: [{ setor: 'Jurídico', titulo: 'Pedro Exemplo · Responder exigência', responsavel: DRA_PAULA, prazo: dia(2), paralela: true }],
       prazos: [
-        { tipo: 'prazo', quando: dia(2), oQue: 'Responder a exigência do INSS (G12)', urgente: true },
-        { tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS (G13)' },
+        { tipo: 'prazo', quando: dia(2), oQue: 'Responder a exigência do INSS', urgente: true },
+        { tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS' },
         { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações' },
       ],
       documentos: [
@@ -303,11 +303,11 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       passoAtual: 'sentença procedente · prestação de contas',
       linha: [
         ...entrevista(-400, 'pensão por morte'),
-        e(-390, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido (G2)', 'D2.01', 'inss'),
+        e(-390, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido', 'D2.01', 'inss'),
         e(-385, IGOR, 'pessoa', 'Protocolado no Meu INSS · NB 456.123.789-7', 'D2.02', 'inss'),
         e(-340, 'Vigília do Meu INSS', 'sistema', 'Indeferido: qualidade de dependente não comprovada', 'D2.07', 'inss', { documentos: ['carta-de-indeferimento.pdf'] }),
-        e(-330, DRA_RENATA, 'pessoa', 'Despacho da sênior: ajuizar (G4)', 'D3.03', 'justica', { restrito: true }),
-        e(-320, DRA_PAULA, 'pessoa', 'Petição inicial protocolada (G7)', 'D3.07', 'justica', { restrito: true, documentos: ['peticao-inicial.pdf'] }),
+        e(-330, DRA_RENATA, 'pessoa', 'Despacho da sênior: ajuizar', 'D3.03', 'justica', { restrito: true }),
+        e(-320, DRA_PAULA, 'pessoa', 'Petição inicial protocolada', 'D3.07', 'justica', { restrito: true, documentos: ['peticao-inicial.pdf'] }),
         e(-120, 'Vigília (IA)', 'ia', 'Publicação lida: audiência de instrução marcada', 'D3a.01', 'vigilia'),
         e(-2, 'Vigília (IA)', 'ia', 'Publicação lida: sentença procedente', 'D3a.01', 'desfecho', { documentos: ['sentenca.pdf'] }),
       ],
@@ -318,7 +318,7 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       ],
       prazos: [
         { tipo: 'prazo', quando: dia(13), oQue: 'Recurso do INSS (prazo da outra parte)' },
-        { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações, 3×/dia (G13)' },
+        { tipo: 'vigilia-publicacoes', quando: 'Diário', oQue: 'Vigília das publicações, 3×/dia' },
         { tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS' },
       ],
       documentos: [
@@ -339,13 +339,13 @@ export function casosDeExemplo(hoje: string): ComplementoDoCaso[] {
       passoAtual: 'deferido · ida ao banco',
       linha: [
         ...entrevista(-200, 'BPC/LOAS deficiente'),
-        e(-190, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido (G2)', 'D2.01', 'inss'),
+        e(-190, DRA_RENATA, 'pessoa', 'Sênior conferiu e aprovou o pedido', 'D2.01', 'inss'),
         e(-185, IGOR, 'pessoa', 'Protocolado no Meu INSS · NB 456.123.789-8', 'D2.02', 'inss'),
         e(-3, 'Vigília do Meu INSS', 'sistema', 'Benefício deferido', 'D2.06', 'inss', { documentos: ['carta-de-concessao.pdf'] }),
       ],
       esperas: [{ quem: 'cliente', oQue: 'ir ao banco abrir a conta do benefício', desde: dia(-3), lembrete: 'o Atendimento agenda a ida' }],
       tarefas: [{ setor: 'Atendimento', titulo: 'Marta Exemplo · Agendar ida ao banco', responsavel: BRUNA, prazo: dia(3) }],
-      prazos: [{ tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS (G13)' }],
+      prazos: [{ tipo: 'vigilia-meu-inss', quando: 'Diário', oQue: 'Vigília do Meu INSS' }],
       documentos: [{ nome: 'carta-de-concessao.pdf', tipo: 'carta', origem: 'Meu INSS', data: dia(-3), passo: 'D2.06' }],
     },
     // Os casos ainda na entrevista e nos documentos (D1).
@@ -614,7 +614,7 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
   }))
   const prazos: PrazoDoCaso[] = [
     ...p.exigencias.flatMap((x) =>
-      x.prazo ? [{ tipo: 'prazo' as const, quando: x.prazo, oQue: `Exigência ${DA_EXIGENCIA[x.origem]}: ${x.descricao} (G12)`, urgente: prazoFalado(x.prazo, hoje).urgente }] : [],
+      x.prazo ? [{ tipo: 'prazo' as const, quando: x.prazo, oQue: `Exigência ${DA_EXIGENCIA[x.origem]}: ${x.descricao}`, urgente: prazoFalado(x.prazo, hoje).urgente }] : [],
     ),
     ...p.prazos.map((z) => ({ tipo: 'prazo' as const, quando: z.fim, oQue: `Prazo processual (${z.regra})`, urgente: prazoFalado(z.fim, hoje).urgente })),
   ].sort((a, b) => a.quando.localeCompare(b.quando))

@@ -105,7 +105,7 @@ export const urgente = (c: EstadoDaCobranca, hoje: string, l = LIMITES_DA_COBRAN
 
 /** Por que o Atendimento ainda não pode cobrar de novo; pode, null (CA3, CA5). */
 export function motivoParaNaoCobrar(c: EstadoDaCobranca, hoje: string, l = LIMITES_DA_COBRANCA): string | null {
-  if (naSenior(c, hoje, l)) return `Passou do limite de ${l.tentativas} tentativas: a sênior decide (G15).`
+  if (naSenior(c, hoje, l)) return `Passou do limite de ${l.tentativas} tentativas: a sênior decide.`
   const proxima = proximaTentativa(c, l)
   if (proxima > hoje) return `A próxima tentativa é em ${dataCurta(proxima, hoje)}, ${l.diasEntre} dias depois da última.`
   return null

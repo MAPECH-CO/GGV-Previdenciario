@@ -64,7 +64,7 @@ export function Financeiro() {
     <MolduraDaBase
       ativo="financeiro"
       titulo="Financeiro"
-      subtitulo="Prestações de contas recebidas, honorários a receber e lançamentos. O aviso ao cliente só sai depois do OK da Sênior (G8); o Financeiro não vê entrevista, petição nem laudos."
+      subtitulo="Prestações de contas recebidas, honorários a receber e lançamentos. O aviso ao cliente só sai depois do OK da Sênior; o Financeiro não vê entrevista, petição nem laudos."
       acoes={
         <label className={bases.filtro}>
           Período:
@@ -103,7 +103,7 @@ export function Financeiro() {
             <Indicador
               rotulo="Prestações de contas a lançar"
               valor={String(painel.aLancar)}
-              nota={`${painel.aguardandoOk} aguardando o OK da Sênior (G8)`}
+              nota={`${painel.aguardandoOk} aguardando o OK da Sênior`}
               tom={painel.aguardandoOk ? 'alerta' : undefined}
             />
             <Indicador
@@ -211,7 +211,7 @@ function Pendentes({ lancamentos }: { lancamentos: LancamentoFinanceiro[] }) {
   return (
     <section className={styles.cartao} aria-label="Prestações de contas pendentes">
       <h2 className={styles.cartaoTitulo}>Prestações de contas pendentes</h2>
-      <p className={styles.cartaoSub}>Esperando o OK da Sênior (G8) ou o lançamento do Financeiro.</p>
+      <p className={styles.cartaoSub}>Esperando o OK da Sênior ou o lançamento do Financeiro.</p>
       {lancamentos.length === 0 ? (
         <p className={styles.vazio}>Nenhuma prestação pendente.</p>
       ) : (
@@ -337,7 +337,7 @@ function Lancamentos({ lancamentos }: { lancamentos: LancamentoFinanceiro[] }) {
       </div>
 
       <p className={bases.rodape}>
-        Aguardando OK = a Sênior ainda não validou a prestação; o aviso ao cliente espera (G8). Lançar = o OK saiu e o Financeiro ainda não lançou. A
+        Aguardando OK = a Sênior ainda não validou a prestação; o aviso ao cliente espera. Lançar = o OK saiu e o Financeiro ainda não lançou. A
         receber = lançada, esperando a ida ao banco e a confirmação do recebimento. Atrasado = a receber com o prazo de pagamento vencido.
       </p>
     </>

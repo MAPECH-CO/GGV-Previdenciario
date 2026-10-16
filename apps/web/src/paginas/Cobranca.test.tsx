@@ -87,7 +87,7 @@ describe('Decidir cobrança · tela da sênior', () => {
 
   it('CA7 · mostra o laço, as pendências e o histórico das tentativas', async () => {
     await abrir()
-    expect(screen.getByText('Aposentadoria por Incapacidade Permanente · 2 tentativas sem resposta · limite (G15)')).toBeTruthy()
+    expect(screen.getByText('Aposentadoria por Incapacidade Permanente · 2 tentativas sem resposta · passou do limite')).toBeTruthy()
     expect(screen.getByText('Notas do produtor rural e Certidão')).toBeTruthy()
     expect(within(screen.getByRole('list', { name: 'Tentativas de cobrança' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       '30/09 · Chatwoot · sem resposta',

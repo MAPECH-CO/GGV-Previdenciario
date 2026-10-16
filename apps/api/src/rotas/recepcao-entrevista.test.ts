@@ -113,7 +113,7 @@ describe('GGVP-125 · bloco 3a: entrevista gravada e transcrição no servidor',
 
     const r = await json('gabi', 'POST', url, { avisei: true })
     expect(r.gravacao).toMatchObject({ estado: 'gravando', soJuridico: true, acoes: [{ acao: 'avisou' }, { acao: 'gravou' }] })
-    expect(r.ficha.historico.at(-1)).toMatchObject({ quem: 'gabi', oQue: 'Avisou o cliente às 12:00 que a conversa seria gravada (G10) e começou a gravar a entrevista' })
+    expect(r.ficha.historico.at(-1)).toMatchObject({ quem: 'gabi', oQue: 'Avisou o cliente às 12:00 que a conversa seria gravada e começou a gravar a entrevista' })
     expect((await json('gabi', 'POST', url, { avisei: true })).gravacao.id).toBe(r.gravacao.id)
     expect((await json('gabi', 'POST', `/api/gravacoes/${r.gravacao.id}/acoes`, { acao: 'pausou', aos: 30 })).gravacao.estado).toBe('pausada')
     expect((await json('gabi', 'POST', `/api/gravacoes/${r.gravacao.id}/acoes`, { acao: 'retomou', aos: 40 })).gravacao.estado).toBe('gravando')

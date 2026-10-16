@@ -46,8 +46,8 @@ describe('Checklist do benefício (GGVP-91)', () => {
     const e = entrada({ contratoAssinado: false, documentos: [{ tipo: 'rg', dataEmBranco: true }, { tipo: 'grupo-familiar', semAssinatura: true }] })
     expect(situacoes(e)).toEqual([
       ['contrato', 'pendente', 'falta a assinatura do cliente'],
-      ['rg', 'pendente', 'chegou com a data em branco (G1)'],
-      ['grupo-familiar', 'pendente', 'chegou sem assinatura (G1)'],
+      ['rg', 'pendente', 'chegou com a data em branco'],
+      ['grupo-familiar', 'pendente', 'chegou sem assinatura'],
     ])
     // Chegou outra via, assinada: vale.
     expect(situacoes(entrada({ documentos: [{ tipo: 'grupo-familiar', semAssinatura: true }, { tipo: 'grupo-familiar' }] }))[2][1]).toBe('recebido')
@@ -67,7 +67,7 @@ describe('Checklist do benefício (GGVP-91)', () => {
     const semLista = montarChecklist(entrada({ lista: undefined }))
     expect(semLista).toMatchObject({ temLista: false, completo: false, faltam: [] })
     expect(motivoParaNaoLiberar(semLista, 'Auxílio Acidentário')).toBe(
-      'Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada pelo escritório (configuração, GGVP-104): o caso não pode ser liberado.',
+      'Auxílio Acidentário ainda não tem lista de documentos obrigatórios aprovada pelo escritório (configuração): o caso não pode ser liberado.',
     )
   })
 

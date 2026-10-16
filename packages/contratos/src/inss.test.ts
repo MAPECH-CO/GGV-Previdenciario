@@ -5,14 +5,14 @@ describe('bloqueioDoG1 (GGVP-23 CA11, CA12)', () => {
   const caso = (checklist: { cadastrado: boolean; completo: boolean; faltam: string[] }, kitAssinado: boolean) => ({ checklist, kitAssinado })
   it('CA11 · sem kit cadastrado, bloqueia mesmo com o contrato assinado', () => {
     expect(bloqueioDoG1(caso({ cadastrado: false, completo: true, faltam: [] }, true))).toBe(
-      'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).',
+      'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.',
     )
   })
   it('CA11 · falta documento do kit, diz o que falta', () => {
-    expect(bloqueioDoG1(caso({ cadastrado: true, completo: false, faltam: ['cpf', 'cadunico'] }, true))).toBe('Checklist incompleto (G1): faltam cpf, cadunico.')
+    expect(bloqueioDoG1(caso({ cadastrado: true, completo: false, faltam: ['cpf', 'cadunico'] }, true))).toBe('Checklist incompleto: faltam cpf, cadunico.')
   })
   it('CA12 · kit completo sem contrato assinado, bloqueia', () => {
-    expect(bloqueioDoG1(caso({ cadastrado: true, completo: true, faltam: [] }, false))).toBe('Contrato não assinado (G1): o caso não tem o contrato assinado.')
+    expect(bloqueioDoG1(caso({ cadastrado: true, completo: true, faltam: [] }, false))).toBe('Contrato não assinado: o caso não tem o contrato assinado.')
   })
   it('kit completo e contrato assinado: nada bloqueia', () => {
     expect(bloqueioDoG1(caso({ cadastrado: true, completo: true, faltam: [] }, true))).toBeNull()

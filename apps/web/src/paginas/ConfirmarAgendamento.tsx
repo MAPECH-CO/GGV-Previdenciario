@@ -73,8 +73,8 @@ export function ConfirmarAgendamento({ agendamentoId }: { agendamentoId: string 
   const estado = naSenior
     ? `Com a advogada sênior: ${TENTATIVAS_DE_CONFIRMACAO} tentativas sem resposta. Ela resolve e entra em contato com o lead.`
     : semRespostaBloqueada
-      ? `Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO} a partir de ${dataCurta(proxima, hoje)} · sem resposta na segunda, sobe para a sênior (G15)`
-      : `Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO}${tentativa < TENTATIVAS_DE_CONFIRMACAO ? ` · a próxima em ${DIAS_ENTRE_TENTATIVAS} dias` : ''} · sem resposta na segunda, sobe para a sênior (G15)`
+      ? `Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO} a partir de ${dataCurta(proxima, hoje)} · sem resposta na segunda, sobe para a sênior`
+      : `Tentativa ${tentativa} de ${TENTATIVAS_DE_CONFIRMACAO}${tentativa < TENTATIVAS_DE_CONFIRMACAO ? ` · a próxima em ${DIAS_ENTRE_TENTATIVAS} dias` : ''} · sem resposta na segunda, sobe para a sênior`
 
   const motivoParado = !aberta
     ? confirmada(a.confirmacao)

@@ -10,7 +10,7 @@ const base: RecursoDoCaso = {
   cliente: 'Sérgio Nunes (exemplo)',
   beneficio: 'Auxílio-Acidente',
   sentenca: { disponibilizadaEm: '2026-10-05', texto: 'Sentença: julgo improcedente o pedido.' },
-  prazo: { fim: '2026-10-20', regra: 'Recurso contra a sentença: 10 dias úteis (lado seguro, G12)' },
+  prazo: { fim: '2026-10-20', regra: 'Recurso contra a sentença: 10 dias úteis (lado seguro)' },
   chance: { porcentagem: null, casos: 0, favoraveis: 0, baseEm: null, regra: 'providos sobre julgados' },
   avaliacao: null,
   motivoIa: null,

@@ -144,7 +144,7 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     expect(etapaDaPericia('maria-exemplo-1')).toBe('Em perícia · pedido ao INSS · perícia médica em 21/10, 08:30')
     expect((await obterFicha('maria-exemplo'))!.arquivos.at(-1)).toMatchObject({ nome: 'comprovante_maria.pdf', tipo: 'comprovante-pericia', local: 'maria-exemplo-1' })
     const evento = (await eventosDaAgenda('2026-10-21', '2026-10-21')).find((e) => e.categoria === 'pericias')!
-    expect(evento).toMatchObject({ titulo: 'Maria Exemplo', oQue: 'Perícia médica', hora: '08:30', passo: 'DP.02 · Marcar a perícia no INSS', processoId: 'maria-exemplo-1' })
+    expect(evento).toMatchObject({ titulo: 'Maria Exemplo', oQue: 'Perícia médica', hora: '08:30', passo: 'Marcar a perícia no INSS', processoId: 'maria-exemplo-1' })
     expect(t.pericia.historico.slice(-5, -1).map((e) => e.oQue)).toEqual([
       'Marcou a perícia médica no Meu INSS e subiu o comprovante (comprovante_maria.pdf)',
       'Leu o comprovante (21/10, 08:30, Agência INSS Santo Amaro (exemplo)) e pôs na agenda e na ficha',
@@ -203,7 +203,7 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
     }
     const t = (await obterPericia('maria-exemplo-1'))!
     expect(t.situacao).toBe('na-advogada')
-    expect(t.pericia.historico.at(-1)!.oQue).toBe('Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável (G15)')
+    expect(t.pericia.historico.at(-1)!.oQue).toBe('Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável')
     expect(linhas()).not.toContain('Maria Exemplo · Remarcar perícia')
     expect(tarefasDaAdvogadaNaPericia()).toMatchObject([
       { codigo: 'DP.02', acao: 'Decidir a perícia', cliente: { id: 'maria-exemplo' }, href: '/casos/maria-exemplo-1/pericia', urgente: true },
@@ -222,7 +222,7 @@ describe('GGVP-53 · marcar a perícia com o cliente', () => {
       'Leu a data na publicação e pôs na agenda e na ficha: 16/10, 10:30, Vara Federal de Santo Amaro (exemplo) · sala de perícias',
     )
     const evento = (await eventosDaAgenda('2026-10-16', '2026-10-16')).find((e) => e.categoria === 'pericias')!
-    expect(evento.passo).toBe('DP.04 · Data do juízo, lida da publicação')
+    expect(evento.passo).toBe('Data do juízo, lida da publicação')
   })
 
   it('a perícia que passou não vira "confirmar entrevista" no Atendimento: o comparecimento é do Jurídico administrativo', async () => {
@@ -296,8 +296,8 @@ describe('GGVP-56 · reunir o que a perícia pede', () => {
     await marcarMaria(true)
     const sugerido = await abordarSugeridoNaPericia('maria-exemplo-1')
     expect(sugerido.startsWith('O relatório médico precisa responder:\n• ')).toBe(true)
-    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Escreva que a paciente tem CID M54.5', 'Jéssica (exemplo)')).rejects.toThrow('G20')
-    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Confirme o diagnóstico de lombalgia', 'Jéssica (exemplo)')).rejects.toThrow('G20')
+    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Escreva que a paciente tem CID M54.5', 'Jéssica (exemplo)')).rejects.toThrow('a orientação')
+    await expect(pedirAoMedicoNaPericia('maria-exemplo-1', 'Confirme o diagnóstico de lombalgia', 'Jéssica (exemplo)')).rejects.toThrow('a orientação')
     const t = await pedirAoMedicoNaPericia('maria-exemplo-1', sugerido, 'Jéssica (exemplo)')
     expect(t.pericia.documentos!.pedidosAoMedico).toMatchObject([{ abordar: sugerido }])
     const { mensagem } = await obterCobrancaDaPericia('maria-exemplo-1')
@@ -442,16 +442,16 @@ describe('GGVP-62 · preparar o cliente', () => {
     const texto = `${await textoDo('antonio-exemplo-1')}
 Esconda o carro na garagem do vizinho antes do dia.`
     await expect(enviarOrientacao('antonio-exemplo-1', { texto, canal: 'chatwoot', revisei: true }, IGOR)).rejects.toThrow(
-      'A orientação nunca manda esconder ou omitir a situação real (G11).',
+      'A orientação nunca manda esconder ou omitir a situação real.',
     )
     const comCid = `${await textoDo('antonio-exemplo-1')}
 O laudo deve trazer o CID M54.5.`
-    await expect(enviarOrientacao('antonio-exemplo-1', { texto: comCid, canal: 'ligacao', revisei: true }, IGOR)).rejects.toThrow(/G20/)
+    await expect(enviarOrientacao('antonio-exemplo-1', { texto: comCid, canal: 'ligacao', revisei: true }, IGOR)).rejects.toThrow(/a orientação/)
     const p = (await obterPericia('antonio-exemplo-1'))!.pericia
     expect(p.preparacao).toBeUndefined()
     expect(p.enviosRecusados).toHaveLength(2)
-    expect(p.enviosRecusados![0]).toMatchObject({ quem: IGOR, motivo: 'A orientação nunca manda esconder ou omitir a situação real (G11).', texto })
-    expect(p.historico.at(-2)?.oQue).toBe(`Recusou o envio da orientação por ${IGOR}: A orientação nunca manda esconder ou omitir a situação real (G11).`)
+    expect(p.enviosRecusados![0]).toMatchObject({ quem: IGOR, motivo: 'A orientação nunca manda esconder ou omitir a situação real.', texto })
+    expect(p.historico.at(-2)?.oQue).toBe(`Recusou o envio da orientação por ${IGOR}: A orientação nunca manda esconder ou omitir a situação real.`)
     expect(linhas()).toContain(ORIENTAR_ANTONIO)
   })
 
@@ -471,7 +471,7 @@ O laudo deve trazer o CID M54.5.`
     expect(r.texto).toBe(
       'A próxima tarefa é sua: orientar Antônio para a perícia de 16/10. A orientação da IA está pronta com data, local, o que levar e como é a perícia médica: ' +
         'sexta, 16/10, às 10:30, em Vara Federal de Santo Amaro (exemplo) · sala de perícias; levar documento com foto, carteira de trabalho, laudos, ' +
-        'exames, receitas e atestados. Nunca oriente a esconder ou mudar a situação real (G11).',
+        'exames, receitas e atestados. Nunca oriente a esconder ou mudar a situação real.',
     )
     expect(r.itens).toEqual([
       { cliente: 'Antônio Exemplo', acao: 'Orientar para a perícia', sub: 'perícia 16/10 · orientação da IA pronta', href: '/casos/antonio-exemplo-1/pericia/orientar' },
@@ -585,7 +585,7 @@ describe('GGVP-66 · comparecimento e remarcação', () => {
     const t = await registrarComparecimento(ANTONIO, { compareceu: false }, IGOR)
     expect(t.situacao).toBe('na-advogada')
     expect(t.pericia.historico.at(-3)?.oQue).toBe('Registrou que Antônio não compareceu (sem justificativa)')
-    expect(t.pericia.historico.at(-1)?.oQue).toBe('Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável (G15)')
+    expect(t.pericia.historico.at(-1)?.oQue).toBe('Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável')
     expect(doAntonio()).toEqual([])
     expect(tarefasDaAdvogadaNaPericia()).toMatchObject([{ acao: 'Decidir a perícia', cliente: { id: 'antonio-exemplo' } }])
   })
@@ -647,7 +647,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(t.ficha.arquivos.at(-1)).toMatchObject({ nome: 'laudo_pericia_antonio.pdf', tipo: 'laudo-pericia', local: ANTONIO })
     expect(t.pericia.historico.slice(-3, -1).map((e) => e.oQue)).toEqual([
       'Registrou o resultado: favorável (laudo laudo_pericia_antonio.pdf)',
-      'O resultado subiu no card e voltou para quem pediu (pedido do juiz): volta ao judicial: manifestar sobre o laudo, até 31/10 (15 dias, G12)',
+      'O resultado subiu no card e voltou para quem pediu (pedido do juiz): volta ao judicial: manifestar sobre o laudo, até 31/10 (15 dias)',
     ])
     expect(etapaDaPericia(ANTONIO)).toBe('Resultado da perícia · pedido do juiz · perícia médica favorável')
     expect(tarefasDaAdvogadaNaPericia()).toEqual([])
@@ -678,7 +678,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
     expect(t.situacao).toBe('concluida')
     expect(t.pericia.historico.slice(-3, -1).map((e) => e.oQue)).toEqual([
       'Decidiu não pedir nova perícia: o caso volta à origem marcado como desfavorável',
-      'O resultado subiu no card e voltou para quem pediu (pedido do juiz): volta ao judicial: manifestar sobre o laudo, até 31/10 (15 dias, G12)',
+      'O resultado subiu no card e voltou para quem pediu (pedido do juiz): volta ao judicial: manifestar sobre o laudo, até 31/10 (15 dias)',
     ])
     expect(etapaDaPericia(ANTONIO)).toBe('Resultado da perícia · pedido do juiz · perícia médica desfavorável')
   })
@@ -711,7 +711,7 @@ describe('GGVP-70 · conferir o resultado e decidir o próximo passo', () => {
 
   it('"como o perito avalia" (Figma 2186:2): os números do sistema com o número de laudos e a base (G22) e as perícias com ele', () => {
     const r = comoOPeritoAvalia('Como o Dr. A. Prado costuma avaliar problemas de coluna?')!
-    expect(r.texto).toMatch(/Pelo acervo, Dr\. A\. Prado tem 71% · 24 de 34 laudos · base de \d\d\/\d\d\. Em coluna: 75% · 6 de 8 laudos · base de \d\d\/\d\d \(G22\)\./)
+    expect(r.texto).toMatch(/Pelo acervo, Dr\. A\. Prado tem 71% · 24 de 34 laudos · base de \d\d\/\d\d\. Em coluna: 75% · 6 de 8 laudos · base de \d\d\/\d\d\./)
     expect(r.texto).toContain('Os números vêm do sistema; eu só resumo os laudos.')
     expect(r.itens.map((i) => `${i.cliente} · ${i.acao}`)).toEqual(['Dr. A. Prado · Ver o perfil do perito', 'Antônio Exemplo · Perícia médica'])
     expect(comoOPeritoAvalia('Como o perito avalia?')).toBeNull()

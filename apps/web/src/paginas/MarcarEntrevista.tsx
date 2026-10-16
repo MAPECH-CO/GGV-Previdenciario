@@ -88,7 +88,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
   const antes = ficha.agendamentos.find((a) => a.id === remarcar)
   const noLimite = antes !== undefined && !podeRemarcar(antes.remarcacoes ?? 0)
   const motivoParado = !equipeDisponivel ? 'Agendamento indisponível: a lista de advogadas ainda não está disponível no servidor.' : noLimite
-    ? `Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior (G15).`
+    ? `Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior.`
     : !data
       ? 'Escolha o dia.'
       : !hora
@@ -120,7 +120,7 @@ export function MarcarEntrevista({ fichaId, remarcar, navegar = (url) => window.
         remarcar: antes ? { agendamentoId: antes.id, motivo } : undefined,
       })
       if (resposta.resultado === 'ocupado') return setOcupado(resposta.conflitos)
-      if (resposta.resultado === 'limite') return setErro(`Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior (G15).`)
+      if (resposta.resultado === 'limite') return setErro(`Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior.`)
       setOcupado([])
       setFeito(resposta.agendamento)
       if (opcoes.convite) setConvite('aberto')

@@ -54,7 +54,7 @@ function estadoDaEtapa(etapa: string, atual: string, t: PericiaNaTela): 'feita' 
   return 'feita'
 }
 
-export function ProcessoPericia({ processoId, abrirPerito = false }: { processoId: string; /** "Ver o perfil do perito" do chat (GGVP-61). */ abrirPerito?: boolean }) {
+export function ProcessoPericia({ processoId, abrirPerito = false }: { processoId: string; /** "Ver o perfil do perito" do chat. */ abrirPerito?: boolean }) {
   const perfil = usePerfil('Advogada')
   // GGVP-158 E9 (15/10): o conteúdo médico é de quem tem `dado_saude.ver_detalhe` (o Jurídico e o Sócio, que lê tudo), como
   // o servidor já entrega; os ids da tela usam hífen, a matriz, sublinhado.
@@ -148,7 +148,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
             <span className={proprio.selo}>{judicial ? 'Judicial · perícia' : 'Administrativo · perícia'}</span>
             <span className={passo.beneficio}>◆ {t.beneficio}</span>
             <span className={styles.etiqueta}>{etiqueta}</span>
-            <button type="button" className={styles.transcricoes} aria-disabled="true" title="As transcrições abrem pela ficha (GGVP-102)">
+            <button type="button" className={styles.transcricoes} aria-disabled="true" title="As transcrições abrem pela ficha">
               ▶ Transcrições ({ficha.transcricoes})
             </button>
           </div>
@@ -281,7 +281,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                       : t.situacao === 'aguardando-inss'
                         ? 'esperando o INSS liberar o agendamento (D2.E1)'
                         : t.situacao === 'na-advogada'
-                          ? `${pericia.remarcacoes} remarcações: passou do limite (G15)`
+                          ? `${pericia.remarcacoes} remarcações: passou do limite`
                           : t.proximaTentativa
                             ? `para marcar · tentativa diária · a próxima é ${prazoFalado(t.proximaTentativa, hoje).texto}`
                             : 'esperando o comprovante do INSS (DP.E1)'}
@@ -337,14 +337,14 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                 ) : (
                   <p className={styles.nota}>
                     Verificada antes de chegar ao Jurídico administrativo: sem instrução para esconder, mudar ou simular a situação, sem diagnóstico, CID nem frase
-                    pronta (G11, G20).
+                    pronta.
                   </p>
                 )}
                 {juridico &&
                   (t.perfil ? (
                     <p>
                       Jurimetria de {t.perfil.perito.nome}:{' '}
-                      {numerosDaJurimetria(t.perfil.jurimetria, hoje)} (G22)
+                      {numerosDaJurimetria(t.perfil.jurimetria, hoje)}
                       .{' '}
                       <button type="button" className={styles.link} onClick={() => setAberto('perito')}>
                         Ver a jurimetria do perito
@@ -378,7 +378,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
             {t.documentos?.passouDoLimite && (
               <section className={styles.cartao} aria-labelledby="decisao-documento">
                 <h2 id="decisao-documento" className={styles.cartaoTitulo}>
-                  Documento da perícia em falta (G15)
+                  Documento da perícia em falta
                 </h2>
                 <p>
                   Passou do limite de 10 dias antes da perícia e ainda falta: {t.documentos.faltando.map((i) => i.nome.toLowerCase()).join(', ')}. A advogada
@@ -407,7 +407,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
             {t.situacao === 'na-advogada' && (
               <section className={styles.cartao} aria-labelledby="decisao-advogada">
                 <h2 id="decisao-advogada" className={styles.cartaoTitulo}>
-                  Decisão da advogada responsável (G15)
+                  Decisão da advogada responsável
                 </h2>
                 <p>
                   A perícia já teve {pericia.remarcacoes} remarcações e passou do limite. Só a advogada responsável autoriza mais uma, com justificativa; a
@@ -470,7 +470,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                   </>
                 )}
                 <dt>Gov.br</dt>
-                <dd>{ficha.senhaGov.situacao === 'no-cofre' ? 'senha no cofre (G9)' : 'sem senha no cofre: renove antes de marcar (G9)'}</dd>
+                <dd>{ficha.senhaGov.situacao === 'no-cofre' ? 'senha no cofre' : 'sem senha no cofre: renove antes de marcar'}</dd>
               </dl>
             </section>
           </div>
@@ -484,7 +484,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
                 {resultado?.manifestarAte && (
                   <>
                     <dt className={styles.urgente}>{dataCurta(resultado.manifestarAte, hoje)}</dt>
-                    <dd>Manifestação sobre o laudo (15 dias, G12)</dd>
+                    <dd>Manifestação sobre o laudo (15 dias)</dd>
                   </>
                 )}
                 {t.proximaTentativa && (
@@ -576,7 +576,7 @@ export function ProcessoPericia({ processoId, abrirPerito = false }: { processoI
               <button type="button" className={proprio.secundario} aria-disabled="true">
                 Pedir documento à Documentação
               </button>
-              <p className={styles.nota}>A IA preenche; você confere e assina (G6). Prazos e regras numéricas são código, não modelo (G19).</p>
+              <p className={styles.nota}>A IA preenche; você confere e assina. Prazos e regras numéricas são código, não modelo.</p>
             </section>
           </div>
         </div>

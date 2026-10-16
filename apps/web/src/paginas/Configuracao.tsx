@@ -78,7 +78,7 @@ function KitDoBeneficio({ kit, tipos, podeEditar, aoPublicar }: { kit: Config['k
   return (
     <section className={styles.cartao} aria-label={`Kit de ${ROTULO_BENEFICIO[kit.beneficio]}`}>
       <p className={styles.dica}>
-        {kit.versao ? `Versão ${kit.versao}, desde ${dia(kit.vigenteDesde!)}.` : 'Sem kit cadastrado: a conferência avisa (G1).'} A versão nova vale para os casos
+        {kit.versao ? `Versão ${kit.versao}, desde ${dia(kit.vigenteDesde!)}.` : 'Sem kit cadastrado: a conferência avisa.'} A versão nova vale para os casos
         novos; o caso aberto fica com o kit da época.
       </p>
       {itens.length > 0 && (

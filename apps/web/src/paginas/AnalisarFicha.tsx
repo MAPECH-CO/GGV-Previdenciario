@@ -99,7 +99,7 @@ export function AnalisarFicha({ agendamentoId }: { agendamentoId: string }) {
             <p className={proprio.contato}>gov.br: {situacaoDaSenha(ficha.senhaGov, hoje)}</p>
           </section>
 
-          <p className={styles.trava}>A senha do gov.br vai para o cofre, nunca em texto (G9).</p>
+          <p className={styles.trava}>A senha do gov.br vai para o cofre, nunca em texto.</p>
 
           {feito ? (
             <section className={styles.feito} aria-labelledby="analise-registrada">

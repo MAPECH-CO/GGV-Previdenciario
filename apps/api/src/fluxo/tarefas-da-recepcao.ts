@@ -80,7 +80,7 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
     const detalhe = [
       atual.beneficio,
       pendentes(atual.faltam),
-      naSenior ? 'na sênior: decidir (G15)' : `${atual.tentativa}ª tentativa`,
+      naSenior ? 'na sênior: decidir' : `${atual.tentativa}ª tentativa`,
       decisao && !naSenior ? `decisão da sênior: ${OPCOES_DA_SENIOR[decisao.opcao].toLowerCase()}` : '',
       c.prazo ? `prazo do ${c.prazo.de} ${dataCurta(c.prazo.data, hoje)}` : '',
     ]
@@ -88,7 +88,7 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
     doCaso('Cobrar documento', c.processoId, naSenior ? null : atual.proxima, detalhe.filter(Boolean).join(' · '))
     if (naSenior) {
       const n = c.tentativas.filter((t) => t.resultado === 'sem-resposta').length
-      doCaso('Decidir cobrança', c.processoId, c.tentativas.at(-1)!.dia, `${atual.beneficio} · ${n === 1 ? '1 tentativa' : `${n} tentativas`} sem resposta · limite (G15)`)
+      doCaso('Decidir cobrança', c.processoId, c.tentativas.at(-1)!.dia, `${atual.beneficio} · ${n === 1 ? '1 tentativa' : `${n} tentativas`} sem resposta · passou do limite`)
     }
   }
 

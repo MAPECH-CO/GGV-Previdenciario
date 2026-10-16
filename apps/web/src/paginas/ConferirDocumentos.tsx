@@ -349,8 +349,8 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
                               {d.duplicadoDe && (
                                 <span className={proprio.seloAlerta}>possível duplicado de {original ? nomeTipo(original.tipo) : 'um documento já arquivado'}</span>
                               )}
-                              {d.semAssinatura && <span className={proprio.seloAlerta}>sem assinatura (G1)</span>}
-                              {d.dataEmBranco && <span className={proprio.seloAlerta}>data em branco (G1)</span>}
+                              {d.semAssinatura && <span className={proprio.seloAlerta}>sem assinatura</span>}
+                              {d.dataEmBranco && <span className={proprio.seloAlerta}>data em branco</span>}
                               {ehMedico(e.tipo) && <span className={proprio.selo}>documento médico</span>}
                               {e.tipo !== d.tipo && <span className={proprio.seloAlerta}>corrigido: a IA sugeriu {nomeTipo(d.tipo)}</span>}
                             </span>
@@ -515,7 +515,7 @@ export function ConferirDocumentos({ fichaId }: { fichaId: string }) {
               <p className={styles.ladoSub}>A IA não apontou duplicado.</p>
             )}
           </div>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <ul className={styles.ladoLista}>
             <li>• Conferir: Conferi os documentos lidos pela IA</li>
             <li>• Documento em quarentena não conta no checklist</li>

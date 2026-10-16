@@ -52,7 +52,7 @@ export function faltaCompletar(texto: string): string | null {
   return i >= 0 && t.indexOf(']', i) >= 0 ? 'O texto ainda tem [completar]: preencha antes de aprovar.' : null
 }
 
-export const MSG_JURIMETRIA_NO_TEXTO = 'O texto cita número de jurimetria (G22): tire antes de aprovar.'
+export const MSG_JURIMETRIA_NO_TEXTO = 'O texto cita número de jurimetria: tire antes de aprovar.'
 
 /**
  * GGVP-158 P5.12 (G22): o número de jurimetria fica fora do texto da peça que vai ao juiz. Casa o formato que o portal

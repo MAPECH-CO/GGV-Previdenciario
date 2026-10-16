@@ -140,7 +140,7 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
     const motivo = nomeMotivo(envio.motivo)
     if (demanda) {
       Object.assign(demanda, { situacao: 'nao-fechou', motivo: envio.motivo, ...(detalhe && { detalhe }) })
-      ficha.historico.push(evento(`Nova demanda não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Segue cliente nos outros processos (G16)`, quem))
+      ficha.historico.push(evento(`Nova demanda não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Segue cliente nos outros processos`, quem))
     } else if (envio.recontatar) {
       const em = dataIso(envio.recontatar.data)!
       ficha.fechamento = {
@@ -158,7 +158,7 @@ export async function registrarFechamento(fichaId: string, envio: EnvioDoFechame
     } else {
       ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel: envio.papel, quem, quando }
       arquivar(banco, ficha)
-      ficha.historico.push(evento(`Não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Lead arquivado com o motivo (G16)`, quem))
+      ficha.historico.push(evento(`Não fechou: ${motivo}${detalhe ? ` (${detalhe})` : ''}. Lead arquivado com o motivo`, quem))
     }
   }
   gravar(banco)
@@ -206,7 +206,7 @@ export async function registrarRecontato(fichaId: string, r: ResultadoDoRecontat
       ficha.fechamento = { situacao: 'arquivado', motivo: r.motivo, ...(detalhe && { detalhe }), papel: r.papel, quem, quando }
       arquivar(banco, ficha)
       ficha.contatos.push({ data: hoje, canal: 'Recontato', texto: `Não vai seguir: ${nomeMotivo(r.motivo)}.` })
-      ficha.historico.push(evento(`Recontatou e arquivou o lead: ${nomeMotivo(r.motivo)}${detalhe ? ` (${detalhe})` : ''} (G16)`, quem))
+      ficha.historico.push(evento(`Recontatou e arquivou o lead: ${nomeMotivo(r.motivo)}${detalhe ? ` (${detalhe})` : ''}`, quem))
     }
   }
   gravar(banco)

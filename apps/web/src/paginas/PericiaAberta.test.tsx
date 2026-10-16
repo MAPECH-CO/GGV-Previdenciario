@@ -35,7 +35,7 @@ describe('GGVP-49 · Tarefa de perícia aberta pelo sistema (Figma 14:534)', () 
   it('Lucas, 02/10 · a próxima ação, a data em que foi aberta, os prazos máximos e o botão até a tarefa', async () => {
     render(comSessao(<PericiaAberta processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { name: 'O que acontece agora' })
-    expect(screen.getByText(/O Jurídico administrativo marca a perícia médica de Maria pelo Meu INSS \(senha no cofre, G9\)/)).toBeTruthy()
+    expect(screen.getByText(/O Jurídico administrativo marca a perícia médica de Maria pelo Meu INSS \(senha no cofre\)/)).toBeTruthy()
     const prazos = screen.getByRole('heading', { name: 'Datas e prazos máximos' }).closest('section')!.textContent
     expect(prazos).toContain('Tarefa aberta em06/10/2026 16:10, pelo sistema')
     expect(prazos).toContain('liberado em 07/10/2026 08:00 (D2.E1)')

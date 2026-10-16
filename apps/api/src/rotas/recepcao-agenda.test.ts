@@ -244,7 +244,7 @@ describe('GGVP-158 P3.7 · a desistência antes da entrevista fica no servidor (
     const { agendamento } = await marcar(fichaId)
     const r = (await resultado(agendamento.id, { resultado: 'desistiu', motivo: 'outro-escritorio', recontatar: null })).json()
     expect(r.ficha.fechamento).toMatchObject({ situacao: 'arquivado', motivo: 'outro-escritorio' })
-    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Foi a outro escritório\. Lead arquivado com o motivo \(G16\)$/)
+    expect(r.ficha.historico.at(-1).oQue).toMatch(/^Desistiu antes da entrevista de .+: Foi a outro escritório\. Lead arquivado com o motivo$/)
     expect((await resultado(agendamento.id, { resultado: 'realizado' })).statusCode).toBe(400)
   })
 })

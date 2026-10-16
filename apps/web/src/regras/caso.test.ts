@@ -86,9 +86,9 @@ describe('GGVP-86 · o caso numa linha só', () => {
     expect(faseDoCaso({ etapa: 'Contrato · conferência', numero: '0000002-70.2026.4.03.6100' })).toBe('judicial')
     expect(identificacao('administrativa', { nb: '4561237895' })).toEqual({ rotulo: 'NB', valor: '456.123.789-5' })
     expect(identificacao('administrativa', { protocolo: '1.234.567' })).toEqual({ rotulo: 'Protocolo', valor: '1.234.567' })
-    expect(identificacao('administrativa', {})).toEqual({ rotulo: 'NB', valor: 'sem NB nem protocolo ainda' })
+    expect(identificacao('administrativa', {})).toEqual({ rotulo: 'NB', valor: 'sem número ainda' })
     expect(identificacao('judicial', { numero: '00000027020264036100', nb: '4561237895' })).toEqual({ rotulo: 'Processo (CNJ)', valor: '0000002-70.2026.4.03.6100' })
-    expect(identificacao('judicial', {}).valor).toBe('número CNJ ainda não lido')
+    expect(identificacao('judicial', {}).valor).toBe('sem número ainda')
   })
 
   it('CA6 e G22 · os números da jurimetria vêm do código, com o número de casos ao lado e a data da base, sem amostra mínima', () => {

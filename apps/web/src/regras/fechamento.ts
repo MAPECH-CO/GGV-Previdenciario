@@ -49,7 +49,7 @@ export function motivoParadoDoFechamento(e: EstadoDoFechamento, hoje: string): s
     if (!e.beneficio || e.beneficio === 'nao-sei') return 'Falta o benefício definido pela advogada.'
     return e.calculoPendente ? 'Falta calcular o tempo e os pontos: obrigatório antes de fechar.' : null
   }
-  if (!e.motivo) return 'Escolha o motivo: sem ele o lead não pode ser encerrado (G16).'
+  if (!e.motivo) return 'Escolha o motivo: sem ele o lead não pode ser encerrado.'
   if (!podeRegistrarOMotivo(e.motivo, e.papel)) return 'A recusa do escritório é registrada pelo Atendimento sênior ou pela advogada do atendimento.'
   if (e.detalhe.length > TAMANHO_DO_DETALHE) return `Detalhe até ${TAMANHO_DO_DETALHE} caracteres.`
   if (e.recontatar === null) return 'Responda se vale recontatar numa data prevista.'

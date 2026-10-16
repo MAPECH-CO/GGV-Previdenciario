@@ -25,7 +25,7 @@ test('o lead que a Atendimento cadastra no balcão, a advogada acha e abre no co
   await expect(advogada.getByRole('list', { name: 'Pessoas encontradas' }).getByRole('button', { name: /Lia Servidor Teste/ })).toBeVisible()
 
   await advogada.goto(ficha)
-  await expect(advogada.getByRole('heading', { level: 2, name: 'Lia Servidor Teste' })).toBeVisible()
+  await expect(advogada.getByRole('heading', { level: 1, name: 'Lia Servidor Teste' })).toBeVisible()
   await expect(advogada.getByRole('list', { name: 'Últimos contatos' })).toContainText('Quer saber do BPC do idoso.')
   const historico = advogada.getByRole('list', { name: 'Histórico' })
   await expect(historico).toContainText('Criou a ficha no balcão (lead)')

@@ -132,7 +132,7 @@ export function ConferirEnviar({ fichaId, origem, iniciais = [], aoEnviar, aoFec
         )}
         <p className={styles.avisoLaudo}>
           Se for laudo, o portal marca «Laudo novo» na ficha e no processo e avisa a advogada. Quem não é do Jurídico não vê o
-          conteúdo do laudo (G17).
+          conteúdo do laudo.
         </p>
         {aviso && (
           <p role="alert" className={styles.erro}>

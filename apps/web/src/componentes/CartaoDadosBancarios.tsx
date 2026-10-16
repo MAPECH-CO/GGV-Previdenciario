@@ -3,6 +3,7 @@ import { formatarAgencia, formatarConta } from '../campos.ts'
 import { confirmarMudancaBancaria, obterDadosBancarios, pedirMudancaBancaria, type PedidoBancario, type RegistroBancario } from '../dados/seguranca.ts'
 import { dataHora } from '../regras/datas.ts'
 import { COMO_VERIFICOU, erroDosDadosBancarios, motivoParaNaoMudar, type ComoVerificou, type DadosBancarios } from '../regras/seguranca.ts'
+import { usePode, useSessao } from '../sessao.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './CartaoDadosBancarios.module.css'
 
@@ -22,6 +23,9 @@ const lido = (d: DadosBancarios) => `${d.banco} · agência ${d.agencia} · cont
  */
 export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
   const id = useId()
+  // Mudar é de quem pede a mudança; o Sócio e o Financeiro só leem. Sem sessão (a tela sozinha, nos testes), como foi desenhada.
+  const semSessao = useSessao() === null
+  const podePedir = usePode('dados_bancarios.pedir') || semSessao
   const [atual, setAtual] = useState<RegistroBancario | null>(null)
   const [pedido, setPedido] = useState<PedidoBancario | null>(null)
   const [mudando, setMudando] = useState(false)
@@ -153,9 +157,11 @@ export function CartaoDadosBancarios({ fichaId, aoMudar }: Props) {
           </div>
         </div>
       ) : (
-        <button type="button" className={styles.botao} onClick={() => (setMudando(true), setAviso(''))}>
-          Mudar dados bancários
-        </button>
+        podePedir && (
+          <button type="button" className={styles.botao} onClick={() => (setMudando(true), setAviso(''))}>
+            Mudar dados bancários
+          </button>
+        )
       )}
       {erro && (
         <p role="alert" className={styles.motivo}>

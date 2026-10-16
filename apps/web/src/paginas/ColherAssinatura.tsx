@@ -190,13 +190,13 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
 
   const instrucoes = !servicos.zapsign
     ? `Imprima o kit, colha a assinatura de ${primeiro} em papel e digitalize o contrato assinado. Diga que a cópia assinada ` +
-      'chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
+      'chega pelo WhatsApp. Sem assinatura, nada vai para o INSS.'
     : podePapel
       ? `Pergunte como ${primeiro} prefere assinar. Pelo celular: envie pelo ZapSign e acompanhe; o link vai pelo WhatsApp. ` +
         'Se preferir papel, imprima, colha a assinatura e digitalize. Diga que a cópia assinada chega pelo WhatsApp. ' +
-        'Sem assinatura, nada vai para o INSS (G1).'
+        'Sem assinatura, nada vai para o INSS.'
       : `A entrevista de ${primeiro} foi por ${comoFoi}: a assinatura vai pelo ZapSign, com o link pelo WhatsApp (papel só na ` +
-        'entrevista presencial). Diga que a cópia assinada chega pelo WhatsApp. Sem assinatura, nada vai para o INSS (G1).'
+        'entrevista presencial). Diga que a cópia assinada chega pelo WhatsApp. Sem assinatura, nada vai para o INSS.'
 
   return (
     <>
@@ -294,7 +294,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
               )}
               {!assinado && naSenior && (
                 <p className={styles.aviso}>
-                  Limite de {TENTATIVAS_DE_ASSINATURA} tentativas atingido (G15): o caso subiu para a advogada sênior. Se o cliente assinar, o
+                  Limite de {TENTATIVAS_DE_ASSINATURA} tentativas atingido: o caso subiu para a advogada sênior. Se o cliente assinar, o
                   ZapSign devolve e a tarefa se encerra sozinha.
                 </p>
               )}
@@ -302,7 +302,7 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
                 <div className={styles.aviso}>
                   <p>
                     Hoje: tente contato de novo (tentativa {cobranca.feitas + 1} de {TENTATIVAS_DE_ASSINATURA}). O link é o mesmo: nenhum documento
-                    novo no ZapSign. Sem assinatura depois dela, o caso sobe para a advogada sênior (G15).
+                    novo no ZapSign. Sem assinatura depois dela, o caso sobe para a advogada sênior.
                   </p>
                   <div className={styles.atalhos}>
                     <button
@@ -495,10 +495,10 @@ export function ColherAssinatura({ processoId }: { processoId: string }) {
           </ul>
           {celular && (
             <>
-              <h3 className={styles.ladoSecao}>Travas e estados</h3>
+              <h3 className={styles.ladoSecao}>Regras e situação</h3>
               <ul className={styles.ladoLista}>
                 <li>
-                  Tentativa {Math.max(cobranca.feitas, 1)} de {TENTATIVAS_DE_ASSINATURA} · limite (G15)
+                  Tentativa {Math.max(cobranca.feitas, 1)} de {TENTATIVAS_DE_ASSINATURA}
                 </li>
                 <li>Pendente: Documento assinado devolvido pelo ZapSign</li>
               </ul>

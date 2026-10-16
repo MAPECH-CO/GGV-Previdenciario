@@ -80,7 +80,7 @@ describe('Detalhe do compromisso', () => {
     if (segunda.resultado !== 'marcado') throw new Error(segunda.resultado)
     const { janela } = abrir(await evento(segunda.agendamento.id))
     expect(janela.queryByRole('link', { name: 'Remarcar' })).toBeNull()
-    expect(janela.getByText('Já são 2 remarcações: o caso sobe para a advogada sênior (G15).')).toBeTruthy()
+    expect(janela.getByText('Já são 2 remarcações: o caso sobe para a advogada sênior.')).toBeTruthy()
 
     const interno = await criarCompromissoInterno({ titulo: 'Gravação do vídeo', data: '2026-10-06', hora: '17:00', duracao: 60, responsavel: 'atendimento' })
     cleanup()

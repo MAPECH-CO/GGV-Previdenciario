@@ -177,7 +177,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
               ) : (
                 <p>
                   O resultado subiu no card e voltou para quem pediu ({ORIGENS[pericia.origem].rotulo}): {COMO_SEGUE[pericia.origem]}
-                  {r.manifestarAte && `, até ${dataCurta(r.manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)`}.
+                  {r.manifestarAte && `, até ${dataCurta(r.manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias)`}.
                 </p>
               )}
               <a className={styles.atalho} href={`/casos/${processoId}/pericia`}>
@@ -252,7 +252,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                     <dd>
                       {!t.perfil
                         ? 'perito não identificado: sem jurimetria'
-                        : `${numerosDaJurimetria(j!, hoje)} (G22)`}
+                        : `${numerosDaJurimetria(j!, hoje)}`}
                     </dd>
                     <dt>Ponto de atenção</dt>
                     <dd>{lido.pontoDeAtencao}</dd>
@@ -307,7 +307,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                 ))}
               </section>
 
-              <p className={styles.aviso}>Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima (G22).</p>
+              <p className={styles.aviso}>Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima.</p>
 
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivo !== null} onClick={() => void registrar()}>
@@ -315,10 +315,10 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
                 </button>
                 {judicial && (
                   <>
-                    <button type="button" className={proprio.secundario} aria-disabled="true" title="Peça preparada pela IA, que você assina (G6): outra história">
+                    <button type="button" className={proprio.secundario} aria-disabled="true" title="Peça preparada pela IA, que você assina">
                       Pedir esclarecimentos (quesitos)
                     </button>
-                    <button type="button" className={proprio.secundario} aria-disabled="true" title="Peça preparada pela IA, que você assina (G6): outra história">
+                    <button type="button" className={proprio.secundario} aria-disabled="true" title="Peça preparada pela IA, que você assina">
                       Impugnar o laudo
                     </button>
                   </>
@@ -358,7 +358,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
               ))}
             </div>
           </div>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <ul className={styles.ladoLista}>
             {exigidas.map((c) => (
               <li key={c.id}>Conferir: {c.rotulo}</li>
@@ -368,7 +368,7 @@ export function ResultadoPericia({ processoId }: { processoId: string }) {
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p className={styles.ladoSub}>
             {judicial
-              ? `Prazo para manifestar: ${DIAS_PARA_MANIFESTAR} dias, contado pelo lado seguro (G12)${manifestar ? `, até ${dataCurta(manifestar, hoje)} se registrar hoje` : ''}. Se impugnar ou pedir quesitos, a IA prepara a peça e você assina (G6). `
+              ? `Prazo para manifestar: ${DIAS_PARA_MANIFESTAR} dias, contado pelo lado seguro${manifestar ? `, até ${dataCurta(manifestar, hoje)} se registrar hoje` : ''}. Se impugnar ou pedir quesitos, a IA prepara a peça e você assina. `
               : ''}
             O resultado sobe no card e volta para quem pediu ({ORIGENS[pericia.origem].rotulo}): {COMO_SEGUE[pericia.origem]}. Desfavorável: avaliar se vale pedir nova
             perícia.
