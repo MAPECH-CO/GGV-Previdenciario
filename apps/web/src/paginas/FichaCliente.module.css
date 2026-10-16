@@ -1,9 +1,12 @@
-/* Figma 73:199: coluna da esquerda e coluna de 420 à direita, com 14 entre elas. */
+/* Figma 73:199: coluna da esquerda e coluna de 420 à direita, com 14 entre elas. A mesma largura máxima do título (TopoFicha),
+   para a borda esquerda dos cartões bater com a do título. */
 .pagina {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 14px;
+  width: min(1240px, 100%);
+  margin: 0 auto;
   padding: 16px 32px;
   /* O sublinhado dos links (Preencher a ficha e afins) desce um pouco e não encosta nas letras. */
   text-underline-offset: 3px;
@@ -48,18 +51,6 @@
   font-size: var(--fonte-12);
 }
 
-.transcricoes {
-  padding: 6px 12px;
-  border: 0;
-  border-radius: var(--raio-8);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
-  font-size: var(--fonte-13);
-  font-weight: 600;
-  white-space: nowrap;
-  box-shadow: var(--sombra-acento);
-}
-
 .vazia {
   display: flex;
   flex-direction: column;
@@ -78,7 +69,7 @@
   font-weight: 600;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .pagina {
     padding: 16px;
   }
@@ -88,8 +79,9 @@
   }
 }
 
-/* "Nova demanda" de quem já é cliente (GGVP-124): ao lado de "Transcrições", em contorno. */
-.novaDemanda {
+/* Os botões do topo da ficha (GGVP-124): "Nova demanda", "Mensagem ao cliente" e "Transcrições" com conteúdo, em contorno.
+   Nenhum deles é cheio: o laranja cheio fica para o que a tela pede de fato (o "Salvar alterações"). */
+.acaoTopo {
   padding: 5px 12px;
   border: 1px solid var(--cor-acento);
   border-radius: var(--raio-8);
@@ -100,6 +92,19 @@
   font-size: var(--fonte-13);
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* "Transcrições (0)": sem nada dentro, o botão é de contorno cinza, para não puxar o olhar. */
+.acaoTopoDiscreta {
+  padding: 5px 12px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  background-color: var(--cor-superficie);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: var(--sombra-1);
 }
 
 /* "Ver versões" no cartão Histórico (GGVP-84): as versões dos campos que a conversa mudou. */
@@ -116,10 +121,12 @@
 }
 
 /* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */
-.novaDemanda:not(:disabled):hover {
+.acaoTopo:not(:disabled):hover,
+.acaoTopoDiscreta:not(:disabled):hover {
   background-image: var(--estado-passar);
 }
 
-.novaDemanda:not(:disabled):active {
+.acaoTopo:not(:disabled):active,
+.acaoTopoDiscreta:not(:disabled):active {
   background-image: var(--estado-apertar);
 }

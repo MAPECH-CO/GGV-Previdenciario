@@ -28,11 +28,6 @@
   min-width: 0;
 }
 
-.nome {
-  font-size: var(--fonte-18);
-  font-weight: 600;
-}
-
 .linha {
   color: var(--cor-texto-suave);
   font-size: var(--fonte-12);
@@ -68,25 +63,3 @@
   color: var(--cor-acento);
 }
 
-.foto {
-  padding: 8px 14px;
-  border: 1px solid var(--cor-linha);
-  border-radius: var(--raio-8);
-  background: var(--cor-superficie);
-  font-size: var(--fonte-13);
-  font-weight: 600;
-}
-
-/* A foto é de outra história: o botão aparece apagado e não reage ao passar nem ao apertar, para não prometer o que
-   ainda não faz. */
-.foto[aria-disabled='true'] {
-  box-shadow: none;
-  color: var(--cor-texto-suave-2);
-  cursor: not-allowed;
-}
-
-.foto[aria-disabled='true']:hover,
-.foto[aria-disabled='true']:active {
-  background-image: none;
-  scale: none;
-}

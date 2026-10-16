@@ -28,7 +28,7 @@ describe('Analisar laudo novo · tela da advogada', () => {
     expect(within(tabela).getAllByRole('columnheader').map((c) => c.textContent)).toEqual(['O que compara', 'Último laudo · 18/09', 'Laudo novo · 29/09'])
     const mudaram = [...tabela.querySelectorAll('[data-mudou]')].map((c) => c.textContent)
     expect(mudaram).toEqual(['Raio-X de coluna lombar e ressonância magnética (22/09)', 'Carregar peso, ficar em pé e dirigir'])
-    expect(screen.getByText('A IA só compara: não sugere CID, grau nem conclusão (G20). Quem confirma o laudo e o parecer de suficiência (G17) é a advogada.')).toBeTruthy()
+    expect(screen.getByText('A IA só compara: não sugere CID, grau nem conclusão. Quem confirma o laudo e o parecer de suficiência é a advogada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Ir para o parecer' }).getAttribute('href')).toBe('/casos/antonio-exemplo-1/parecer')
     // CA6 (Pedro, 14/10): a tela é de leitura e diz onde fica a ação.
     expect(screen.getByRole('heading', { name: 'Como segue' }).nextElementSibling?.textContent).toBe(

@@ -20,11 +20,11 @@ function frase(p: ParecerNaTela): string {
     case 'insuficiente':
       return `A documentação médica ainda não cobre o que o ${p.beneficio} exige.`
     case 'contraditorio':
-      return `Um documento contradiz o requisito do ${p.beneficio}: o caso não avança (G18).`
+      return `Um documento contradiz o requisito do ${p.beneficio}: o caso não avança.`
     case 'pendente':
-      return 'A IA analisou os documentos; falta a conferência do Jurídico (G17).'
+      return 'A IA analisou os documentos; falta a conferência do Jurídico.'
     case 'dispensado':
-      return 'Duas sêniores dispensaram o parecer, com justificativa: o caso segue assumindo o risco (G17).'
+      return 'Duas sêniores dispensaram o parecer, com justificativa: o caso segue assumindo o risco.'
     default:
       return 'Nenhum documento médico chegou para este caso.'
   }
@@ -97,7 +97,7 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
                 <p className={styles.resultadoTitulo}>{frase(p)}</p>
                 <p className={styles.detalhe}>
                   {p.sugeridoEm && `Sugerido pela IA em ${curta(p.sugeridoEm)} · `}
-                  {p.confirmado ? `confirmado por pessoa: ${p.confirmado.quem}, ${curta(p.confirmado.quando)} (G17).` : p.situacao !== 'sem-documentos' ? 'aguardando a conferência do Jurídico (G17).' : ''}{' '}
+                  {p.confirmado ? `confirmado por pessoa: ${p.confirmado.quem}, ${curta(p.confirmado.quando)}.` : p.situacao !== 'sem-documentos' ? 'aguardando a conferência do Jurídico.' : ''}{' '}
                   Só a sênior dispensa o parecer, com justificativa.
                 </p>
                 {!p.precisaParecer && <p className={styles.detalhe}>{p.beneficio} não está na matriz de laudos: o parecer não trava a liberação.</p>}
@@ -108,7 +108,7 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
             {p.dispensa && (
               <section aria-labelledby="dispensa">
                 <h3 id="dispensa" className={styles.secao}>
-                  Dispensa do parecer (G17)
+                  Dispensa do parecer
                 </h3>
                 <p className={styles.detalhe}>
                   Pedida por {p.dispensa.pedidaPor} em {curta(p.dispensa.pedidaEm)}
@@ -174,7 +174,7 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
                               <br />
                               {i.tipo === 'contradicao'
                                 ? i.situacao === 'contraditorio'
-                                  ? `encontrada${evidencia ? ` em ${evidencia.documento}` : ''}: o caso trava (G18)`
+                                  ? `encontrada${evidencia ? ` em ${evidencia.documento}` : ''}: o caso trava`
                                   : 'não encontrada'
                                 : `${SITUACOES_DO_ITEM[i.situacao]}${evidencia ? ` · ${evidencia.documento}` : ''}`}
                             </span>
@@ -204,7 +204,7 @@ export function ParecerMedico({ processoId, funcao, aoFechar }: Props) {
 
             <p className={styles.nota}>
               O que o Atendimento vê aqui: o resultado, os documentos e o que falta pedir. O conteúdo clínico (CID, texto dos laudos) fica com o Jurídico. Se
-              algo faltar, o pedido ao médico lista o que o documento deve abordar, sem sugerir diagnóstico, CID ou conclusão (G20).
+              algo faltar, o pedido ao médico lista o que o documento deve abordar, sem sugerir diagnóstico, CID ou conclusão.
             </p>
 
             {historico && (

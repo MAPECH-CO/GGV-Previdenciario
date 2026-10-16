@@ -37,7 +37,7 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
               {perito.nome}
             </strong>
             <span className={jurimetria.laudos ? styles.suficiente : styles.insuficiente}>
-              números do sistema (G22)
+              números do sistema
             </span>
           </p>
           <p className={styles.sub}>
@@ -125,7 +125,7 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
 
       <div className={styles.pe}>
         <p className={styles.nota}>
-          Números calculados pelo sistema a partir do acervo. A IA só resume o que os documentos dizem. Nada disto vai ao cliente com amostra pequena (G22).
+          Números calculados pelo sistema a partir do acervo. A IA só resume o que os documentos dizem. Nada disto vai ao cliente com amostra pequena.
         </p>
         <button type="button" className={styles.botao} onClick={aoFechar}>
           Fechar

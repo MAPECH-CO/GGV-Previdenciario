@@ -94,7 +94,7 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
     ])
     expect((await obterFicha('rita-exemplo'))?.historico.at(-1)).toMatchObject({
       quem: 'Dra. Paula (exemplo)',
-      oQue: 'Registrou o parecer médico do LOAS Deficiente: Insuficiente (G17)',
+      oQue: 'Registrou o parecer médico do LOAS Deficiente: Insuficiente',
     })
     expect(complementoAberto(ler(), 'rita-exemplo-1')).toMatchObject({ parecer: 'insuficiente', abordar, quem: 'Dra. Paula (exemplo)' })
     expect(tarefasDeComplemento()).toEqual([
@@ -190,9 +190,9 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
   it('a Central da Advogada: "Dar parecer médico" da Rita e "Analisar laudo novo" do Antônio; o Sebastião já conferido não aparece', () => {
     expect(tarefasDoParecer().map((t) => [t.cliente?.nome, t.acao, t.detalhe])).toEqual([
       ['Antônio Exemplo', 'Analisar laudo novo', 'Aposentadoria por Incapacidade Permanente · enviado pelo Atendimento em 29/09 · resumo e comparação da IA prontos'],
-      ['Rita Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)'],
+      ['Rita Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item'],
       // GGVP-50: o Davi, de 7 anos, com o roteiro infantil.
-      ['Davi Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)'],
+      ['Davi Exemplo', 'Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item'],
     ])
   })
 
@@ -224,9 +224,9 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
 
   it('a ficha do Atendimento mostra o resultado e quem confirmou, sem o conteúdo', async () => {
     expect(resumoParaAFicha('sebastiao-exemplo')).toBe(
-      '5 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 15/07 (G17). O conteúdo dos laudos não é exibido aqui.',
+      '5 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 15/07. O conteúdo dos laudos não é exibido aqui.',
     )
-    expect(resumoParaAFicha('rita-exemplo')).toBe('1 documento médico · parecer aguardando a conferência do Jurídico (G17). O conteúdo dos laudos não é exibido aqui.')
+    expect(resumoParaAFicha('rita-exemplo')).toBe('1 documento médico · parecer aguardando a conferência do Jurídico. O conteúdo dos laudos não é exibido aqui.')
     expect(resumoParaAFicha('josefa-exemplo')).toBeUndefined()
   })
 
@@ -246,12 +246,12 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
     it('CA1 · sem parecer em ordem, as três ações travam e dizem o que falta', async () => {
       const pendente = parecerParaOPortao(ler(), 'rita-exemplo-1')
       for (const acao of ['liberar', 'aprovar-inss', 'pedir-peticao'] as const) {
-        expect(travaDoParecer(acao, 'loas-deficiente', pendente)).toMatch(/ainda não foi confirmado por pessoa do Jurídico \(G17\)/)
+        expect(travaDoParecer(acao, 'loas-deficiente', pendente)).toMatch(/ainda não foi confirmado por pessoa do Jurídico/)
       }
       const abordar = (await juridico('rita-exemplo-1')).juridico!.abordarSugerido
       await registrarParecer('rita-exemplo-1', await pedido('rita-exemplo-1', 'insuficiente', { abordar }), PAULA)
       expect(travaDoParecer('aprovar-inss', 'loas-deficiente', parecerParaOPortao(ler(), 'rita-exemplo-1'))).toBe(
-        'Não dá para aprovar para o INSS: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).',
+        'Não dá para aprovar para o INSS: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito.',
       )
     })
 
@@ -277,8 +277,8 @@ describe('Parecer de suficiência · servidor de exemplo', () => {
       for (const acao of ['liberar', 'aprovar-inss', 'pedir-peticao'] as const) expect(travaDoParecer(acao, 'loas-deficiente', parecerParaOPortao(ler(), 'rita-exemplo-1'))).toBeNull()
       const historico = (await obterFicha('rita-exemplo'))!.historico.map((e) => [e.quem, e.oQue])
       expect(historico.slice(-2)).toEqual([
-        ['Dra. Renata (exemplo)', `Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17). Justificativa: ${JUSTIFICATIVA}`],
-        ['Dr. Otávio (exemplo)', 'Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por Dra. Renata (exemplo) e Dr. Otávio (exemplo) (G17)'],
+        ['Dra. Renata (exemplo)', `Pediu a dispensa do parecer médico (1ª aprovação da sênior). Justificativa: ${JUSTIFICATIVA}`],
+        ['Dr. Otávio (exemplo)', 'Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por Dra. Renata (exemplo) e Dr. Otávio (exemplo)'],
       ])
       // O Atendimento vê a dispensa e a justificativa no card.
       expect((await obterParecer('rita-exemplo-1', 'atendimento'))?.dispensa?.justificativa).toBe(JUSTIFICATIVA)

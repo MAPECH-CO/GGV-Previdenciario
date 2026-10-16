@@ -3,18 +3,18 @@ import { entrarPelaApi } from './entrar.ts'
 const clienteId = '10000000-0000-4000-8000-000000000001'
 const casoId = '20000000-0000-4000-8000-000000000002'
 
-test('a busca do topo e da Central consulta a API e oferece o caso ainda sem número', async ({ page }) => {
+test('a busca única do topo consulta a API e oferece o caso ainda sem número', async ({ page }) => {
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.route('**/api/clientes/busca', r => r.fulfill({ json: { clientes: [{ id: clienteId, nome: 'Cliente Inventado Busca', cpf: null, beneficio: null, cidade: null, processos: 1, situacao: 'em_andamento', ultimoContato: null }], total: 1, leads: 0, pagina: 1, paginas: 1, opcoes: { beneficios: [], cidades: [] } } }))
   await page.route('**/api/processos/busca', r => r.fulfill({ json: { processos: [{ id: casoId, clienteId, numero: null, autor: 'Cliente Inventado Busca', beneficio: null, fase: 'atendimento', foro: null, juiz: null, perito: null, desfecho: 'em_andamento', ajuizadoEm: null }], total: 1, doAcervo: 0, pagina: 1, paginas: 1, opcoes: { beneficios: [], foros: [], juizes: [], peritos: [] } } }))
   await page.goto('/')
-  for (const rotulo of ['Buscar cliente, caso ou processo', 'Buscar cliente, caso ou processo na Central']) {
-    const busca = page.getByRole('search', { name: rotulo, exact: true })
-    await busca.getByRole('searchbox').fill('Cliente Inventado')
-    await busca.getByRole('button', { name: 'Buscar', exact: true }).click()
-    const resultado = page.getByRole('region', { name: rotulo.endsWith('Central') ? 'Resultado da busca da Central' : 'Resultado da busca do topo' })
-    await expect(resultado.getByRole('link', { name: 'Caso sem número · Cliente Inventado Busca' })).toHaveAttribute('href', '/casos/' + casoId)
-  }
+  // Uma busca só na tela inicial (antes eram duas, com resultados diferentes).
+  await expect(page.getByRole('searchbox')).toHaveCount(1)
+  const campo = page.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })
+  await campo.fill('Cliente Inventado')
+  await campo.press('Enter')
+  const resultado = page.getByRole('region', { name: 'Resultado da busca' })
+  await expect(resultado.getByRole('link', { name: 'Cliente Inventado Busca · sem número ainda' })).toHaveAttribute('href', '/casos/' + casoId)
 })
 
 test('a página do processo mostra juízo e laudo da API sem inventar estratégia', async ({ page }) => {
@@ -31,5 +31,5 @@ test('a página do processo mostra juízo e laudo da API sem inventar estratégi
   await expect(page.getByRole('region', { name: 'Juízo e perícia do servidor' })).toContainText('Vara Inventada')
   await expect(page.getByRole('region', { name: 'Laudo novo do processo' })).toContainText('02/10/2030')
   await expect(page.getByRole('link', { name: 'Analisar o laudo novo' })).toHaveAttribute('href', '/casos/' + casoId + '/laudo-novo')
-  await expect(page.getByRole('region', { name: 'Estratégia do processo' })).toContainText('ainda não estão disponíveis')
+  await expect(page.getByRole('region', { name: 'Estratégia do processo' })).toHaveCount(0)
 })

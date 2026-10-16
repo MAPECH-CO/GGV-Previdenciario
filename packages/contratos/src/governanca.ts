@@ -343,19 +343,19 @@ export function travaDoParecer(
   if (!precisaDeParecer(beneficio)) return null
   const fazer = `Não dá para ${ACOES_DO_PORTAO[acao]}`
   if (parecer?.contradicoes?.length)
-    return `${fazer}: a análise da IA achou documento que contradiz o requisito do benefício (${parecer.contradicoes.map((c) => c.texto.toLowerCase()).join('; ')}). O caso fica parado até o Jurídico conferir o parecer (G18).`
+    return `${fazer}: a análise da IA achou documento que contradiz o requisito do benefício (${parecer.contradicoes.map((c) => c.texto.toLowerCase()).join('; ')}). O caso fica parado até o Jurídico conferir o parecer.`
   const emOrdem = parecer?.situacao === 'suficiente' || parecer?.situacao === 'dispensado'
-  if (emOrdem && laudoNovoEsperando) return `${fazer}: há laudo novo esperando a conferência do Jurídico (G17).`
+  if (emOrdem && laudoNovoEsperando) return `${fazer}: há laudo novo esperando a conferência do Jurídico.`
   if (emOrdem) return null
-  if (dispensaPedida) return `${fazer}: a dispensa do parecer foi pedida e espera a aprovação de outra Sênior (G17).`
+  if (dispensaPedida) return `${fazer}: a dispensa do parecer foi pedida e espera a aprovação de outra Sênior.`
   switch (parecer?.situacao) {
     case 'insuficiente':
-      return `${fazer}: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).`
+      return `${fazer}: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito.`
     case 'contraditorio':
-      return `${fazer}: um documento contradiz o requisito do benefício e o parecer está Contraditório (G18).`
+      return `${fazer}: um documento contradiz o requisito do benefício e o parecer está Contraditório.`
     case 'pendente':
-      return `${fazer}: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico (G17).`
+      return `${fazer}: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico.`
     default:
-      return `${fazer}: falta o parecer médico "Suficiente", confirmado por pessoa (G17).`
+      return `${fazer}: falta o parecer médico "Suficiente", confirmado por pessoa.`
   }
 }

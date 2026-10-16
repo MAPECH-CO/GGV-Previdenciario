@@ -80,7 +80,7 @@ describe('Checklist do benefício · servidor de exemplo', () => {
     await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [pdf('grupo familiar sem assinatura.pdf', 'grupo-familiar', 1)] })
     await arquivarTudo('rita-exemplo')
     const item = (await obterChecklist('rita-exemplo-1'))?.checklist.itens.find((i) => i.tipo === 'grupo-familiar')
-    expect(item).toMatchObject({ situacao: 'pendente', motivo: 'chegou sem assinatura (G1)' })
+    expect(item).toMatchObject({ situacao: 'pendente', motivo: 'chegou sem assinatura' })
     await enviarArquivos('rita-exemplo', { origem: 'card', arquivos: [pdf('grupo familiar.pdf', 'grupo-familiar', 2)] })
     await arquivarTudo('rita-exemplo')
     expect((await obterChecklist('rita-exemplo-1'))?.checklist.itens.find((i) => i.tipo === 'grupo-familiar')?.situacao).toBe('recebido')

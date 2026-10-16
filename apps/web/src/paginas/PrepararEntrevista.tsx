@@ -185,7 +185,7 @@ function PreparacaoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
           <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas e estados</h3>
           <p>Chega aqui quando a cliente já preencheu a ficha (na confirmação: «Já preencheu a ficha? Sim»).</p>
-          <p>Senha do gov.br no cofre antes da entrevista (G9).</p>
+          <p>Senha do gov.br no cofre antes da entrevista.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>Depois: analisar a ficha. Se pode ser auxílio acidentário, a cliente preenche a segunda ficha.</p>
         </aside>

@@ -206,16 +206,16 @@ function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
   const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : ditas
   const extraidas = encerrada && g.transcricao === 'pronta' ? g.extraidas : ditas.flatMap((f) => f.extrai ?? [])
   const respondidos = new Set(ditas.flatMap((f) => f.roteiro ?? []))
-  const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
+  const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)}` : ''
   const beneficio = nomeBeneficio(ficha.beneficioInteresse)
 
   const situacao = !g
-    ? 'Antes de gravar · avise o cliente (G10)'
+    ? 'Antes de gravar · avise o cliente'
     : g.estado === 'gravando'
       ? `● Gravando · ${relogio(segundos)}${aviso}`
       : g.estado === 'pausada'
         ? cofre
-          ? `❚❚ Pausada para a senha do gov.br · ${relogio(segundos)} · nada entra no áudio (G9)`
+          ? `❚❚ Pausada para a senha do gov.br · ${relogio(segundos)} · nada entra no áudio`
           : `❚❚ Pausada · ${relogio(segundos)}${aviso}`
         : g.estado === 'falhou'
           ? `⚠ A gravação falhou · ${relogio(g.duracao)}`
@@ -303,7 +303,7 @@ function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
           {lembrete && !g && (
             <section className={styles.lembrete} aria-labelledby="aviso-de-gravacao">
               <h2 id="aviso-de-gravacao" className={styles.cartaoTitulo}>
-                Antes de gravar, avise o cliente (G10)
+                Antes de gravar, avise o cliente
               </h2>
               <p>Diga, com estas palavras ou parecidas:</p>
               <blockquote className={styles.frase}>
@@ -412,7 +412,7 @@ function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
               </p>
               {g.transcricao === 'pronta' && g.alertaDaIa && (
                 <p className={styles.alerta} role="alert">
-                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar (G14).
+                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar.
                 </p>
               )}
               <div className={base.atalhos}>
@@ -479,8 +479,8 @@ function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
             )}
             <p className={styles.ia}>
               <span aria-hidden="true">✦ </span>
-              A IA está ouvindo: {beneficio ? `o cliente procura ${beneficio}; ` : ''}quem decide o benefício é a advogada (G3). Senha do
-              gov.br não entra na transcrição: vai ao cofre (G9).
+              A IA está ouvindo: {beneficio ? `o cliente procura ${beneficio}; ` : ''}quem decide o benefício é a advogada. Senha do
+              gov.br não entra na transcrição: vai ao cofre.
             </p>
           </section>
         </div>
@@ -548,7 +548,7 @@ function GravacaoDaEntrevista({ agendamentoId, simular, passo = 1000 }: Props) {
                 </button>
               )
             )}
-            <p className={base.nota}>O cliente digita a senha no cofre; ela não é dita em voz alta e o trecho não entra no áudio (G9).</p>
+            <p className={base.nota}>O cliente digita a senha no cofre; ela não é dita em voz alta e o trecho não entra no áudio.</p>
           </section>
 
           <section className={styles.cartao} aria-labelledby="roteiro">

@@ -405,7 +405,7 @@ export function CadastrarLead({ fichaId }: { fichaId: string }) {
             <li>• RG*</li>
             <li>• Endereço*</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.ladoSub}>«Salvar cadastro» só habilita com os campos com * preenchidos.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>

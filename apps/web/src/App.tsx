@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ROTULO_PERFIL, ehPerfil, pode, type Acao, type UsuarioDaSessao } from '@ggv/contratos'
+import { ROTULO_PERFIL, ehPerfil, pode, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
+import { Carregando } from './componentes/Carregando.tsx'
 import { definirQuemFaz, sincronizarRecepcao } from './dados/servidor.ts'
 import { sincronizarDocumentacaoMedica } from './dados/parecer.ts'
 import { sincronizarPericias } from './dados/pericia.ts'
@@ -48,6 +49,7 @@ import { Manifestar } from './paginas/Manifestar.tsx'
 import { DespacharCaso } from './paginas/Despachar.tsx'
 import { Peticao } from './paginas/Peticao.tsx'
 import { Exige } from './paginas/SemPermissao.tsx'
+import { acaoDoCaminho } from './regras/acesso.ts'
 import { ConfirmarAgendamento } from './paginas/ConfirmarAgendamento.tsx'
 import { Entrevista } from './paginas/Entrevista.tsx'
 import { EntrevistaAoVivo } from './paginas/EntrevistaAoVivo.tsx'
@@ -118,11 +120,13 @@ const NA_CENTRAL_DO_ATENDIMENTO = ['atendimento', 'atendimento_lider', 'document
 
 function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
   const [usuario, setUsuario] = useState<UsuarioDaSessao | null>(null)
+  // Enquanto confere: o "Carregando"; servidor fora: o aviso; sessão vencida (401): nada, porque o login já está abrindo.
+  const [espera, setEspera] = useState<'carregando' | 'falhou' | 'saindo'>('carregando')
 
   useEffect(() => {
     // Sem sessão, chamarApi já leva ao login com a volta para esta tela.
     void chamarApi<UsuarioDaSessao>('/sessao').then(async (r) => {
-      if (!r.ok) return
+      if (!r.ok) return setEspera(r.status === 401 ? 'saindo' : 'falhou')
       // GGVP-135: o que ainda grava só no navegador guarda no histórico o nome de quem entrou.
       definirQuemFaz(r.dados.nome)
       // GGVP-125: antes de a tela abrir, a cópia da Recepção no navegador recebe o que está no servidor, para quem vê os
@@ -133,10 +137,10 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
       // GGVP-137: e as perícias, com as tarefas da Central de quem está na sessão.
       if (pode(r.dados.perfilAtivo, 'caso.ver')) await sincronizarPericias(pode(r.dados.perfilAtivo, 'dado_saude.ver_detalhe')).catch(() => undefined)
       setUsuario(r.dados)
-    })
+    }).catch(() => setEspera('falhou'))
   }, [])
 
-  if (!usuario) return null
+  if (!usuario) return espera === 'saindo' ? null : <Carregando falhou={espera === 'falhou'} />
   if (usuario.trocarSenha) return <TrocarSenha />
   if (!usuario.perfilAtivo) return <SemPerfil nome={usuario.nome} />
   return (
@@ -146,60 +150,60 @@ function ComSessao({ caminho, busca }: { caminho: string; busca: string }) {
   )
 }
 
-/** Telas de passo (GGVP-8). Cada uma dentro de <Exige>: sem a permissão, nem monta (GGVP-96 CA11). */
+/** Telas de passo (GGVP-8). Cada uma dentro de <Exige>, pela regra de regras/acesso.ts: sem a permissão, nem monta (GGVP-96 CA11). */
 const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/conferencia$/, tela: (id) => <Exige acao="caso.ver"><Conferencia casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/conferencia$/, tela: (id) => <Conferencia casoId={id} /> },
   // GGVP-127: o caso devolvido pela Sênior; quem libera de novo o servidor decide (o setor da tarefa de ajuste).
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/ajuste$/, tela: (id) => <Exige acao="caso.ver"><AjustarCaso casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Exige acao="protocolo_inss.registrar"><Protocolar casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/ajuste$/, tela: (id) => <AjustarCaso casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/protocolo$/, tela: (id) => <Protocolar casoId={id} /> },
   // GGVP-137: a decisão (D2.03) tem endereço próprio; /casos/:id/pericia é a página da perícia, também no caso do servidor.
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia\/decidir$/, tela: (id) => <Exige acao="pericia.decidir"><DecidirPericia casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Exige acao="caso.ver"><Vigilia casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia$/, tela: (id) => <Exige acao="caso.ver"><TratarExigencia casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia\/documentos$/, tela: (id) => <Exige acao="exigencia_inss.cumprir"><CumprirExigencia casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao$/, tela: (id) => <Exige acao="prestacao.ver"><PrestarContas casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao\/recebimento$/, tela: (id) => <Exige acao="prestacao.registrar_recebimento"><ReceberPrestacao casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco$/, tela: (id) => <Exige acao="banco.agendar"><IdaAoBanco casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco\/levar$/, tela: (id) => <Exige acao="banco.levar"><LevarAoBanco casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <Exige acao="caso.ver"><ExplicarResultado casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/desfecho$/, tela: (id) => <Exige acao="caso.ver"><ConfirmarDesfecho casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericia\/decidir$/, tela: (id) => <DecidirPericia casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/vigilia$/, tela: (id) => <Vigilia casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia$/, tela: (id) => <TratarExigencia casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia\/documentos$/, tela: (id) => <CumprirExigencia casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao$/, tela: (id) => <PrestarContas casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/prestacao\/recebimento$/, tela: (id) => <ReceberPrestacao casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco$/, tela: (id) => <IdaAoBanco casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/banco\/levar$/, tela: (id) => <LevarAoBanco casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/resultado$/, tela: (id) => <ExplicarResultado casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/desfecho$/, tela: (id) => <ConfirmarDesfecho casoId={id} /> },
   // GGVP-100: a Sênior decide se recorre; a advogada responsável e o Sócio só leem.
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/recurso$/, tela: (id) => <Exige acao="recurso.ver"><DecidirRecurso casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <Exige acao="caso.ver"><PublicacoesDoProcesso casoId={id} /></Exige> },
-  { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="caso.ver"><LerPublicacao publicacaoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <Exige acao="caso.ver"><AnalisarExigenciaJuiz casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <Exige acao="exigencia_juiz.cumprir"><CumprirExigenciaJuiz casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/recurso$/, tela: (id) => <DecidirRecurso casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/publicacoes$/, tela: (id) => <PublicacoesDoProcesso casoId={id} /> },
+  { padrao: /^\/publicacoes\/([0-9a-f-]{36})$/, tela: (id) => <LerPublicacao publicacaoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz$/, tela: (id) => <AnalisarExigenciaJuiz casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/exigencia-juiz\/setor$/, tela: (id) => <CumprirExigenciaJuiz casoId={id} /> },
   // A manifestação é peça jurídica: só o Jurídico (GGVP-96; perfis.md, o Atendimento e a Documentação nunca veem petição).
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Exige acao="peticao.ver"><Manifestar casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/pendencias$/, tela: (id) => <Exige acao="pendencia.cumprir"><CumprirExigenciaJuiz casoId={id} origem="despacho" /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <Exige acao="caso.ver"><DespacharCaso casoId={id} /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Exige acao="peticao.ver"><Peticao casoId={id} /></Exige> },
-  { padrao: /^\/vigilia$/, tela: () => <Exige acao="vigilia.ver"><PainelVigilia /></Exige> },
-  { padrao: /^\/peritos$/, tela: () => <Exige acao="estudo.ver"><Peritos /></Exige> },
-  { padrao: /^\/estudos$/, tela: () => <Exige acao="estudo.ver"><Estudos /></Exige> },
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericias$/, tela: (id) => <Exige acao="dado_saude.ver_detalhe"><Pericias casoId={id} /></Exige> },
-  { padrao: /^\/gestao\/tentativas$/, tela: () => <Exige acao="gestao.ver"><Tentativas /></Exige> },
-  { padrao: /^\/gestao\/prazos$/, tela: () => <Exige acao="gestao.ver"><Prazos /></Exige> },
-  { padrao: /^\/gestao\/cofre$/, tela: () => <Exige acao="gestao.ver"><UsoDoCofreTela /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/manifestacao$/, tela: (id) => <Manifestar casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pendencias$/, tela: (id) => <CumprirExigenciaJuiz casoId={id} origem="despacho" /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/despacho$/, tela: (id) => <DespacharCaso casoId={id} /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/peticao$/, tela: (id) => <Peticao casoId={id} /> },
+  { padrao: /^\/vigilia$/, tela: () => <PainelVigilia /> },
+  { padrao: /^\/peritos$/, tela: () => <Peritos /> },
+  { padrao: /^\/estudos$/, tela: () => <Estudos /> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/pericias$/, tela: (id) => <Pericias casoId={id} /> },
+  { padrao: /^\/gestao\/tentativas$/, tela: () => <Tentativas /> },
+  { padrao: /^\/gestao\/prazos$/, tela: () => <Prazos /> },
+  { padrao: /^\/gestao\/cofre$/, tela: () => <UsoDoCofreTela /> },
   // GGVP-96: o Financeiro vê só os Resultados da Gestão (Figma).
-  { padrao: /^\/gestao\/resultados$/, tela: () => <Exige acao="resultados.ver"><Resultados /></Exige> },
-  { padrao: /^\/acervo\/conferencia$/, tela: () => <Exige acao="acervo.conferir_desfecho"><ConferirAcervo /></Exige> },
-  { padrao: /^\/configuracao$/, tela: () => <Exige acao="gestao.ver"><Configuracao /></Exige> },
+  { padrao: /^\/gestao\/resultados$/, tela: () => <Resultados /> },
+  { padrao: /^\/acervo\/conferencia$/, tela: () => <ConferirAcervo /> },
+  { padrao: /^\/configuracao$/, tela: () => <Configuracao /> },
   // GGVP-146, parte 2: a planilha do escritório, pela gestão que muda a configuração.
-  { padrao: /^\/gestao\/importar$/, tela: () => <Exige acao="configuracao.editar"><Importar /></Exige> },
+  { padrao: /^\/gestao\/importar$/, tela: () => <Importar /> },
   // GGVP-99: a linha do processo. GGVP-162: só para quem abre o processo (o Jurídico e o Sócio, que autoriza a exportação).
-  { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Exige acao="processo.abrir"><Historico casoId={id} /></Exige> },
+  { padrao: /^\/casos\/([0-9a-f-]{36})\/historico$/, tela: (id) => <Historico casoId={id} /> },
   // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
-  { padrao: /^\/financeiro$/, tela: () => <Exige acao="valores.ver_totais"><Financeiro /></Exige> },
+  { padrao: /^\/financeiro$/, tela: () => <Financeiro /> },
   // GGVP-157: as custas dos processos, para quem vê valores (o Financeiro e o Sócio), e o detalhe de um processo.
-  { padrao: /^\/custas$/, tela: () => <Exige acao="valores.ver"><Custas /></Exige> },
-  { padrao: /^\/custas\/([0-9a-f-]{36})$/, tela: (id) => <Exige acao="custas.ver"><Custas casoId={id} /></Exige> },
+  { padrao: /^\/custas$/, tela: () => <Custas /> },
+  { padrao: /^\/custas\/([0-9a-f-]{36})$/, tela: (id) => <Custas casoId={id} /> },
 ]
 
 function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; perfil: string }) {
   for (const { padrao, tela } of TELAS_DE_CASO) {
     const achou = caminho.match(padrao)
-    if (achou) return tela(achou[1])
+    if (achou) return <Exige acao={acaoDoCaminho(caminho)!}>{tela(achou[1])}</Exige>
   }
   // GGVP-158: as telas desenhadas para a advogada levam o Início a /advogada; outro perfil vai à tela inicial dele, e não à
   // Central da advogada (o Atendimento na página da perícia, a Sênior na entrevista ao vivo).
@@ -226,53 +230,8 @@ function Inicio({ caminho, busca, perfil }: { caminho: string; busca: string; pe
   return <Telas caminho={caminho} busca={busca} />
 }
 
-/**
- * Quem abre cada tela de passo da Recepção, da Abertura e da Perícia: a raia do BPMN, pela ação da matriz (GGVP-135).
- * Vale a primeira que casa; sem a permissão, "Sem permissão", e a tela nem monta. Sem linha aqui, a tela confere
- * sozinha (documentação médica, roteiros, a perícia do caso) ou é de todos (agenda). Quem protege é o servidor.
- */
-const ACESSO_DAS_TELAS: [RegExp, Acao][] = [
-  // Jurídico (D1.06, D1.07, D1.09, D1.10, D1.12, D1.13): a Central da advogada, preparar, analisar, entrevistar, gravar,
-  // cadastrar o lead, definir o benefício e calcular tempo e pontos (o cálculo é do advogado, Pedro em 08/10).
-  [/^\/advogada$/, 'entrevista.gravar'],
-  // D1.08: a senha do gov.br vai ao cofre; o Atendimento renova, com o Jurídico.
-  [/^\/entrevista\/[^/]+\/renovar-senha$/, 'cofre.cadastrar'],
-  [/^\/entrevista\//, 'entrevista.gravar'],
-  [/^\/clientes\/[^/]+\/cadastro$/, 'entrevista.gravar'],
-  // G15: a cobrança que passou do limite, a Sênior decide (a mesma decisão do complemento ao médico).
-  [/^\/casos\/[^/]+\/cobranca\/decidir$/, 'complemento.decidir'],
-  // Perícia (DP): as mesmas ações que o servidor exige em cada passo.
-  [/^\/juridico-administrativo$/, 'pericia.marcar'],
-  [/^\/casos\/[^/]+\/pericia\/aberta$/, 'pericia.decidir'],
-  [/^\/casos\/[^/]+\/pericia\/marcar$/, 'pericia.marcar'],
-  [/^\/casos\/[^/]+\/pericia\/(documentos|cobranca)$/, 'pericia.reunir_documentos'],
-  [/^\/casos\/[^/]+\/pericia\/orientar$/, 'pericia.orientar_cliente'],
-  [/^\/casos\/[^/]+\/pericia\/comparecimento$/, 'pericia.registrar_comparecimento'],
-  [/^\/casos\/[^/]+\/pericia\/resultado$/, 'pericia.conferir_resultado'],
-  // GGVP-78: Clientes e Processos, as bases do topo (antes da regra geral de /clientes). Clientes, para quem vê o caso;
-  // Processos, só para quem abre o processo (GGVP-162: o Jurídico e o Sócio).
-  [/^\/clientes$/, 'caso.ver'],
-  [/^\/processos$/, 'processo.abrir'],
-  // D5: a conversa com o cliente, do Atendimento e do Jurídico.
-  [/^\/conversas\//, 'conversa.registrar'],
-  // G15 (D1.17): passou do limite de tentativas, a tarefa da Sênior abre a assinatura; quem vê o caso lê, sem % de
-  // honorários, e conduzir segue com contrato.conduzir no servidor (GGVP-96).
-  [/^\/contrato\/[^/]+\/assinatura$/, 'caso.ver'],
-  // D1.16 a D1.20: o contrato é da raia do Atendimento, e o % de honorários aparece só nele (GGVP-96).
-  [/^\/contrato\//, 'contrato.conduzir'],
-  // A ficha do cliente, para ler: quem vê o caso, e o Sócio, que lê tudo (GGVP-96); mudar segue com ficha.editar no servidor.
-  [/^\/clientes\/(?!novo$)[^/]+$/, 'caso.ver'],
-  // O resto da Recepção e da Abertura: quem trabalha com o caso (Atendimento, Documentação e Jurídico). O Financeiro e
-  // o Sócio, não.
-  [/^\/(balcao|clientes|contrato)(\/|$)/, 'ficha.editar'],
-  [/^\/agenda\/(marcar|confirmar)\//, 'ficha.editar'],
-  [/^\/casos\/[^/]+\/cobranca$/, 'ficha.editar'],
-  // A página do processo (GGVP-162): o Jurídico e o Sócio; o Atendimento e a Documentação leem o caso pela ficha.
-  [/^\/casos\/[^/]+$/, 'processo.abrir'],
-]
-
 function Telas({ caminho, busca }: { caminho: string; busca: string }) {
-  const acao = ACESSO_DAS_TELAS.find(([padrao]) => padrao.test(caminho))?.[1]
+  const acao = acaoDoCaminho(caminho)
   const tela = <TelaDoCaminho caminho={caminho} busca={busca} />
   return acao ? <Exige acao={acao}>{tela}</Exige> : tela
 }

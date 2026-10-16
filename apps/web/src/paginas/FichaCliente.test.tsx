@@ -12,11 +12,14 @@ beforeEach(() => {
   zerarExemplo()
 })
 
-async function abrir(id: string) {
-  render(<FichaCliente id={id} />)
-  await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+// A ficha abre em leitura: para mudar um dado, a pessoa clica em "Editar dados" (quem pode).
+async function abrir(id: string, perfil = 'atendimento') {
+  entrarComo(perfil)
+  render(comSessao(<FichaCliente id={id} />))
+  await screen.findByRole('heading', { level: 1, name: /Exemplo/ })
 }
 
+const editar = () => fireEvent.click(screen.getByRole('button', { name: 'Editar dados' }))
 const campo = (rotulo: string) => screen.getByLabelText(rotulo) as HTMLInputElement
 const digitar = (rotulo: string, valor: string) => fireEvent.change(campo(rotulo), { target: { value: valor } })
 const historico = () => within(screen.getByRole('list', { name: 'Histórico' }))
@@ -28,7 +31,7 @@ describe('GGVP-96 · os dados bancários do repasse (GGVP-111; LGPD, minimizaç�
     for (const [perfil, ve] of [['atendimento', true], ['documentacao', false], ['juridico-adm', false]] as const) {
       entrarComo(perfil)
       render(comSessao(<FichaCliente id="antonio-exemplo" />))
-      await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+      await screen.findByRole('heading', { level: 1, name: /Exemplo/ })
       expect(Boolean(screen.queryByRole('heading', { name: 'Dados bancários para o repasse' })), perfil).toBe(ve)
       cleanup()
     }
@@ -62,17 +65,17 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     await abrir('maria-exemplo')
     fireEvent.click(screen.getByRole('button', { name: 'Iniciar conversa' }))
     const janela = await screen.findByRole('dialog', { name: /Registrar conversa com o cliente/ })
-    expect(within(janela).getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar (G10)' })).toBeTruthy()
+    expect(within(janela).getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar' })).toBeTruthy()
     expect(within(janela).getByRole('radio', { name: 'Anexar arquivo · o áudio de uma ligação já feita' })).toBeTruthy()
     fireEvent.click(within(janela).getByRole('button', { name: 'Cancelar' }))
     expect(screen.queryByRole('dialog', { name: /Registrar conversa com o cliente/ })).toBeNull()
   })
 
-  it('mostra os blocos do Figma 73:199, nada de petição nem valores, e da senha só a situação', async () => {
+  it('mostra os blocos do Figma 73:199, sem texto de permissão, e da senha só a situação', async () => {
     await abrir('antonio-exemplo')
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cliente')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Antônio Exemplo')
     expect(screen.getByText('cliente desde 03/2023')).toBeTruthy()
-    expect(screen.getByText('Atendimento não vê petição nem valores')).toBeTruthy()
+    expect(screen.queryByText(/Atendimento não vê/)).toBeNull()
     expect(screen.getByText('62 anos · trabalhador rural aposentando · São Paulo/SP')).toBeTruthy()
     expect(screen.getByText('WhatsApp preferido')).toBeTruthy()
     expect(screen.getByText('Laudo novo · 29/09')).toBeTruthy()
@@ -89,10 +92,11 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(screen.getByText('Próxima: nenhuma marcada.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Marcar entrevista' }).getAttribute('href')).toBe('/agenda/marcar/antonio-exemplo')
 
-    expect(screen.getByRole('button', { name: 'Trocar foto' }).getAttribute('aria-disabled')).toBe('true')
+    // Sem "Trocar foto": a função não existe ainda, então o botão não aparece.
+    expect(screen.queryByRole('button', { name: 'Trocar foto' })).toBeNull()
     // GGVP-24: a ficha mostra só a situação da senha do gov.br, nunca a senha nem campo para ela.
     expect(document.body.textContent?.match(/senha|cofre/gi)).toEqual(['senha', 'cofre'])
-    expect(screen.getByText('gov.br: senha no cofre · atualizada em 12/07/2025 por Atendimento (G9)')).toBeTruthy()
+    expect(screen.getByText('gov.br: senha no cofre · atualizada em 12/07/2025 por Atendimento')).toBeTruthy()
     expect(document.querySelector('input[type="password"]')).toBeNull()
   })
 
@@ -100,7 +104,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     await abrir('antonio-exemplo')
     const cartao = screen.getByRole('heading', { name: 'Documentação médica' }).closest('section')!
     expect(cartao.textContent).toBe(
-      'Documentação médica4 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 20/09 (G17). O conteúdo dos laudos não é exibido aqui. Laudo novo de 29/09 enviado ao Jurídico: aguarda a análise.',
+      'Documentação médica4 documentos médicos · parecer "Suficiente" confirmado por Dra. Paula em 20/09. O conteúdo dos laudos não é exibido aqui. Laudo novo de 29/09 enviado ao Jurídico: aguarda a análise.',
     )
   })
 
@@ -150,11 +154,13 @@ describe('Ficha do cliente · visão do Atendimento', () => {
     expect(contato.textContent).toBe(`05/10Presencial (balcão)${pretende}`)
     expect(screen.getByText(/Nenhum caso aberto ainda/)).toBeTruthy()
     expect(historico().getByText('Criou a ficha no balcão (lead)')).toBeTruthy()
+    editar()
     expect(campo('CPF').value).toBe('')
   })
 
   it('CA15 · letra não entra no CPF nem no telefone; CPF errado, telefone sem DDD e data futura não salvam', async () => {
     await abrir('antonio-exemplo')
+    editar()
     digitar('CPF *', `${CPF_DE_TESTE.slice(0, 3)}a`)
     expect(campo('CPF *').value).toBe(CPF_DE_TESTE.slice(0, 3))
     digitar('Telefone / WhatsApp *', 'x11')
@@ -177,14 +183,17 @@ describe('Ficha do cliente · visão do Atendimento', () => {
 
   it('GGVP-111 CA1 · mudar o telefone do cliente pede a verificação; o lead, ainda sem contrato, troca livre (Pedro, 08/10)', async () => {
     const pergunta = 'Mudou o telefone: como você confirmou que é o cliente?'
-    const { unmount } = render(<FichaCliente id="maria-exemplo" />)
-    await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+    entrarComo('atendimento')
+    const { unmount } = render(comSessao(<FichaCliente id="maria-exemplo" />))
+    await screen.findByRole('heading', { level: 1, name: /Exemplo/ })
+    editar()
     digitar('Telefone / WhatsApp *', '(11) 90000-0099')
     expect(screen.getByRole('group', { name: pergunta })).toBeTruthy()
     unmount()
     const lead = await criarFicha({ nome: 'Rosa Exemplo', idade: 58, pretende: 'Aposentadoria.', telefone: telefoneDeExemplo(52), beneficioInteresse: 'nao-sei', outraPessoa: false })
     if (lead.resultado !== 'criada') throw new Error(lead.resultado)
     await abrir(lead.id)
+    editar()
     digitar('Telefone / WhatsApp *', '(11) 90000-0098')
     expect(screen.queryByRole('group', { name: pergunta })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
@@ -193,6 +202,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
 
   it('CA16 · dois cliques em "Salvar alterações" gravam uma vez só, e o que mudou vai para o histórico', async () => {
     await abrir('antonio-exemplo')
+    editar()
     digitar('Estado civil', 'Viúvo')
     const salvar = screen.getByRole('button', { name: 'Salvar alterações' })
     fireEvent.click(salvar)
@@ -208,6 +218,7 @@ describe('Ficha do cliente · visão do Atendimento', () => {
   it('CPF que já está em outra ficha não salva e diz de quem é', async () => {
     await abrir('josefa-exemplo')
     expect(screen.getByText('Próxima: hoje 15:30 · Entrevista com Dra. Paula.')).toBeTruthy()
+    editar()
     digitar('CPF', CPF_DE_TESTE)
     fireEvent.click(screen.getByRole('button', { name: 'Salvar alterações' }))
     expect(await screen.findByText('Este CPF já está na ficha de Antônio Exemplo.')).toBeTruthy()
@@ -250,13 +261,47 @@ describe('Ficha do cliente · visão do Atendimento', () => {
   it('GGVP-17 CA15 · a ficha que o scanner criou sem telefone mostra "completar telefone"', async () => {
     await abrir('marta-exemplo')
     expect(screen.getByText('completar telefone')).toBeTruthy()
+    editar()
     expect(campo('Telefone / WhatsApp *').value).toBe('')
+  })
+})
+
+describe('Ficha do cliente · abre em leitura (Pedro, 15/10)', () => {
+  it('abre só para ler: os dados em lista, sem formulário, e "Não informado" no que está vazio', async () => {
+    await abrir('antonio-exemplo')
+    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Editar dados' })).toBeTruthy()
+    expect(screen.getByText('Telefone / WhatsApp').tagName).toBe('DT')
+    expect(screen.getAllByText('Não informado').length).toBeGreaterThan(0)
+  })
+
+  it('Cancelar volta para a leitura sem gravar', async () => {
+    await abrir('antonio-exemplo')
+    editar()
+    digitar('Estado civil', 'Viúvo')
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull()
+    expect((await obterFicha('antonio-exemplo'))?.historico).toEqual([])
+  })
+
+  it('o Sócio só lê: não vê "Editar dados", "+ Nova demanda" nem "Marcar entrevista"', async () => {
+    await abrir('antonio-exemplo', 'socio')
+    expect(screen.queryByRole('button', { name: 'Editar dados' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '+ Nova demanda' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Marcar entrevista' })).toBeNull()
+  })
+
+  it('a Documentação edita: vê "Editar dados" e "Marcar entrevista"', async () => {
+    await abrir('antonio-exemplo', 'documentacao')
+    expect(screen.getByRole('button', { name: 'Editar dados' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Marcar entrevista' })).toBeTruthy()
   })
 })
 
 describe('Ficha do cliente · telefone e e-mail com o cliente verificado (GGVP-111)', () => {
   it('CA1 · mudar o telefone pede como confirmou que é o cliente e o contrato novo; com os dois, a ficha muda', async () => {
     await abrir('antonio-exemplo')
+    editar()
     const antes = campo('Telefone / WhatsApp *').value
     digitar('Telefone / WhatsApp *', '(11) 90000-0044')
     const verificacao = within(screen.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' }))
@@ -280,7 +325,7 @@ describe('GGVP-123 CA10 (Pedro, 14/10) · o cartão "Reuniões" marca a reunião
     for (const [perfil, ve] of [['senior', true], ['socio', false]] as const) {
       entrarComo(perfil)
       render(comSessao(<FichaCliente id="antonio-exemplo" />))
-      await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+      await screen.findByRole('heading', { level: 1, name: /Exemplo/ })
       const marcar = screen.queryByRole('link', { name: 'Marcar reunião (com transcrição)' })
       expect(marcar?.getAttribute('href') ?? null, perfil).toBe(ve ? '/agenda/marcar/antonio-exemplo' : null)
       expect(screen.queryByRole('button', { name: 'Marcar e iniciar reunião (com transcrição)' }), perfil).toBeNull()

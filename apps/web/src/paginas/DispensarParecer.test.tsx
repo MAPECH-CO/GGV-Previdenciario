@@ -26,12 +26,12 @@ describe('Dispensar o parecer médico · tela da sênior', () => {
     expect(screen.getByRole('heading', { name: 'Situação do parecer' }).closest('section')!.textContent).toContain('Pendente sem confirmação do Jurídico')
     const pedir = screen.getByRole('button', { name: 'Pedir a dispensa (1ª sênior)' }) as HTMLButtonElement
     expect(pedir.disabled).toBe(true)
-    expect(screen.getByText('A justificativa é obrigatória: por que seguir sem a prova médica (G17).')).toBeTruthy()
+    expect(screen.getByText('A justificativa é obrigatória: por que seguir sem a prova médica.')).toBeTruthy()
     fireEvent.change(screen.getByRole('textbox', { name: /Justificativa: por que seguir sem a prova médica/ }), { target: { value: JUSTIFICATIVA } })
     fireEvent.click(pedir)
     expect(await screen.findByText('Pedido registrado: falta a aprovação de outra sênior.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Aprovar a dispensa (2ª sênior)' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).')).toBeTruthy()
+    expect(screen.getByText('Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior.')).toBeTruthy()
 
     cleanup()
     await abrir('senior-2')

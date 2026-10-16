@@ -114,7 +114,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
         {['Entrada do contrato', 'Parcelas do contrato', 'Parte na Caixa'].map(rotulo => <label key={rotulo} className={styles.rotulo}>
           {rotulo}<input className={styles.campo} disabled value="" placeholder="Ainda indisponível" />
         </label>)}
-        <p className={styles.dica}>Quem faz a prestação e dá o OK é a Sênior (G8). A edição direta dos honorários ainda não está disponível.</p>
+        <p className={styles.dica}>Quem faz a prestação e dá o OK é a Sênior. A edição direta dos honorários ainda não está disponível.</p>
       </section>
 
       {atual && (

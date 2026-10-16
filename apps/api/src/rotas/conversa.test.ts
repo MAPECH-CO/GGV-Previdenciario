@@ -143,11 +143,11 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     const { conversa } = await json('ana', 'POST', '/api/conversas', { fichaId, canal: 'presencial', comQuem: 'cliente', modo: 'tempo-real' })
     const url = `/api/conversas/${conversa.id}`
     expect((await json('ana', 'POST', `${url}/gravacao`, {})).erro).toBe(MSG_SEM_AVISO_NA_CONVERSA)
-    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0]).toMatchObject({ acao: 'Registrar conversa', detalhe: 'presencial, com cliente · chegou às 12:00 · gravar depois do aviso (G10)' })
+    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0]).toMatchObject({ acao: 'Registrar conversa', detalhe: 'presencial, com cliente · chegou às 12:00 · gravar depois do aviso' })
 
     const gravando = await json('ana', 'POST', `${url}/gravacao`, { avisei: true })
     expect(gravando.gravacao).toMatchObject({ estado: 'gravando', acoes: [{ acao: 'avisou' }, { acao: 'gravou' }] })
-    expect(gravando.ficha.historico.at(-1).oQue).toBe('Avisou às 12:00 que a conversa seria gravada (G10) e começou a gravar')
+    expect(gravando.ficha.historico.at(-1).oQue).toBe('Avisou às 12:00 que a conversa seria gravada e começou a gravar')
     expect((await json('ana', 'POST', `${url}/gravacao`, { avisei: true })).gravacao.id).toBe(gravando.gravacao.id)
     expect((await json('ana', 'POST', `${url}/acoes`, { acao: 'pausou', aos: 30 })).gravacao.estado).toBe('pausada')
     expect((await json('ana', 'POST', `${url}/acoes`, { acao: 'retomou', aos: 40 })).gravacao.estado).toBe('gravando')
@@ -178,7 +178,7 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(r.conversa).toMatchObject({ registro: 'Contou que mudou de casa; traz o comprovante.' })
     expect(r.ficha.historico.at(-1).oQue).toBe('Registrou a conversa sem áudio (presencial, com cliente): o microfone não gravou')
     // Falta só a conferência de quem conversou, como na conversa escrita.
-    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0].detalhe).toMatch(/conferir a conversa \(D5\.04\)$/)
+    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0].detalhe).toMatch(/conferir a conversa$/)
   })
 
   it('G10 na ligação já feita: só sobe o áudio com o aviso nela, só arquivo de áudio, e só com o arquivo (o nome sozinho não é áudio)', async () => {

@@ -1,5 +1,6 @@
 import { destinoDaTarefa } from '../dados/tarefas.ts'
 import type { Tarefa } from '../dados/tipos.ts'
+import { PreviaDoCliente } from './PreviaDoCliente.tsx'
 import styles from './TarefaLinha.module.css'
 
 type Props = { tarefa: Tarefa }
@@ -22,9 +23,11 @@ export function TarefaLinha({ tarefa }: Props) {
         <div className={styles.titulo}>
           <span className={styles.texto}>
             {cliente ? (
-              <a className={`${styles.quem} ${styles.cliente}`} href={`/clientes/${cliente.id}`}>
-                {cliente.nome}
-              </a>
+              <PreviaDoCliente id={cliente.id} nome={cliente.nome}>
+                <a className={`${styles.quem} ${styles.cliente}`} href={`/clientes/${cliente.id}`}>
+                  {cliente.nome}
+                </a>
+              </PreviaDoCliente>
             ) : (
               <strong className={styles.quem}>{contexto}</strong>
             )}

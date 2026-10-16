@@ -26,7 +26,7 @@ export function AbaSuporte() {
               <h2 id="suporte-titulo" className={styles.titulo}>
                 Suporte interno
               </h2>
-              <p className={styles.sub}>o assistente do portal: um caso, um passo, um portão (G1 a G22) ou uma tarefa</p>
+              <p className={styles.sub}>o assistente do portal: um caso, um passo ou uma tarefa</p>
             </div>
             <button type="button" className={styles.fechar} aria-label="Fechar o Suporte" onClick={() => setAberto(false)}>
               ×

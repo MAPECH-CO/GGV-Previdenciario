@@ -69,7 +69,7 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
       : escolha === 'nova-data' && erroDataDoCompromisso(data, hoje)
         ? 'Escolha a nova data, de hoje em diante.'
         : escolha === 'arquivar' && !motivo
-          ? 'Escolha o motivo para arquivar (G16).'
+          ? 'Escolha o motivo para arquivar.'
           : escolha === 'arquivar' && !podeRegistrarOMotivo(motivo, papel)
             ? 'A recusa do escritório é registrada pelo Atendimento sênior ou pela advogada do atendimento.'
             : escolha === 'arquivar' && detalhe.length > TAMANHO_DO_DETALHE
@@ -126,9 +126,9 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
               semDireito
                 ? `Ligue para ${primeiro}: na entrevista, ainda não podia se aposentar. Se quiser seguir, o caso volta para o cálculo de ` +
                   'tempo e pontos com o tempo de agora. Se ainda não, combine uma nova data; se não vai seguir, arquive com o ' +
-                  'motivo (G16).'
+                  'motivo.'
                 : `Ligue para ${primeiro} e pergunte se quer seguir com o escritório. Se quiser, o caso volta para o cálculo de tempo e ` +
-                  'pontos. Se ainda não, combine uma nova data; se não vai seguir, arquive com o motivo (G16).'
+                  'pontos. Se ainda não, combine uma nova data; se não vai seguir, arquive com o motivo.'
             }
           />
 
@@ -237,7 +237,7 @@ export function Recontatar({ fichaId }: { fichaId: string }) {
                   </div>
                 )}
               </section>
-              <p className={styles.trava}>Todo lead que não vira cliente fica com o motivo registrado (G16).</p>
+              <p className={styles.trava}>Todo lead que não vira cliente fica com o motivo registrado.</p>
               <div className={styles.rodape}>
                 <button type="button" className={styles.principalBotao} disabled={motivoParado !== null || registrando} onClick={registrar}>
                   {registrando ? 'registrando…' : 'Registrar o recontato'}

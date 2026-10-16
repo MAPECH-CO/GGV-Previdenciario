@@ -57,7 +57,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
     agora = new Date(2026, 9, 15, 10, 0)
     await abrir('Confirmar presença na perícia')
     fireEvent.click(screen.getByRole('radio', { name: 'Não vai poder ir' }))
-    expect(screen.getByText('Remarcar na hora: remarcação 1 · limite 2 (G15); passou, sobe para a advogada.')).toBeTruthy()
+    expect(screen.getByText('Remarcar na hora: remarcação 1 · limite 2; passou, sobe para a advogada.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Motivo da remarcação *'), { target: { value: 'vai estar internado' } })
     fireEvent.click(screen.getByRole('button', { name: 'Remarcar agora' }))
     expect(await screen.findByRole('heading', { name: '✓ Remarcação registrada' })).toBeTruthy()
@@ -77,7 +77,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
     await abrir('Registrar comparecimento')
     expect(screen.getByText('Depois de 16/10, registre se Antônio foi. Se faltou, marque de novo.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Registrar' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('Se faltou: remarcação 1 · limite 2 (G15); passou, sobe para a advogada.')).toBeTruthy()
+    expect(screen.getByText('Se faltou: remarcação 1 · limite 2; passou, sobe para a advogada.')).toBeTruthy()
   })
 
   it('CA4, CA5 · compareceu: o feito diz que espera o resultado, e a advogada responsável fica com o acompanhamento', async () => {
@@ -100,7 +100,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
     expect(await screen.findByRole('heading', { name: '✓ Falta registrada' })).toBeTruthy()
     expect(screen.getByText(/Antônio não compareceu à perícia de 16\/10, 10:30 · ônibus não passou/)).toBeTruthy()
-    expect(screen.getByText('A perícia voltou para remarcar: 1ª remarcação, limite 2 (G15).')).toBeTruthy()
+    expect(screen.getByText('A perícia voltou para remarcar: 1ª remarcação, limite 2.')).toBeTruthy()
     expect(tarefasDoJuridicoAdm().find((t) => t.cliente?.id === 'antonio-exemplo')?.acao).toBe('Remarcar perícia')
   })
 
@@ -112,7 +112,7 @@ describe('GGVP-66 · comparecimento e remarcação (Figma 1818:289)', () => {
     await abrir('Registrar comparecimento')
     fireEvent.click(screen.getByRole('radio', { name: 'Faltou' }))
     fireEvent.click(screen.getByRole('button', { name: 'Registrar' }))
-    expect(await screen.findByText(/Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável \(G15\)/)).toBeTruthy()
+    expect(await screen.findByText(/Passou do limite de 2 remarcações: a perícia subiu para a advogada responsável/)).toBeTruthy()
     expect(tarefasDaAdvogadaNaPericia().map((t) => t.acao)).toEqual(['Decidir a perícia'])
   })
 

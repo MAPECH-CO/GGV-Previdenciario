@@ -79,12 +79,15 @@ export function etapaDaOrigem(origem: string): IdEtapa {
   return 'vigilia'
 }
 
+/** O valor da identificação antes de o caso ter número: a tela escreve "Sem número ainda". */
+export const SEM_NUMERO = 'sem número ainda'
+
 /** Como o caso se identifica (CA13): NB ou protocolo na fase administrativa, CNJ com processo judicial. */
 export function identificacao(fase: Fase, p: { numero?: string; nb?: string; protocolo?: string }): { rotulo: string; valor: string } {
-  if (fase === 'judicial') return { rotulo: 'Processo (CNJ)', valor: !p.numero ? 'número CNJ ainda não lido' : validarCnj(p.numero) ? formatarCnj(p.numero) : p.numero }
+  if (fase === 'judicial') return { rotulo: 'Processo (CNJ)', valor: !p.numero ? SEM_NUMERO : validarCnj(p.numero) ? formatarCnj(p.numero) : p.numero }
   if (p.nb && validarNb(p.nb)) return { rotulo: 'NB', valor: formatarNb(p.nb) }
   if (p.protocolo) return { rotulo: 'Protocolo', valor: p.protocolo }
-  return { rotulo: 'NB', valor: 'sem NB nem protocolo ainda' }
+  return { rotulo: 'NB', valor: SEM_NUMERO }
 }
 
 export type TipoDePrazo = 'prazo' | 'vigilia-meu-inss' | 'vigilia-publicacoes'

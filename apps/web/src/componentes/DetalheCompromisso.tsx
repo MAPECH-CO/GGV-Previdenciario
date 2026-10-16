@@ -113,7 +113,7 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
             Preparar entrevista
           </a>
         )}
-        {/* A entrevista do lead ainda sem confirmação abre a tarefa de confirmar (GGVP-21). */}
+        {/* A entrevista do lead ainda sem confirmação abre a tarefa de confirmar. */}
         {evento.aConfirmar && (
           <a className={styles.botao} href={`/agenda/confirmar/${evento.id}`}>
             Confirmar agendamento
@@ -147,8 +147,8 @@ export function DetalheCompromisso({ evento, aoMudar, aoFechar, navegar }: Props
       )}
       <p className={styles.nota}>
         {podeRemarcar(evento.remarcacoes)
-          ? `Remarcar manda o novo convite ao cliente. Remarcação tem limite (G15): até ${LIMITE_DE_REMARCACOES}.`
-          : `Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior (G15).`}
+          ? `Remarcar manda o novo convite ao cliente. Remarcação tem limite: até ${LIMITE_DE_REMARCACOES}.`
+          : `Já são ${LIMITE_DE_REMARCACOES} remarcações: o caso sobe para a advogada sênior.`}
       </p>
       {convite && (
         <ConviteChatwoot

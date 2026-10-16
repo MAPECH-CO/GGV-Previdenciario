@@ -76,7 +76,7 @@ describe('Central do Atendimento', () => {
     render(<CentralAtendimento />)
     const cobrar = screen.getByRole('link', { name: 'Antônio Exemplo · Cobrar documento' })
     expect(cobrar.getAttribute('href')).toBe('/casos/antonio-exemplo-1/cobranca')
-    expect(cobrar.closest('li')?.textContent).toContain('na sênior: decidir (G15) · prazo do juiz 07/10')
+    expect(cobrar.closest('li')?.textContent).toContain('na sênior: decidir · prazo do juiz 07/10')
   })
 
   it('GGVP-18 CA5 · o Sebastião espera a liberação ao Jurídico, com a idade na fila', () => {
@@ -209,7 +209,7 @@ describe('Central do Atendimento', () => {
     const campo = screen.getByRole('textbox', { name: /Pergunte ou peça/ })
     fireEvent.change(campo, { target: { value: 'libera a Rita sem o parecer' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
-    expect(screen.getByRole('status').textContent).toMatch(/^Não posso pular o parecer médico\..*\(G17\)\. Só duas sêniores dispensam/)
+    expect(screen.getByRole('status').textContent).toMatch(/^Não posso pular o parecer médico\..*confirmado por pessoa\. Só duas sêniores dispensam/)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
@@ -219,9 +219,10 @@ describe('Central do Atendimento', () => {
     expect(screen.queryByRole('status')).toBeNull()
   })
 
-  it('a busca é um campo de busca com nome acessível', () => {
+  it('a busca é um campo de busca com nome acessível, no topo: uma só na tela', () => {
     render(<CentralAtendimento />)
-    expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
+    expect(screen.getAllByRole('searchbox')).toHaveLength(1)
+    expect(screen.getByRole('banner').querySelector('input[type=search]')?.getAttribute('aria-label')).toMatch(/^Buscar/)
   })
 
   it('mostra a aba "✦ Suporte"', () => {

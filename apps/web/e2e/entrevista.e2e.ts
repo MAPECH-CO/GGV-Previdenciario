@@ -14,11 +14,11 @@ const SENHA_DE_TESTE = 'Teste#Entrevista-7314'
 
 async function comecarAGravar(page: Page) {
   await page.getByRole('button', { name: 'Gravar' }).click()
-  await expect(page.getByRole('heading', { name: 'Antes de gravar, avise o cliente (G10)' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Antes de gravar, avise o cliente' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Começar a gravar' })).toBeDisabled()
   await page.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }).check()
   await page.getByRole('button', { name: 'Começar a gravar' }).click()
-  await expect(page.getByText(/● Gravando · 00:00:\d\d · aviso de gravação feito às \d\d:\d\d \(G10\)/)).toBeVisible()
+  await expect(page.getByText(/● Gravando · 00:00:\d\d · aviso de gravação feito às \d\d:\d\d/)).toBeVisible()
 }
 
 /** Sem internet de mentira: só o navegador acha que caiu, sem derrubar o servidor de desenvolvimento. */
@@ -42,7 +42,7 @@ test('CA1, CA4, CA5 e CA6 · da preparação à gravação com o aviso, o cofre 
   await page.goto('/entrevista/josefa-entrevista/preparar')
   await page.getByRole('link', { name: 'Iniciar entrevista (Transcrição)' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Fazer entrevista')
-  await expect(page.getByText('A gravação começa com o aviso ao cliente (G10).')).toBeVisible()
+  await expect(page.getByText('A gravação começa com o aviso ao cliente.')).toBeVisible()
   await page.getByRole('link', { name: 'Iniciar entrevista (Transcrição)' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Entrevista com Josefa Exemplo')
   await comecarAGravar(page)

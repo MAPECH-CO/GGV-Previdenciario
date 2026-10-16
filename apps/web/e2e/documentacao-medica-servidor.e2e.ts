@@ -53,7 +53,7 @@ test('o laudo da Lúcia vai ao parecer da advogada, ao pedido da Atendimento e a
   const pessoa = (await ficha.json()).fichas.find((f: { nome: string }) => f.nome === 'Lúcia Prado (exemplo)').id
   await advogada.goto(`/clientes/${pessoa}`)
   const historico = advogada.getByRole('list', { name: 'Histórico' })
-  await expect(historico).toContainText('Registrou o parecer médico do LOAS Deficiente: Insuficiente (G17)')
+  await expect(historico).toContainText('Registrou o parecer médico do LOAS Deficiente: Insuficiente')
   await expect(historico).toContainText('Complemento ao médico: 1ª tentativa por Ligação (sem resposta)')
   await juridico.close()
   await documentacao.close()

@@ -61,7 +61,7 @@ describe('Conferir checklist · tela do passo', () => {
     })
     await arquivarTudo('rita-exemplo')
     await abrir()
-    expect(item('Ficha de grupo familiar').textContent).toBe('Ficha de grupo familiarchegou sem assinatura (G1)falta')
+    expect(item('Ficha de grupo familiar').textContent).toBe('Ficha de grupo familiarchegou sem assinaturafalta')
   })
 
   // Desde a GGVP-47 o Auxílio-Acidente tem lista: o exemplo sem lista é a aposentadoria do Antônio.

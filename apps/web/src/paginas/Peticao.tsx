@@ -134,7 +134,7 @@ function PedirForm({ casoId, x, aoPedir }: { casoId: string; x: PeticaoInicial; 
       {minuta?.aviso && <p className={styles.dica}>{minuta.aviso}</p>}
       {minuta?.sugestao && (
         <section className={styles.cartao} aria-label="Minuta da IA">
-          <span className={`${styles.selo} ${styles.seloAlerta}`}>Minuta da IA · revise antes de pedir; você assina o conteúdo (G6)</span>
+          <span className={`${styles.selo} ${styles.seloAlerta}`}>Minuta da IA · revise antes de pedir; você assina o conteúdo</span>
           {minuta.sugestao.alerta && (
             <p className={styles.erroCampo} role="alert">
               Atenção: {minuta.sugestao.alerta}.
@@ -217,7 +217,7 @@ function EditarEuMesma({ casoId, texto, aoSalvar }: { casoId: string; texto: str
         {daIa?.motivo && <p className={styles.dica}>{daIa.motivo}</p>}
         {daIa?.sugestao && (
           <>
-            <span className={`${styles.selo} ${styles.seloAlerta}`}>Versão da IA · revise antes de salvar; você aprova o conteúdo (G6)</span>
+            <span className={`${styles.selo} ${styles.seloAlerta}`}>Versão da IA · revise antes de salvar; você aprova o conteúdo</span>
             {daIa.sugestao.alerta && (
               <p className={styles.erroCampo} role="alert">
                 Atenção: {daIa.sugestao.alerta}.
@@ -258,7 +258,7 @@ function AprovarForm({ casoId, numero, texto, aoAprovar }: { casoId: string; num
   const rotulos: Record<keyof typeof marcas, string> = {
     liNaIntegra: 'Li a petição na íntegra',
     conferem: 'Fundamentos, pedidos e valores conferem com o caso',
-    nadaContradiz: 'Nada contradiz o requisito do benefício (G18)',
+    nadaContradiz: 'Nada contradiz o requisito do benefício',
   }
 
   async function aprovar(evento: FormEvent<HTMLFormElement>) {
@@ -292,7 +292,7 @@ function AprovarForm({ casoId, numero, texto, aoAprovar }: { casoId: string; num
           Aprovar e enviar ao protocolo
         </button>
       </div>
-      <p className={styles.dica}>Ninguém assina: a petição sai com a assinatura padrão do escritório. Fica registrado quem aprovou (G6).</p>
+      <p className={styles.dica}>Ninguém assina: a petição sai com a assinatura padrão do escritório. Fica registrado quem aprovou.</p>
     </form>
   )
 }
@@ -400,7 +400,7 @@ function ProtocolarForm({ casoId, x, aoProtocolar }: { casoId: string; x: Petica
     <form className={styles.cartao} onSubmit={protocolar} noValidate aria-label="Protocolar no tribunal">
       <h2 className={styles.cartaoTitulo}>Protocolar no tribunal</h2>
       <fieldset className={styles.cartao} aria-label="Travas">
-        <legend className={styles.rotulo}>Travas antes de protocolar (G7)</legend>
+        <legend className={styles.rotulo}>Travas antes de protocolar</legend>
         {x.travas.map((t) => (
           <div key={t.chave}>
             <span className={t.ok ? styles.selo : `${styles.selo} ${styles.seloAlerta}`}>

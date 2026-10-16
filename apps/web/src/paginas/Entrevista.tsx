@@ -93,7 +93,7 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
             </p>
           </section>
 
-          <p className={styles.trava}>A gravação começa com o aviso ao cliente (G10).</p>
+          <p className={styles.trava}>A gravação começa com o aviso ao cliente.</p>
 
           <div className={styles.rodape}>
             {/* A entrevista iniciada na hora pula a preparação: o atalho da análise fica aqui também. */}
@@ -161,7 +161,7 @@ export function Entrevista({ agendamentoId }: { agendamentoId: string }) {
           <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>
-            A entrevista começa com o aviso de gravação (G10); a senha do gov.br vai ao cofre (G9). Ao encerrar, a IA transcreve
+            A entrevista começa com o aviso de gravação; a senha do gov.br vai ao cofre. Ao encerrar, a IA transcreve
            , você cadastra o lead e define o benefício.
           </p>
         </aside>
