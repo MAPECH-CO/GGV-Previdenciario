@@ -52,7 +52,7 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
     const aviso = 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'
     servidor({ ...base, versoes: [versao()] }, [201, { ok: true, aviso }])
     render(<Manifestar casoId={CASO} />)
-    fireEvent.click(await screen.findByLabelText('Aprovei a versão da manifestação (G6)'))
+    fireEvent.click(await screen.findByLabelText('Aprovei a versão da manifestação'))
     fireEvent.click(screen.getByRole('button', { name: 'Aprovar a versão 1' }))
     expect((await screen.findByRole('status')).textContent).toBe('Versão 1 aprovada.')
     expect((await screen.findByRole('alert')).textContent).toBe(aviso)
