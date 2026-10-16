@@ -22,7 +22,7 @@ describe('Mensagens ao cliente (GGVP-102)', () => {
   })
 
   it('CA3 · aponta termo jurídico e frase longa, com a palavra simples; texto simples passa limpo', () => {
-    expect(problemasDaMensagem('Olá, Lúcia! O juiz deu a pensão para você. Vamos te avisar a data.')).toEqual({ bloqueia: [], avisa: [] })
+    expect(problemasDaMensagem('Olá, Lúcia! O juiz deu a pensão para você. Vamos te avisar a data.')).toEqual({ bloqueia: [], avisa: [], portao: null })
     const { avisa, bloqueia } = problemasDaMensagem('A sentença foi procedente e a RPV foi expedida após o trânsito em julgado.')
     expect(bloqueia).toEqual([])
     expect(avisa).toEqual([

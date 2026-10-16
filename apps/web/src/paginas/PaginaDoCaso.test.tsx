@@ -291,7 +291,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       ligar()
       entrarComo(perfil)
       render(comSessao(<PaginaDoCaso processoId={CASO} />))
-      await screen.findByRole('heading', { level: 1, name: /^NB/ })
+      await screen.findByRole('heading', { level: 1, name: /^Vera Teste/ })
       expect(screen.queryByRole('region', { name: 'Custas do processo' }), perfil).toBeNull()
       expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0])), perfil).not.toContain(`/api/casos/${CASO}/custas`)
       cleanup()

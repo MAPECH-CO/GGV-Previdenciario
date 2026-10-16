@@ -325,7 +325,7 @@ describe('GGVP-123 CA10 (Pedro, 14/10) · o cartão "Reuniões" marca a reunião
     for (const [perfil, ve] of [['senior', true], ['socio', false]] as const) {
       entrarComo(perfil)
       render(comSessao(<FichaCliente id="antonio-exemplo" />))
-      await screen.findByRole('heading', { level: 2, name: /Exemplo/ })
+      await screen.findByRole('heading', { level: 1, name: /Exemplo/ })
       const marcar = screen.queryByRole('link', { name: 'Marcar reunião (com transcrição)' })
       expect(marcar?.getAttribute('href') ?? null, perfil).toBe(ve ? '/agenda/marcar/antonio-exemplo' : null)
       expect(screen.queryByRole('button', { name: 'Marcar e iniciar reunião (com transcrição)' }), perfil).toBeNull()
