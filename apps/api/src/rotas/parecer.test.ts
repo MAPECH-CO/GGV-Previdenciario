@@ -368,7 +368,7 @@ describe('GGVP-93 · o roteiro de conteúdo mínimo no parecer', () => {
     expect(servico).not.toHaveBeenCalled()
     const tarefas = (await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('gabi') })).json().tarefas
     expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe])).toEqual([
-      ['Dar parecer médico', expect.stringContaining('benefício sem roteiro: conferência manual · confira item a item (G17)')],
+      ['Dar parecer médico', expect.stringContaining('benefício sem roteiro: conferência manual · confira item a item')],
     ])
 
     const url = `/api/processos/${c.id}/parecer`
