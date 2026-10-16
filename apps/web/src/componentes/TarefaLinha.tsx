@@ -105,7 +105,9 @@ export function TarefaLinha({ tarefa }: Props) {
         </span>
       )}
       <Previa balao rotulo={titulo} conteudo={() => <BalaoDaTarefa tarefa={tarefa} />}>
-        <button type="button" className={styles.info} aria-label={`O que é a tarefa ${titulo}`}>
+        {/* O nome é o mesmo em toda linha (a linha diz qual é a tarefa): com o título nele, "Enviar boas-vindas" virava
+            mais um botão "Enviar" na tela, para o leitor de tela e para os testes. */}
+        <button type="button" className={styles.info} aria-label="Resumo da tarefa">
           <Icone nome="info" />
         </button>
       </Previa>
