@@ -15,6 +15,7 @@
     "usuario:perfis": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts perfis",
     "usuario:destravar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts destravar",
     "homologacao:preparar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/homologacao.ts preparar",
+    "legado:importar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/legado/importar.ts",
     "modelos:subir": "node --experimental-strip-types src/kit/subir-modelos.ts",
     "monitor": "node --experimental-strip-types src/monitor.ts",
     "eval:leitura": "node --experimental-strip-types --env-file-if-exists=../../.env --env-file-if-exists=../../.env.ia src/ia/eval/rodar.ts"

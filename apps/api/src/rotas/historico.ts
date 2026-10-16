@@ -135,6 +135,25 @@ const DESCRICAO: Record<string, string> = {
   // A ida ao banco (GGVP-98): o Atendimento leva; "Não deu" volta ao Financeiro remarcar.
   cliente_levado_ao_banco: 'Cliente levado ao banco pelo Atendimento',
   ida_ao_banco_nao_feita: 'Ida ao banco não feita: voltou ao Financeiro remarcar',
+  // O que veio do portal antigo (16/10): o importador do legado grava um evento por cliente, processo e movimentação.
+  legado_cliente_importado: 'Cliente importado do portal antigo',
+  legado_processo_importado: 'Processo importado do portal antigo',
+  legado_assinatura_de_contrato: 'Portal antigo: contrato assinado',
+  legado_envio_de_documentacao: 'Portal antigo: documentação enviada',
+  legado_protocolo_administrativo: 'Portal antigo: protocolo no INSS',
+  legado_indeferimento_administrativo: 'Portal antigo: indeferido pelo INSS',
+  legado_entrada_no_judicial: 'Portal antigo: entrada na Justiça',
+  legado_protocolo_judicial: 'Portal antigo: protocolo na Justiça',
+  legado_concessao_do_beneficio: 'Portal antigo: benefício concedido',
+  legado_indeferimento_judicial: 'Portal antigo: julgado improcedente',
+  legado_agenda_visita: 'Portal antigo: visita agendada',
+  legado_agenda_cadastro_unico: 'Portal antigo: Cadastro Único agendado',
+  legado_agenda_audiencia: 'Portal antigo: audiência agendada',
+  legado_agenda_prorrogacao: 'Portal antigo: prorrogação agendada',
+  legado_inss_deferido_sem_data: 'Portal antigo: INSS deferiu (a data da decisão não estava registrada)',
+  legado_inss_indeferido_sem_data: 'Portal antigo: INSS indeferiu (a data da decisão não estava registrada)',
+  legado_pericia_importada: 'Perícia importada do portal antigo',
+  legado_pericia_cancelada: 'Portal antigo: perícia cancelada',
 }
 const DECISAO: Record<string, string> = {
   aprovacao_inss: 'OK da Sênior para o INSS',
