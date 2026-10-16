@@ -15,8 +15,8 @@ describe('jurimetria do juízo (GGVP-64)', () => {
   }
 
   it('CA4 · cada taxa vem com os processos e a data da base; o tempo até a sentença pode faltar', () => {
-    // GGVP-158 P5.14: o juiz e o perito com os casos, nulos quando não vêm.
-    expect(JurimetriaDoJuizo.parse(exemplo)).toEqual({ ...exemplo, casosDoJuiz: null, perito: null })
+    // GGVP-158 P5.14: o juiz e o perito com os casos, nulos quando não vêm; GGVP-163 R3: os fundamentos da base, idem.
+    expect(JurimetriaDoJuizo.parse(exemplo)).toEqual({ ...exemplo, casosDoJuiz: null, perito: null, fundamentos: null })
     expect(JurimetriaDoJuizo.parse({ ...exemplo, tempoAteASentenca: { meses: 14, processos: 3 } }).tempoAteASentenca).toEqual({ meses: 14, processos: 3 })
   })
 
