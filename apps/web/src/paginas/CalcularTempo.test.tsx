@@ -50,7 +50,7 @@ describe('Calcular tempo e pontos · tela do passo', () => {
       'Exemplo Comércio Ltda01/2012 a 12/2016',
       'Exemplo Limpeza Ltda03/2019 a 05/2026',
     ])
-    expect(screen.getByText('informada pelo advogado, conferida com o CNIS; nunca pela IA (G19)')).toBeTruthy()
+    expect(screen.getByText('informada pelo advogado, conferida com o CNIS; nunca pela IA')).toBeTruthy()
     expect(botao('Concluir').disabled).toBe(true)
     expect(screen.getByText('Preencha o tempo de contribuição.')).toBeTruthy()
     preencher('18', '4', '0', '79,5')

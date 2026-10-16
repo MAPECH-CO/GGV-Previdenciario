@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { PeritoEscolhido } from '@ggv/contratos'
 import { isoParaData } from '@ggv/campos'
 import { chamarApi } from '../api.ts'
-import { usePode, useSessao } from '../sessao.ts'
+import { usePode, usePodeAbrir, useSessao } from '../sessao.ts'
 import type { ParecerNaTela } from '../dados/parecer.ts'
 import type { PericiaNaTela } from '../dados/pericia.ts'
 import styles from '../paginas/ProcessoPericia.module.css'
@@ -22,6 +22,7 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
   const [peritos, setPeritos] = useState<Perito[]>([])
   const [avisoPerito, setAvisoPerito] = useState('Consultando a identificação do perito…')
   const [gravando, setGravando] = useState(false)
+  const abrePericia = usePodeAbrir(`/casos/${casoId}/pericia`)
 
   useEffect(() => {
     let atual = true
@@ -33,7 +34,9 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
     }).catch(() => { if (atual) setAvisoLaudo('Não foi possível consultar se há laudo novo.') })
     if (veSaude) void chamarApi<PericiaNaTela>(`/processos/${casoId}/pericia`).then(async r => {
       if (!atual) return
-      if (!r.ok || !r.dados.pericia) { setAvisoPerito(r.ok || r.status !== 404 ? 'A identificação do perito está indisponível.' : 'Não há perícia disponível para identificar o perito.'); return }
+      if (!r.ok && r.status !== 404) { setAvisoPerito('A identificação do perito está indisponível.'); return }
+      // Sem perícia, a caixa do perito nem aparece.
+      if (!r.ok || !r.dados.pericia) { setAvisoPerito(''); return }
       setPericia(r.dados)
       setAvisoPerito('')
       if (!r.dados.pericia.peritoId) {
@@ -65,17 +68,17 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
   }
 
   if (!sessao) return null
+  // A caixa do laudo aparece enquanto consulta, quando há laudo ou quando a consulta falhou; sem nada, não aparece.
+  const mostraLaudo = laudo !== null || avisoLaudo !== ''
+  // A caixa do perito aparece com a perícia ou com um aviso (consultando, erro).
+  const mostraPerito = Boolean(pericia) || avisoPerito !== ''
   return <>
-    {veSaude && <section className={styles.cartao} aria-label="Estratégia do processo">
-      <h2 className={styles.cartaoTitulo}>Estratégia</h2>
-      <p>A consulta e a edição da estratégia ainda não estão disponíveis para este processo.</p>
-    </section>}
-    <section className={styles.cartao} aria-label="Laudo novo do processo">
+    {mostraLaudo && <section className={styles.cartao} aria-label="Laudo novo do processo">
       <h2 className={styles.cartaoTitulo}>Laudo novo</h2>
-      <p>{avisoLaudo || (laudo === undefined ? 'Consultando se há laudo novo…' : laudo ? `Há laudo novo desde ${isoParaData(laudo) ?? 'data não informada'}, aguardando análise.` : 'Nenhum laudo novo aguardando análise.')}</p>
+      <p>{avisoLaudo || (laudo ? `Há laudo novo desde ${isoParaData(laudo) ?? 'data não informada'}, aguardando análise.` : 'Consultando se há laudo novo…')}</p>
       {laudo && veSaude && <a href={`/casos/${casoId}/laudo-novo`}>Analisar o laudo novo</a>}
-    </section>
-    {veSaude && <section className={styles.cartao} aria-label="Identificação do perito">
+    </section>}
+    {veSaude && mostraPerito && <section className={styles.cartao} aria-label="Identificação do perito">
       <h2 className={styles.cartaoTitulo}>{pericia?.pericia.peritoId ? 'Perito do processo' : 'Quem é o perito?'}</h2>
       {pericia?.pericia.peritoId ? <p>{pericia.perfil?.perito.nome ?? 'Perito identificado pelo servidor'}</p> : pericia && <>
         <p>{pericia.pericia.peritoLido ? `Nome lido, ainda não confirmado: ${pericia.pericia.peritoLido}.` : 'O perito ainda não foi identificado.'} Confira no documento antes de escolher.</p>
@@ -85,7 +88,7 @@ export function ComplementosDoProcesso({ casoId }: { casoId: string }) {
         </div> : <p>A identificação deve ser feita pela equipe responsável pela perícia.</p>}
       </>}
       {avisoPerito && <p role="status">{avisoPerito}</p>}
-      {pericia && <a href={`/casos/${casoId}/pericia`}>Abrir a perícia</a>}
+      {pericia && abrePericia && <a href={`/casos/${casoId}/pericia`}>Abrir a perícia</a>}
     </section>}
   </>
 }

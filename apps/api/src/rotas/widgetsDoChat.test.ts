@@ -63,7 +63,7 @@ describe('os widgets do caso', () => {
     etapaAtual: 'vigilia',
     linha: Array.from({ length: 8 }, (_, i) => ({ quando: `2026-10-0${i + 1}T10:00:00Z`, quem: 'Ana', origem: 'pessoa', passo: null, descricao: `evento ${i + 1}` })),
     prazos: [
-      { fim: '2026-10-13', regra: 'Manifestar (G12)' },
+      { fim: '2026-10-13', regra: 'Manifestar' },
       { fim: '2026-10-01', regra: 'Vencido' },
     ],
     exigencias: [{ origem: 'juizo', descricao: 'Comprovar o vínculo', prazo: '2026-10-20', situacao: 'aberta', recebidaEm: '2026-10-01', itens: [] }],

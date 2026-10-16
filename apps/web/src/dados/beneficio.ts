@@ -80,14 +80,14 @@ export async function definirBeneficio(agendamentoId: string, decisao: DecisaoDo
   }
   const manteveOCitado = sugestao?.citado === decisao.beneficio
   ficha.historico.push(
-    evento(`Definiu o benefício do caso: ${nomeBeneficio(decisao.beneficio)}${manteveOCitado ? ' · o que citou na entrevista (G3)' : ''}`, QUEM_ADVOGADA),
+    evento(`Definiu o benefício do caso: ${nomeBeneficio(decisao.beneficio)}${manteveOCitado ? ' · o que citou na entrevista' : ''}`, QUEM_ADVOGADA),
   )
   if (recusou) {
     const comMotivo = motivo ? `: ${motivo}` : ''
     ficha.historico.push(
       evento(
         manteveOCitado
-          ? `Manteve o que citou na entrevista; a IA sugeria ${nomeBeneficio(sugestao.sugerido)} (G3)${comMotivo}`
+          ? `Manteve o que citou na entrevista; a IA sugeria ${nomeBeneficio(sugestao.sugerido)}${comMotivo}`
           : `Recusou a sugestão da IA (${nomeBeneficio(sugestao.sugerido)})${comMotivo}`,
         QUEM_ADVOGADA,
       ),

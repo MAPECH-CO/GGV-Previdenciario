@@ -155,7 +155,7 @@ describe('GGVP-132 · o parecer no servidor (GGVP-20)', () => {
     const { analise } = (await ver('gabi', casoId)).json().juridico
     expect(analise.sugestao).toBe('contraditorio')
     const g18 = await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: analise.quando, conferidos: conforme(analise), decisao: 'suficiente' })
-    expect([g18.statusCode, g18.json().erro]).toEqual([400, 'Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).'])
+    expect([g18.statusCode, g18.json().erro]).toEqual([400, 'Há contradição conferida: o parecer fica Contraditório e o caso não avança.'])
     const g20 = await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: analise.quando, conferidos: conforme(analise), decisao: 'insuficiente', abordar: 'Peça ao médico o CID F32.1 no laudo.' })
     expect(g20.statusCode).toBe(400)
     const velha = await postar('gabi', `/api/processos/${casoId}/parecer`, { analise: '2026-01-01T00:00:00.000Z', conferidos: conforme(analise), decisao: 'insuficiente', abordar: 'Qual a previsão de duração do quadro?' })
@@ -252,7 +252,7 @@ describe('GGVP-134 · a IA de verdade na análise do parecer', () => {
     expect([gabi.juridico.analise.sugestao, servico.mock.calls.length]).toEqual(['insuficiente', 2])
     // A tarefa nasce da análise pronta.
     const tarefas = (await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('ana') })).json().tarefas
-    expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe])).toEqual([['Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)']])
+    expect(tarefas.map((t: { acao: string; detalhe: string }) => [t.acao, t.detalhe])).toEqual([['Dar parecer médico', 'LOAS Deficiente · a IA sugere Insuficiente · confira item a item']])
   })
 
   it('vai à IA só o roteiro e o texto deste documento: nem o nome do cliente, nem outro caso', async () => {
@@ -293,7 +293,7 @@ describe('GGVP-134 · a IA de verdade na análise do parecer', () => {
     expect([r.motivo, r.sugestao]).toEqual([MSG_IA_DESLIGADA, 'insuficiente'])
     expect([servico.mock.calls.length, (await banco.select().from(chamadaIa)).length]).toEqual([0, 0])
     const tarefas = (await app.inject({ method: 'GET', url: '/api/documentacao-medica', cookies: await cookieDe('ana') })).json().tarefas
-    expect(tarefas[0].detalhe).toBe('LOAS Deficiente · a IA não leu os documentos: confira pela sua leitura · confira item a item (G17)')
+    expect(tarefas[0].detalhe).toBe('LOAS Deficiente · a IA não leu os documentos: confira pela sua leitura · confira item a item')
   })
 
   it('GGVP-110 · instrução escondida no laudo: segue como dado, a sugestão vem com o alerta e nada é decidido', async () => {
@@ -329,7 +329,7 @@ describe('GGVP-132 · a dispensa do parecer por duas Sêniores no servidor (GGVP
     const casoId = await novoCaso('bpc_loas_deficiente')
     await postar('helena', dispensa(casoId), { justificativa: JUSTIFICATIVA })
     const r = await postar('helena', `${dispensa(casoId)}/aprovacao`, { aprova: true })
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior.'])
     const [evento] = await eventos('dispensa_parecer_recusada')
     expect(evento.detalhe).toEqual(expect.objectContaining({ portao: 'G17', passo: 'D1.24', motivo: 'mesma_senior' }))
     expect(await banco.select().from(parecerMedico)).toEqual([])
@@ -354,7 +354,7 @@ describe('GGVP-132 · a dispensa do parecer por duas Sêniores no servidor (GGVP
     expect((await ver('gabi', casoId)).json().dispensa.justificativa).toBe(JUSTIFICATIVA)
     const [ficha] = await banco.select().from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, pessoaId))
     expect(JSON.stringify(ficha.documento)).not.toContain('laudo do SUS')
-    expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)')
+    expect((ficha.documento as { historico: { oQue: string }[] }).historico.at(-1)?.oQue).toBe('Pediu a dispensa do parecer médico (1ª aprovação da sênior)')
   })
 })
 

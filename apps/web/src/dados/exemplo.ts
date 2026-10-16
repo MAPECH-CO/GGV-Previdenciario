@@ -83,7 +83,7 @@ export function fichasDeExemplo(hoje: string): Ficha[] {
           { nome: 'Procuração', detalhe: '26/09' },
         ],
         documentacaoMedica:
-          '3 laudos recebidos · parecer "Suficiente" confirmado pelo Jurídico (G17). O conteúdo dos laudos não é exibido aqui.',
+          '3 laudos recebidos · parecer "Suficiente" confirmado pelo Jurídico. O conteúdo dos laudos não é exibido aqui.',
         transcricoes: 2,
       },
     ),
@@ -342,16 +342,16 @@ export function gravacoesDeExemplo(): Gravacao[] {
         paula(1865, 'Pelo que o senhor contou e pelos laudos, o caminho é a aposentadoria por invalidez. Vamos pedir ao INSS e, se negar, entramos na Justiça.'),
       ],
       resumo:
-        'Antônio, 62 anos, trabalhou como rural (2018–2020, sem registro) e como porteiro (2021–2025). Afastado desde 03/2026, sem receber, depois de crises na coluna. Três laudos do ortopedista, o último de 18/09. Já pediu auxílio ao INSS uma vez (negado, 2024). A advogada definiu Aposentadoria por Incapacidade Permanente; a IA havia sugerido o mesmo (G3). Pendências: prova do vínculo rural 2018–2020 (sem registro; notas do produtor) e CNIS atualizado.',
+        'Antônio, 62 anos, trabalhou como rural (2018–2020, sem registro) e como porteiro (2021–2025). Afastado desde 03/2026, sem receber, depois de crises na coluna. Três laudos do ortopedista, o último de 18/09. Já pediu auxílio ao INSS uma vez (negado, 2024). A advogada definiu Aposentadoria por Incapacidade Permanente; a IA havia sugerido o mesmo. Pendências: prova do vínculo rural 2018–2020 (sem registro; notas do produtor) e CNIS atualizado.',
       extraidas: [
         extraida('dii', 'Início da incapacidade (DII)', '03/2026 — "parei de trabalhar em março, depois da segunda crise"', 'processo'),
         extraida('vinculo', 'Último vínculo', 'porteiro · CLT · 2021 a 02/2026', 'processo'),
         extraida('rural', 'Atividade rural', '2018–2020 · sem registro · notas do produtor com o sindicato', 'documentacao'),
         extraida('laudos', 'Laudos citados', '3 laudos do ortopedista · último 18/09', 'processo'),
         extraida('pedido', 'Pedido anterior ao INSS', 'auxílio negado em 2024', 'processo'),
-        extraida('senha', 'Senha do gov.br', 'digitada no cofre: não consta na transcrição (G9)', 'cofre'),
+        extraida('senha', 'Senha do gov.br', 'digitada no cofre: não consta na transcrição', 'cofre'),
         extraida('apoio', 'Contato de apoio', `filha Renata · (11) 90000-0023`, 'ficha', 'contatoApoio'),
-        extraida('beneficio', 'Benefício definido', 'Aposentadoria por Incapacidade Permanente (decisão da advogada, G3)', 'processo'),
+        extraida('beneficio', 'Benefício definido', 'Aposentadoria por Incapacidade Permanente (decisão da advogada)', 'processo'),
       ],
       documentos: ['Notas do produtor rural (2018–2020)', 'Certidão do sindicato rural', 'CNIS atualizado'],
       documentosConferidosEm: conferida,

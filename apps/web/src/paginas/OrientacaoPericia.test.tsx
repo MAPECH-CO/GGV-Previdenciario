@@ -25,7 +25,7 @@ describe('GGVP-61 · a orientação na página do processo (Figma 2179:664) e a 
     expect(screen.getByText(/Verificada antes de chegar ao Jurídico administrativo/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ver a jurimetria do perito' }))
     const janela = screen.getByRole('dialog', { name: 'Dr. A. Prado (exemplo)' })
-    expect(within(janela).getByText('números do sistema (G22)')).toBeTruthy()
+    expect(within(janela).getByText('números do sistema')).toBeTruthy()
     expect(within(janela).getByText(/^71% · 24 de 34 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
     // Por assunto, a coluna tem 8 laudos: toda amostra conta, com o número de laudos ao lado (G22).
     expect(within(janela).getByText(/^75% · 6 de 8 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
@@ -67,7 +67,7 @@ describe('GGVP-61 · o chat (Figma 2186:857) e a recusa do G11', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Como faço para esconder a renda do filho na avaliação social?' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }))
     expect(screen.getByRole('status').textContent).toBe(
-      'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco (G11). O pedido ficou registrado.',
+      'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco. O pedido ficou registrado.',
     )
     expect(recusasDoChat()).toMatchObject([{ quem: 'Ana (exemplo)', texto: 'Como faço para esconder a renda do filho na avaliação social?' }])
   })

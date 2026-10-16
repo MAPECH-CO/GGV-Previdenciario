@@ -1,12 +1,13 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import type { Tarefa } from '../dados/tipos.ts'
 import { useCelular } from '../design/celular.ts'
 import { useSessao } from '../sessao.ts'
 import { BotoesPreferencias } from './BotoesPreferencias.tsx'
+import { BuscaGlobal } from './BuscaGlobal.tsx'
 import { Icone } from './Icone.tsx'
-import { ITENS_DA_GESTAO, itensDoPerfil } from './itensDaGestao.ts'
+import { menuDoPerfil } from './menuDoPerfil.ts'
 import { Avatar, BotaoSair, MenuDaPessoa, PerfisDaPessoa } from './MenuDaPessoa.tsx'
 import styles from './Topbar.module.css'
-import { BuscaGlobal } from './BuscaGlobal.tsx'
 
 export type ItemNavegacao = {
   id: string
@@ -15,6 +16,7 @@ export type ItemNavegacao = {
 }
 
 type Props = {
+  /** Só vale sem sessão (testes, /tokens): com sessão, o topo vem do perfil, igual em toda tela. */
   itens: ItemNavegacao[]
   /** id do item da página atual. */
   ativo: string
@@ -25,9 +27,10 @@ type Props = {
   voltar?: boolean
   /** Telas de passo: de quem é a tela ("Processo 0012… · Maria", "Cliente · Ana"), à direita dos botões. */
   contexto?: string
+  /** A fila da tela inicial: a busca do topo acha as tarefas dela também. */
+  tarefas?: Tarefa[]
 }
 
-const DA_GESTAO = new Set(ITENS_DA_GESTAO.map((i) => i.id))
 /** Quantos itens cabem na barra de baixo do celular, antes do "Menu". */
 const NA_BARRA = 4
 
@@ -36,16 +39,18 @@ function IconeDoItem({ id }: { id: string }) {
 }
 
 /**
- * O topo de toda tela (refeito em 11/10). No computador: a marca, a ação da tela, tema e tamanho e a pessoa na primeira
- * linha; na segunda, os botões da função, cada um com o seu ícone, com a Gestão separada por um traço. No celular: a
- * marca e a pessoa em cima e, embaixo, uma barra fixa com os quatro primeiros e o "Menu", que abre tudo.
+ * O topo de toda tela (refeito em 11/10; menu pelo perfil e busca única em 15/10). No computador: a marca, a busca, a ação
+ * da tela, tema e tamanho e a pessoa na primeira linha; na segunda, os botões da função e a Gestão num menu só. No celular:
+ * a marca e a pessoa em cima, a busca embaixo delas e uma barra fixa com os quatro primeiros e o "Menu", que abre tudo.
  */
-export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }: Props) {
+export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto, tarefas }: Props) {
   const usuario = useSessao()
   const celular = useCelular()
   const [menuAberto, setMenuAberto] = useState(false)
-  const lista = itensDoPerfil(itens, usuario?.perfilAtivo)
-  const primeiroDaGestao = lista.find((i) => DA_GESTAO.has(i.id))?.id
+  const { principais, gestao } = usuario ? menuDoPerfil(usuario.perfilAtivo) : { principais: itens, gestao: [] }
+  // Um item só de gestão (o Financeiro, com os Resultados) fica solto; mais de um vai para o menu "Gestão".
+  const soltos = gestao.length === 1 ? [...principais, ...gestao] : principais
+  const doMenuDaGestao = gestao.length > 1 ? gestao : []
 
   const pessoa = usuario ? (
     celular ? (
@@ -68,6 +73,8 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
     </button>
   )
 
+  const busca = (usuario || tarefas) && <BuscaGlobal tarefas={tarefas} />
+
   return (
     <header className={styles.topo}>
       <div className={styles.linha}>
@@ -78,6 +85,7 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
           </span>
           <span className={styles.nome}>GGV Previdenciário</span>
         </a>
+        {!celular && busca && <div className={styles.busca}>{busca}</div>}
         <div className={styles.espaco} />
         {acao && (
           <a className={styles.acao} href={acao.href} aria-label={celular ? acao.rotulo : undefined}>
@@ -88,7 +96,7 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
         {pessoa}
       </div>
 
-      {usuario && <div className={styles.busca}><BuscaGlobal /></div>}
+      {celular && busca && <div className={styles.buscaCelular}>{busca}</div>}
 
       {celular && contexto && <p className={styles.contextoCelular}>{contexto}</p>}
 
@@ -96,15 +104,18 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
         <nav className={styles.nav} aria-label="Principal">
           {botaoVoltar}
           {botaoVoltar && <span className={styles.divisor} aria-hidden="true" />}
-          {lista.map((item) => (
-            <Fragment key={item.id}>
-              {item.id === primeiroDaGestao && <span className={styles.divisor} aria-hidden="true" />}
-              <a className={styles.item} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
-                <IconeDoItem id={item.id} />
-                {item.rotulo}
-              </a>
-            </Fragment>
+          {soltos.map((item) => (
+            <a key={item.id} className={styles.item} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
+              <IconeDoItem id={item.id} />
+              {item.rotulo}
+            </a>
           ))}
+          {doMenuDaGestao.length > 0 && (
+            <>
+              <span className={styles.divisor} aria-hidden="true" />
+              <MenuDaGestao itens={doMenuDaGestao} ativo={ativo} />
+            </>
+          )}
           {contexto && <p className={styles.contexto}>{contexto}</p>}
         </nav>
       )}
@@ -112,7 +123,7 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
       {celular && (
         <>
           <nav className={styles.barra} aria-label="Principal" data-barra-celular="">
-            {lista.slice(0, NA_BARRA).map((item) => (
+            {principais.slice(0, NA_BARRA).map((item) => (
               <a key={item.id} className={styles.aba} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
                 <IconeDoItem id={item.id} />
                 <span className={styles.abaNome}>{item.rotulo}</span>
@@ -123,15 +134,71 @@ export function Topbar({ itens, ativo, funcao, acao, voltar = false, contexto }:
               <span className={styles.abaNome}>Menu</span>
             </button>
           </nav>
-          {menuAberto && <MenuDoCelular itens={lista} ativo={ativo} aoFechar={() => setMenuAberto(false)} />}
+          {menuAberto && <MenuDoCelular principais={principais} gestao={gestao} ativo={ativo} aoFechar={() => setMenuAberto(false)} />}
         </>
       )}
     </header>
   )
 }
 
-/** O menu do celular: a pessoa, todos os botões da função, tema e tamanho, a troca de perfil e o "Sair". */
-function MenuDoCelular({ itens, ativo, aoFechar }: { itens: ItemNavegacao[]; ativo: string; aoFechar: () => void }) {
+/**
+ * A Gestão num botão só (no Figma é um item): as telas de quem gere ficam a um clique, sem dividir o topo com o dia a dia.
+ * Fecha com Esc, ao clicar fora e ao escolher; o botão fica aceso quando a tela atual é dela.
+ */
+function MenuDaGestao({ itens, ativo }: { itens: ItemNavegacao[]; ativo: string }) {
+  const [aberto, setAberto] = useState(false)
+  const caixa = useRef<HTMLDivElement>(null)
+  const botao = useRef<HTMLButtonElement>(null)
+  const atual = itens.find((i) => i.id === ativo)
+
+  useEffect(() => {
+    if (!aberto) return
+    const fora = (e: PointerEvent) => !caixa.current?.contains(e.target as Node) && setAberto(false)
+    document.addEventListener('pointerdown', fora)
+    return () => document.removeEventListener('pointerdown', fora)
+  }, [aberto])
+
+  return (
+    <div
+      className={styles.gestao}
+      ref={caixa}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !aberto) return
+        setAberto(false)
+        botao.current?.focus()
+      }}
+    >
+      <button
+        ref={botao}
+        type="button"
+        className={styles.item}
+        aria-expanded={aberto}
+        aria-controls="menu-da-gestao"
+        data-atual={atual ? '' : undefined}
+        onClick={() => setAberto(!aberto)}
+      >
+        <Icone nome="gestao" className={styles.icone} />
+        {atual ? `Gestão · ${atual.rotulo}` : 'Gestão'}
+        <Icone nome="abrir" className={styles.abrir} />
+      </button>
+      {aberto && (
+        <ul id="menu-da-gestao" className={styles.menuGestao}>
+          {itens.map((item) => (
+            <li key={item.id}>
+              <a className={styles.menuItem} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
+                <IconeDoItem id={item.id} />
+                {item.rotulo}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** O menu do celular: a pessoa, todos os botões da função, a Gestão, tema e tamanho, a troca de perfil e o "Sair". */
+function MenuDoCelular({ principais, gestao, ativo, aoFechar }: { principais: ItemNavegacao[]; gestao: ItemNavegacao[]; ativo: string; aoFechar: () => void }) {
   const usuario = useSessao()
   const janela = useRef<HTMLDialogElement>(null)
 
@@ -153,14 +220,25 @@ function MenuDoCelular({ itens, ativo, aoFechar }: { itens: ItemNavegacao[]; ati
         </button>
       </div>
 
-      <nav className={styles.folhaLista} aria-label="Todas as telas">
-        {itens.map((item) => (
-          <a key={item.id} className={styles.folhaItem} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
-            <IconeDoItem id={item.id} />
-            {item.rotulo}
-          </a>
-        ))}
-      </nav>
+      {[
+        { titulo: '', lista: principais },
+        { titulo: 'Gestão', lista: gestao },
+      ].map(
+        ({ titulo, lista }) =>
+          lista.length > 0 && (
+            <Fragment key={titulo || 'principais'}>
+              {titulo && <p className={styles.folhaTitulo}>{titulo}</p>}
+              <nav className={styles.folhaLista} aria-label={titulo || 'Todas as telas'}>
+                {lista.map((item) => (
+                  <a key={item.id} className={styles.folhaItem} href={item.href} aria-current={item.id === ativo ? 'page' : undefined}>
+                    <IconeDoItem id={item.id} />
+                    {item.rotulo}
+                  </a>
+                ))}
+              </nav>
+            </Fragment>
+          ),
+      )}
 
       <section className={styles.folhaSecao} aria-label="Aparência">
         <BotoesPreferencias empilhado />

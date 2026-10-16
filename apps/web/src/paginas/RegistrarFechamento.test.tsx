@@ -26,7 +26,7 @@ describe('Registrar fechamento (GGVP-60)', () => {
     expect(screen.getByText('depois da entrevista de 04/10 · fechou com o escritório?')).toBeTruthy()
     expect(botao('Registrar e agendar retorno').disabled).toBe(true)
     expect(screen.getByText('Responda se fechou com o escritório.')).toBeTruthy()
-    expect(screen.getByText('Todo lead que não vira cliente fica com o motivo registrado (G16).')).toBeTruthy()
+    expect(screen.getByText('Todo lead que não vira cliente fica com o motivo registrado.')).toBeTruthy()
   })
 
   it('CA5 · "Sim, fechou": vira cliente e segue para o kit do benefício', async () => {
@@ -52,7 +52,7 @@ describe('Registrar fechamento (GGVP-60)', () => {
     await abrir()
     fireEvent.click(screen.getByRole('radio', { name: 'Não fechou' }))
     expect(screen.getByText('não fechou · por que não virou cliente')).toBeTruthy()
-    expect(screen.getByText('Escolha o motivo: sem ele o lead não pode ser encerrado (G16).')).toBeTruthy()
+    expect(screen.getByText('Escolha o motivo: sem ele o lead não pode ser encerrado.')).toBeTruthy()
     escolher('Motivo *', 'preco')
     escolher('Detalhe do motivo (opcional)', 'achou o valor alto')
     expect(screen.getByText('Responda se vale recontatar numa data prevista.')).toBeTruthy()

@@ -75,19 +75,23 @@ const PEDE_SENHA = /(\b(mande|envie|passe|informe|digite|mand[ae]r|enviar|passar
  * O que o texto não pode ter, antes de sair (CA3, CA9): `bloqueia` não deixa enviar (G9, G11, G20); `avisa` é a IA
  * apontando termo jurídico e frase longa, e quem envia decide.
  */
-export function problemasDaMensagem(texto: string): { bloqueia: string[]; avisa: string[] } {
-  const bloqueia = [
-    PEDE_SENHA.test(texto) && 'O escritório nunca pede a senha do gov.br por mensagem (G9).',
-    G11.test(texto) && 'Nunca oriente a esconder ou mudar a situação real (G11).',
-    problemaG20(texto),
-    DADO_EM_ABERTO.test(texto) && MSG_DADO_EM_ABERTO,
-  ].filter((x): x is string => Boolean(x))
+export function problemasDaMensagem(texto: string): { bloqueia: string[]; avisa: string[]; portao: string | null } {
+  // Cada trava com o portão dela: o texto vai para a tela; o código, só para o histórico (`portao`, o da primeira).
+  const todas: [string, string | false | null][] = [
+    ['G9', PEDE_SENHA.test(texto) && 'O escritório nunca pede a senha do gov.br por mensagem.'],
+    ['G11', G11.test(texto) && 'Nunca oriente a esconder ou mudar a situação real.'],
+    ['G20', problemaG20(texto)],
+    // O benefício em aberto não é portão: fica no histórico pelo nome do motivo.
+    ['dado-em-aberto', DADO_EM_ABERTO.test(texto) && MSG_DADO_EM_ABERTO],
+  ]
+  const travas = todas.filter((t): t is [string, string] => Boolean(t[1]))
+  const bloqueia = travas.map(([, t]) => t)
   const longas = texto.split(/[.!?]+/).filter((f) => f.trim().split(/\s+/).length > PALAVRAS_POR_FRASE).length
   const avisa = [
     ...TERMOS_JURIDICOS.filter(([termo]) => termo.test(texto)).map(([, simples]) => `Termo jurídico ${simples}.`),
     longas > 0 && `${longas === 1 ? 'Uma frase longa' : `${longas} frases longas`}: divida em frases curtas.`,
   ].filter((x): x is string => Boolean(x))
-  return { bloqueia, avisa }
+  return { bloqueia, avisa, portao: travas[0]?.[0] ?? null }
 }
 
 /** As conversas do contato no Chatwoot, a de mais mensagens primeiro (CA6; Lucas 06/10, Pedro 07/10). */

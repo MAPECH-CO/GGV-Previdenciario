@@ -72,20 +72,20 @@ export function requisitosDoBeneficio(
   const carencia = (): Requisito => {
     const n = dados.carencia ?? (dados.vinculos && contribuicoes(dados.vinculos, hoje))
     if (n === undefined) return { texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }
-    return { texto: `Carência: ${n} contribuições no CNIS; o mínimo é ${CARENCIA} (calculado por código, G19)`, atende: n >= CARENCIA }
+    return { texto: `Carência: ${n} contribuições no CNIS; o mínimo é ${CARENCIA} (calculado por código)`, atende: n >= CARENCIA }
   }
   const afastamento = (): Requisito => {
     const dias = dados.semTrabalharDesde ? diasDesde(dados.semTrabalharDesde, hoje) : null
     if (dias === null) return { texto: 'Afastamento: falta o "sem trabalhar desde" conferido na entrevista', atende: null }
     return {
-      texto: `Afastamento: ${dias} dias desde ${dados.semTrabalharDesde}; precisa de mais de ${AFASTAMENTO_MINIMO} (calculado por código, G19)`,
+      texto: `Afastamento: ${dias} dias desde ${dados.semTrabalharDesde}; precisa de mais de ${AFASTAMENTO_MINIMO} (calculado por código)`,
       atende: dias > AFASTAMENTO_MINIMO,
     }
   }
   const idade = (): Requisito => {
     if (!dados.nascimento) return { texto: 'Idade: sem data de nascimento na ficha', atende: null }
     const anos = idadeEm(dados.nascimento, hoje)
-    return { texto: `Idade: ${anos} anos; o LOAS Idoso pede ${IDADE_DO_LOAS} (calculado por código, G19)`, atende: anos >= IDADE_DO_LOAS }
+    return { texto: `Idade: ${anos} anos; o LOAS Idoso pede ${IDADE_DO_LOAS} (calculado por código)`, atende: anos >= IDADE_DO_LOAS }
   }
   if (beneficio === 'incapacidade-temporaria') return [carencia(), afastamento()]
   if (beneficio === 'incapacidade-permanente') return [carencia()]

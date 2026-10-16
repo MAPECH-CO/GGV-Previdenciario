@@ -70,7 +70,7 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
 
     const loas = (await definir(agendamentoId, 'loas-idoso')).json()
     expect(loas.ficha.beneficioDefinido).toMatchObject({ beneficio: 'loas-idoso', quem: 'gabi', agendamentoId })
-    expect(loas.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/^Definiu o benefício do caso \(D1.12\): /))
+    expect(loas.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/^Definiu o benefício do caso: /))
     expect(abertas(loas.tarefas)).toEqual(['Cadastrar lead'])
 
     const aposentadoria = (await definir(agendamentoId, 'aposentadoria-idade')).json()
@@ -109,7 +109,7 @@ describe('GGVP-125 · bloco 3b: as decisões depois da entrevista no servidor', 
     const salvo = await json('gabi', 'PUT', `/api/fichas/${fichaId}/cadastro`, { base, valores })
     expect(salvo).toMatchObject({ resultado: 'salvo', ficha: { rg: '123456789', cpf: '52998224725', bairro: 'Sé', cidadeUf: 'São Paulo / SP' } })
     const oQue = salvo.ficha.historico.map((e: { oQue: string }) => e.oQue)
-    expect(oQue).toContain('Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato')
+    expect(oQue).toContain('Cadastrou o lead: completou a mesma ficha do primeiro contato')
     expect(oQue).toContain('Alterou RG: «—» → «123456789»')
     expect(abertas(salvo.tarefas)).toEqual(['Definir benefício'])
     expect((await banco.select().from(pessoa).where(eq(pessoa.id, fichaId)))[0]).toMatchObject({ cpf: '52998224725', bairro: 'Sé', cidade: 'São Paulo', uf: 'SP' })
@@ -369,7 +369,7 @@ describe('GGVP-158 P7.4 · a sugestão de benefício vem do acervo de verdade', 
     saida = { sugerido: 'incapacidade-permanente', porque: 'A coluna não melhora.' }
     const d = await json('gabi', 'GET', url)
     expect(d.dados.carencia).toBe(13)
-    expect(d.sugestao.requisitos).toEqual([{ texto: 'Carência: 13 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: true }])
+    expect(d.sugestao.requisitos).toEqual([{ texto: 'Carência: 13 contribuições no CNIS; o mínimo é 12 (calculado por código)', atende: true }])
     const r = await json('gabi', 'POST', url, { beneficio: 'auxilio-acidente', conferi: true, motivoDaRecusa: 'Foi acidente no trabalho.' })
     expect(r.ficha.beneficioDefinido).toMatchObject({ beneficio: 'auxilio-acidente', sugerido: 'incapacidade-permanente', recusouSugestao: true, motivoDaRecusa: 'Foi acidente no trabalho.' })
     expect(r.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContain('Recusou a sugestão da IA (Aposentadoria por Incapacidade Permanente): Foi acidente no trabalho.')
@@ -381,7 +381,7 @@ describe('GGVP-158 P7.4 · a sugestão de benefício vem do acervo de verdade', 
     expect(d).toMatchObject({ transcrita: true, sugestao: null, citado: 'incapacidade-temporaria', aviso: SEM_IA(MSG_IA_DESLIGADA) })
     const def = await json('gabi', 'POST', url, { beneficio: 'incapacidade-temporaria', conferi: true })
     expect(def.ficha.beneficioDefinido).toMatchObject({ citado: 'incapacidade-temporaria', recusouSugestao: false, fontes: [] })
-    expect(def.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/· o que citou na entrevista \(G3\)$/))
+    expect(def.ficha.historico.map((e: { oQue: string }) => e.oQue)).toContainEqual(expect.stringMatching(/· o que citou na entrevista$/))
   })
 })
 

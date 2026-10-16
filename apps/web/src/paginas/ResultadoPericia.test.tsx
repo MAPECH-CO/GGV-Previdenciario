@@ -39,7 +39,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
   it('CA5, CA8 · o resumo do laudo pela IA, com a jurimetria do perito do sistema (G22); registrar só com tudo respondido', async () => {
     const resumo = await abrirEAnexar('laudo_pericia_antonio.pdf')
     expect(resumo.getByText('Favorável · incapacidade para o trabalho habitual')).toBeTruthy()
-    expect(resumo.getByText(/^71% · 24 de 34 laudos · base de \d\d\/\d\d \(G22\)$/)).toBeTruthy()
+    expect(resumo.getByText(/^71% · 24 de 34 laudos · base de \d\d\/\d\d$/)).toBeTruthy()
     const registrar = screen.getByRole('button', { name: 'Registrar resultado' }) as HTMLButtonElement
     expect(registrar.disabled).toBe(true)
     expect(screen.getByText('Informe se o resultado foi favorável ou desfavorável.')).toBeTruthy()
@@ -47,7 +47,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     expect(screen.getByText('Marque as conferências antes de registrar.')).toBeTruthy()
     conferirTudo()
     expect(registrar.disabled).toBe(false)
-    expect(screen.getByText('Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima (G22).')).toBeTruthy()
+    expect(screen.getByText('Toda porcentagem da jurimetria vem com o número de laudos e a data da base, sem amostra mínima.')).toBeTruthy()
   })
 
   it('CA2, CA6 · favorável no judicial: o feito diz como volta ao juízo, com o prazo de 15 dias (G12)', async () => {
@@ -57,7 +57,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Registrar resultado' }))
     const feito = within(await screen.findByRole('region', { name: '✓ Resultado registrado: favorável' }))
     expect(
-      feito.getByText(/O resultado subiu no card e voltou para quem pediu \(pedido do juiz\): volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias, G12\)/),
+      feito.getByText(/O resultado subiu no card e voltou para quem pediu \(pedido do juiz\): volta ao judicial: manifestar sobre o laudo, até 04\/11 \(15 dias\)/),
     ).toBeTruthy()
   })
 
@@ -94,7 +94,7 @@ describe('GGVP-70 · conferir o resultado (Figma 14:556 e 1579:431)', () => {
     render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
     const pericias = within(await screen.findByRole('region', { name: 'Perícias' }))
     expect(pericias.getByText('Favorável')).toBeTruthy()
-    expect(within(screen.getByRole('region', { name: 'Prazos' })).getByText('Manifestação sobre o laudo (15 dias, G12)')).toBeTruthy()
+    expect(within(screen.getByRole('region', { name: 'Prazos' })).getByText('Manifestação sobre o laudo (15 dias)')).toBeTruthy()
   })
 })
 

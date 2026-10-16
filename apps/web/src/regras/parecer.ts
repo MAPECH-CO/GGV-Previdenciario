@@ -96,14 +96,14 @@ export const abaixoDe24Meses = (inicio: string, cessacaoPrevista: string | undef
   cessacaoPrevista !== undefined && mesesEntre(inicio, cessacaoPrevista) < MESES_LOAS
 
 const REGRAS_G20: [RegExp, string][] = [
-  [/\b[A-Z]\d{2}(\.\d{1,2})?\b/, 'Tire o código de doença (CID): a orientação não sugere diagnóstico (G20).'],
-  [/\bcid\b/i, 'Não peça nem sugira CID: a orientação diz só o que o documento deve abordar (G20).'],
-  [/diagn[oó]stic/i, 'Não sugira diagnóstico: a orientação diz só o que o documento deve abordar (G20).'],
-  [/\bgrau\s+(leve|moderad|grave)/i, 'Não sugira o grau: quem avalia é o médico (G20).'],
-  [/\bincapacidade\s+(total|permanente|parcial|definitiva)/i, 'Não sugira a conclusão: quem conclui é o médico (G20).'],
-  [/\bconclu(a|ir|são|sao)\b/i, 'Não sugira a conclusão: quem conclui é o médico (G20).'],
-  [/["“”]/, 'Sem frase pronta entre aspas para o médico copiar (G20).'],
-  [/\b(escrev|declar|atest|coloqu|const)\w*\s+que\b/i, 'Sem frase pronta: a orientação pergunta, não dita o que escrever (G20).'],
+  [/\b[A-Z]\d{2}(\.\d{1,2})?\b/, 'Tire o código de doença (CID): a orientação não sugere diagnóstico.'],
+  [/\bcid\b/i, 'Não peça nem sugira CID: a orientação diz só o que o documento deve abordar.'],
+  [/diagn[oó]stic/i, 'Não sugira diagnóstico: a orientação diz só o que o documento deve abordar.'],
+  [/\bgrau\s+(leve|moderad|grave)/i, 'Não sugira o grau: quem avalia é o médico.'],
+  [/\bincapacidade\s+(total|permanente|parcial|definitiva)/i, 'Não sugira a conclusão: quem conclui é o médico.'],
+  [/\bconclu(a|ir|são|sao)\b/i, 'Não sugira a conclusão: quem conclui é o médico.'],
+  [/["“”]/, 'Sem frase pronta entre aspas para o médico copiar.'],
+  [/\b(escrev|declar|atest|coloqu|const)\w*\s+que\b/i, 'Sem frase pronta: a orientação pergunta, não dita o que escrever.'],
 ]
 
 /** Por que o texto ao médico ou ao cliente fere o G20; sem problema, null (CA8). */
@@ -153,11 +153,11 @@ export function motivoParaNaoRegistrar(d: {
   if ([d.abordar, d.conferenciaManual].some((t) => t.length > TEXTO_MAXIMO_DO_PARECER)) return `Cada texto vai até ${TEXTO_MAXIMO_DO_PARECER} letras.`
   const final = situacaoFinal(d.itens, d.conferidos, d.decisao)
   if (d.decisao === 'suficiente') {
-    if (final === 'contraditorio') return 'Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).'
+    if (final === 'contraditorio') return 'Há contradição conferida: o parecer fica Contraditório e o caso não avança.'
     if (d.itens.some((i) => i.tipo === 'obrigatorio' && d.conferidos[i.id] !== 'presente')) return 'Para "Suficiente", todo item obrigatório tem de estar presente.'
     return null
   }
-  if (d.abordar.trim().length < ABORDAR_MINIMO) return 'Escreva o que o documento deve abordar (G20).'
+  if (d.abordar.trim().length < ABORDAR_MINIMO) return 'Escreva o que o documento deve abordar.'
   return problemaG20(d.abordar)
 }
 
@@ -200,7 +200,7 @@ export const JUSTIFICATIVA_MINIMA = 10
 
 /** Por que a sênior ainda não pode pedir a dispensa; pronto, null (CA2). */
 export function motivoParaNaoPedirDispensa(justificativa: string): string | null {
-  if (justificativa.trim().length < JUSTIFICATIVA_MINIMA) return 'A justificativa é obrigatória: por que seguir sem a prova médica (G17).'
+  if (justificativa.trim().length < JUSTIFICATIVA_MINIMA) return 'A justificativa é obrigatória: por que seguir sem a prova médica.'
   if (justificativa.length > TEXTO_MAXIMO_DO_PARECER) return `A justificativa vai até ${TEXTO_MAXIMO_DO_PARECER} letras.`
   return null
 }
@@ -209,7 +209,7 @@ export function motivoParaNaoPedirDispensa(justificativa: string): string | null
 export function motivoParaNaoAprovarDispensa(dispensa: Dispensa | undefined, quem: string): string | null {
   if (!dispensa) return 'Não há pedido de dispensa.'
   if (dispensa.aprovadaPor || dispensa.recusadaPor) return 'O pedido de dispensa já foi respondido.'
-  if (dispensa.pedidaPor === quem) return 'Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior (G17).'
+  if (dispensa.pedidaPor === quem) return 'Uma pessoa sozinha não dispensa o parecer: a segunda aprovação é de outra sênior.'
   return null
 }
 
@@ -218,6 +218,6 @@ const PULAR_O_PARECER = /\b(pul[ae]r?|dispens[ae]r?|ignor[ae]r?|passar por cima 
 /** O chat recusa pular o parecer: não há card para isso (GGVP-33, CA3). Outro pedido, null. */
 export function recusaDoChat(texto: string): string | null {
   return PULAR_O_PARECER.test(texto)
-    ? 'Não posso pular o parecer médico. O caso só é liberado, aprovado para o INSS ou tem petição pedida com o parecer "Suficiente" confirmado por pessoa (G17). Só duas sêniores dispensam, com justificativa, na tela do parecer.'
+    ? 'Não posso pular o parecer médico. O caso só é liberado, aprovado para o INSS ou tem petição pedida com o parecer "Suficiente" confirmado por pessoa. Só duas sêniores dispensam, com justificativa, na tela do parecer.'
     : null
 }

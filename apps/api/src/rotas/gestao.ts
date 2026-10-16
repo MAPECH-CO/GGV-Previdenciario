@@ -11,15 +11,15 @@ import { hojeEmBrasilia } from '../vigilia/fila.ts'
 
 /** Portão e passo → o que a pessoa tentou, em palavras da equipe. */
 const DESCRICAO: Record<string, string> = {
-  'G1:D2.01': 'Aprovar para o INSS com o checklist incompleto (G1)',
-  'G17:D2.01': 'Aprovar para o INSS sem parecer médico "Suficiente" (G17)',
-  'G2:D2.02': 'Protocolar no INSS sem o OK da Sênior (G2)',
-  'G21:D2.05': 'Responder a exigência do INSS sem prova em todos os itens (G21)',
+  'G1:D2.01': 'Aprovar para o INSS com o checklist incompleto',
+  'G17:D2.01': 'Aprovar para o INSS sem parecer médico "Suficiente"',
+  'G2:D2.02': 'Protocolar no INSS sem o OK da Sênior',
+  'G21:D2.05': 'Responder a exigência do INSS sem prova em todos os itens',
   'setores:D3.05': 'Pedir a petição antes de todos os setores subirem o card',
-  'G7:D3.07': 'Protocolar na Justiça com trava falhando ou pacote alterado (G7)',
-  'G6:D3a.04': 'Protocolar a manifestação sem a versão aprovada (G6)',
-  'G21:D3a.04': 'Manifestar no processo sem prova em todos os itens (G21)',
-  'G8:D3b.03': 'Avisar o cliente antes do OK da Sênior na prestação de contas (G8)',
+  'G7:D3.07': 'Protocolar na Justiça com trava falhando ou pacote alterado',
+  'G6:D3a.04': 'Protocolar a manifestação sem a versão aprovada',
+  'G21:D3a.04': 'Manifestar no processo sem prova em todos os itens',
+  'G8:D3b.03': 'Avisar o cliente antes do OK da Sênior na prestação de contas',
   'funcoes:D2.06r': 'Registrar o recebimento da prestação em que deu o OK (separação de funções: quem dá o OK não recebe)',
 }
 /** Um id do banco no formato uuid, antes de ir à consulta (texto fora do formato faz o PostgreSQL falhar). */

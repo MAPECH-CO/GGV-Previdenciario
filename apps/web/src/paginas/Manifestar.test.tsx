@@ -34,7 +34,7 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
   it('CA5 · com setor pendente, mostra o bloqueio com quem falta e o prazo; o botão fica desligado', async () => {
     servidor({ ...base, faltam: ['Atendimento'], pendentes: [{ alvo: 'item', id: ITEM, setor: 'Atendimento', descricao: 'CTPS', prazoInterno: '2026-10-20' }] })
     render(<Manifestar casoId={CASO} />)
-    expect((await screen.findByText(/Manifestar bloqueado/)).textContent).toBe('Manifestar bloqueado: falta Atendimento (G21).')
+    expect((await screen.findByText(/Manifestar bloqueado/)).textContent).toBe('Manifestar bloqueado: falta Atendimento.')
     expect(screen.getByText(/CTPS · até 20\/10\/2026/)).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Manifestar e protocolar' }) as HTMLButtonElement).disabled).toBe(true)
   })
@@ -44,7 +44,7 @@ describe('Manifestar e protocolar (GGVP-87)', () => {
     render(<Manifestar casoId={CASO} />)
     const aprovar = (await screen.findByRole('button', { name: 'Aprovar a versão 1' })) as HTMLButtonElement
     expect(aprovar.disabled).toBe(true)
-    fireEvent.click(screen.getByLabelText('Aprovei a versão da manifestação (G6)'))
+    fireEvent.click(screen.getByLabelText('Aprovei a versão da manifestação'))
     expect(aprovar.disabled).toBe(false)
   })
 

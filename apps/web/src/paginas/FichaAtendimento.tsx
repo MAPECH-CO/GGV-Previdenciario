@@ -348,8 +348,8 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
             <p className={styles.instrucoesTexto}>
               Preencha só o que a pessoa souber agora: dados pessoais, contato, última atividade, desde quando está sem
               trabalhar e o que já pediu ao INSS. Não peça diagnóstico nem sugira benefício: a IA sugere depois da
-              entrevista e a advogada decide (G3). Se a pessoa disser a senha do gov.br, abra o cofre; ela nunca fica na
-              ficha (G9).
+              entrevista e a advogada decide. Se a pessoa disser a senha do gov.br, abra o cofre; ela nunca fica na
+              ficha.
             </p>
             <div className={styles.atalhos}>
               <a className={styles.atalho} href={`/clientes/${ficha.id}`}>
@@ -405,7 +405,7 @@ export function FichaAtendimento({ fichaId, tablet = false }: { fichaId: string;
             <CampoCofre fichaId={ficha.id} senhaGov={senhaGov} aoMudar={setSenhaGov} />
           </section>
 
-          <p className={styles.trava}>A senha do gov.br vai para o cofre, nunca em campo de texto (G9).</p>
+          <p className={styles.trava}>A senha do gov.br vai para o cofre, nunca em campo de texto.</p>
 
           {salvo}
           <div className={styles.rodape}>

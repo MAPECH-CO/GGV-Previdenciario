@@ -126,7 +126,7 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
             <p className={styles.instrucoesTexto}>
               Antes da entrevista de {primeiro}, renove a senha do gov.br junto com o cliente. O código de verificação chega
               no celular do próprio cliente (ou no e-mail dele): peça que ele esteja com o celular. Digite a senha direto no
-              cofre, sem ditar nem anotar (G9). Confirme que o Meu INSS abre e que o CNIS está acessível: a advogada precisa
+              cofre, sem ditar nem anotar. Confirme que o Meu INSS abre e que o CNIS está acessível: a advogada precisa
               dele.
             </p>
             <div className={styles.atalhos}>
@@ -159,7 +159,7 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
               <div className={proprio.campos}>
                 <div className={campoCss.campo}>
                   <label className={campoCss.rotulo} htmlFor={idSenha}>
-                    Nova senha do gov.br (vai direto ao cofre, G9)
+                    Nova senha do gov.br (vai direto ao cofre)
                   </label>
                   <input
                     id={idSenha}
@@ -194,7 +194,7 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
             )}
           </section>
 
-          <p className={styles.trava}>Senha só no cofre; nunca em texto transcrito (G9).</p>
+          <p className={styles.trava}>Senha só no cofre; nunca em texto transcrito.</p>
 
           {feito ? (
             <section className={styles.feito} aria-labelledby="renovacao-registrada">
@@ -256,10 +256,10 @@ export function RenovarSenha({ agendamentoId }: { agendamentoId: string }) {
           </div>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <ul className={styles.ladoLista}>
-            <li>• Se «Sim»: Nova senha do gov.br (vai direto ao cofre, G9)</li>
+            <li>• Se «Sim»: Nova senha do gov.br (vai direto ao cofre)</li>
             <li>• Se «Não»: Por que não foi possível*</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.trava}>
             Se «Não»: avise a cliente que ela precisa recuperar a senha (se preciso, numa agência do INSS). A entrevista segue no
             horário marcado.

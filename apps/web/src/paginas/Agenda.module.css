@@ -100,6 +100,22 @@
   font-size: var(--fonte-12);
 }
 
+.erro {
+  color: var(--cor-erro);
+  font-size: var(--fonte-14);
+}
+
+.tentar {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 720px) {
   .pagina {
     padding: 16px;

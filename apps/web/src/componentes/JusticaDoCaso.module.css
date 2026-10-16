@@ -1,0 +1,12 @@
+/* A linha de "Juízo e perícia" alinhada à esquerda, sem cara de pílula. */
+.linha {
+  margin: 0;
+  align-self: stretch;
+  text-align: left;
+}
+
+.link {
+  color: var(--cor-acento);
+  font-weight: 600;
+  text-decoration: underline;
+}

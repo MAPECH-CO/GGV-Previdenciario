@@ -75,8 +75,8 @@ import { semAcento } from '../../../web/src/regras/busca.ts'
 import type { MensagemDoWhatsapp } from './chatwoot-entrada.ts'
 
 export const MSG_CONVERSA_NAO_ENCONTRADA = 'Conversa não encontrada.'
-export const MSG_SEM_AVISO_NA_CONVERSA = 'Avise que a conversa será gravada antes de gravar (G10).'
-export const MSG_SEM_AVISO_NA_LIGACAO = 'Confirme que a ligação começou com o aviso de gravação (G10).'
+export const MSG_SEM_AVISO_NA_CONVERSA = 'Avise que a conversa será gravada antes de gravar.'
+export const MSG_SEM_AVISO_NA_LIGACAO = 'Confirme que a ligação começou com o aviso de gravação.'
 /** GGVP-140 CA5: a IA não leu a conversa (fora do ar, recusada ou resposta fora do formato): a pessoa segue pela leitura. */
 export const MSG_DECISAO_DA_SENIOR = 'Quem confirma, corrige ou desfaz o que a IA apontou é a Sênior.'
 export const MSG_VIDEO_NA_LIGACAO = 'Na ligação e no WhatsApp, o cliente se verifica por chamada de vídeo.'
@@ -304,7 +304,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
       ficha.historico.push(evento(`Registrou a conversa sem áudio (${comQuemFalado(conversa)}): só registro`, quem))
       await guardarGravacao(g)
     } else {
-      const falta = d.modo === 'arquivo' ? 'falta subir a gravação da ligação' : 'grava depois do aviso (G10)'
+      const falta = d.modo === 'arquivo' ? 'falta subir a gravação da ligação' : 'grava depois do aviso'
       ficha.historico.push(evento(`Abriu a conversa (${comQuemFalado(conversa)}): ${falta}`, quem))
     }
     await guardarConversa(conversa, g)
@@ -331,7 +331,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     g.avisoEm = agora().toISOString()
     g.acoes.push({ acao: 'avisou', quando: g.avisoEm, aos: 0 }, { acao: 'gravou', quando: g.avisoEm, aos: 0 })
     c.gravacaoId = g.id
-    ficha.historico.push(evento(`Avisou às ${horaEmBrasilia(agora())} que a conversa seria gravada (G10) e começou a gravar`, c.quem))
+    ficha.historico.push(evento(`Avisou às ${horaEmBrasilia(agora())} que a conversa seria gravada e começou a gravar`, c.quem))
     await guardarGravacao(g)
     await guardarConversa(c, g)
     await guardar(ficha)
@@ -453,22 +453,22 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
     const { ditos, senhaDita, pendencia, aviso } = lido
     const mudancas = oQueMudou(ditos, ficha, await camposDoProcesso(ficha.id, c.processoId))
     const saude = mudancas.some((m) => m.saude)
-    if (senhaDita) ficha.historico.push(evento('A senha do gov.br foi dita na conversa: saiu da transcrição e não ficou guardada; para o cofre, o cliente digita (G9)', 'Sistema (IA)'))
+    if (senhaDita) ficha.historico.push(evento('A senha do gov.br foi dita na conversa: saiu da transcrição e não ficou guardada; para o cofre, o cliente digita', 'Sistema (IA)'))
     const cofre = senhaDita || g.acoes.some((a) => a.acao === 'guardou-senha')
     g.extraidas = [
       ...mudancas.map((m) => ({ id: m.id, rotulo: comMaiuscula(m.rotulo), valor: valorLido(m.campo, m.depois), destino: m.onde })),
       ...(cofre
-        ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: `${senhaDita ? 'dita na conversa' : 'digitada no cofre'}: não consta na transcrição (G9)`, destino: 'cofre' as const }]
+        ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: `${senhaDita ? 'dita na conversa' : 'digitada no cofre'}: não consta na transcrição`, destino: 'cofre' as const }]
         : []),
     ]
     const oQue = mudancas.map((m) => m.rotulo)
     const disse = aviso ? 'transcrição pronta, a conferir' : oQue.length ? oQue.join(', ') : 'nada muda na ficha nem no processo'
     g.resumo = `${comMaiuscula(comQuemFalado(c))}: ${disse}.${pendencia ? ` Combinado: ${pendencia}` : ''}`
     // Tudo fica no histórico do contato (GGVP-76 CA9).
-    ficha.contatos.push({ data: hoje(), canal: c.canal === 'whatsapp' ? 'WhatsApp' : `${CANAIS_DO_REGISTRO[c.canal].rotulo} (gravada, G10)`, texto: g.resumo })
+    ficha.contatos.push({ data: hoje(), canal: c.canal === 'whatsapp' ? 'WhatsApp' : `${CANAIS_DO_REGISTRO[c.canal].rotulo} (gravada)`, texto: g.resumo })
     const observacao = [
       aviso,
-      senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição (G9). Para o cofre, o cliente digita.',
+      senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição. Para o cofre, o cliente digita.',
       saude && 'Tem fato novo de saúde: quem confirma é o Jurídico.',
       c.comQuem !== 'cliente' && 'Quem falou não foi o cliente: confira antes de mudar dado de contato.',
     ]
@@ -505,7 +505,7 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
         ? [{ onde: 'processo', campo, ...comum, ...(saude && { saude: true as const }) }]
         : [{ onde: 'ficha', campo, ...comum }]
     })
-    const resumo = temSenha(lida.resumo) ? 'O resumo da IA citava uma senha e foi retirado (G9): leia a transcrição.' : lida.resumo
+    const resumo = temSenha(lida.resumo) ? 'O resumo da IA citava uma senha e foi retirado: leia a transcrição.' : lida.resumo
     const combinado = lida.combinado && !temSenha(lida.combinado) ? lida.combinado : undefined
     return { ditos, combinado, daIa: { resumo, chamadaId: s.chamadaId, modelo: s.modelo, alerta: s.alerta } }
   }
@@ -828,9 +828,9 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
   /** O que falta na conversa aberta, para a Central; nulo quando não falta nada nesta etapa. */
   function faltaNaConversa(c: Conversa, g: Gravacao | undefined): string | null {
     if (c.modo === 'arquivo' && !g) return 'subir a gravação da ligação'
-    if (c.modo === 'tempo-real' && !g) return 'gravar depois do aviso (G10)'
+    if (c.modo === 'tempo-real' && !g) return 'gravar depois do aviso'
     if (g && g.estado !== 'encerrada') return 'finalizar a conversa'
-    if (!c.conferidaEm) return 'conferir a conversa (D5.04)'
+    if (!c.conferidaEm) return 'conferir a conversa'
     return null
   }
 

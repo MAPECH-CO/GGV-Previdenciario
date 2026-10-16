@@ -34,7 +34,7 @@ export function prazoJudicial(disponibilizadaEm: string, dias: number, feriados:
 export const DIAS_DO_RECURSO = 10
 export const REGRA_PRAZO_RECURSAL = {
   versao: 1,
-  texto: `Recurso contra a sentença: ${DIAS_DO_RECURSO} dias úteis, o menor entre o recurso inominado do JEF e a apelação (lado seguro, G12)`,
+  texto: `Recurso contra a sentença: ${DIAS_DO_RECURSO} dias úteis, o menor entre o recurso inominado do JEF e a apelação (lado seguro)`,
 }
 export function prazoRecursal(disponibilizadaEm: string, feriados: ReadonlySet<string>, prazoDaPublicacao: string | null = null) {
   const { fim } = prazoJudicial(disponibilizadaEm, DIAS_DO_RECURSO, feriados)

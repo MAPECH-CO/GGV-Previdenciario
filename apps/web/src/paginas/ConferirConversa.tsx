@@ -264,7 +264,7 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
                 Ver o histórico
               </button>
             </div>
-            <p className={base.nota}>A IA só muda o que foi dito na conversa; o valor antigo fica no histórico e a Sênior pode voltar a versão (G14).</p>
+            <p className={base.nota}>A IA só muda o que foi dito na conversa; o valor antigo fica no histórico e a Sênior pode voltar a versão.</p>
           </section>
 
           {pedeVerificacao && podeAgir && (
@@ -482,10 +482,10 @@ export function ConferirConversa({ conversaId }: { conversaId: string }) {
             <li>• «Surgiu pendência?» respondida*</li>
             <li>• Se «Sim»: o que ficou combinado*, prazo* e responsável* (nunca presumido)</li>
           </ul>
-          <h3 className={base.ladoSecao}>Travas</h3>
+          <h3 className={base.ladoSecao}>Regras</h3>
           <p className={base.ladoSub}>
             «Confirmar» só habilita com todas as mudanças conferidas. Quem confere é quem fez a conversa, na hora; o que o perfil não pode
-            mudar fica para quem pode. O valor antigo fica no histórico do card e a Sênior pode voltar a versão (G14).
+            mudar fica para quem pode. O valor antigo fica no histórico do card e a Sênior pode voltar a versão.
           </p>
         </aside>
       </main>
