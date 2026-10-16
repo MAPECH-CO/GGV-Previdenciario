@@ -79,6 +79,8 @@ describe('GGVP-49 · Central do Jurídico administrativo (Figma 2051:173 e 2107:
 
 describe('GGVP-49 · o caso "Em perícia" (Figma 2179:2 e a ficha)', () => {
   it('CA1 · a ficha mostra "Em perícia" com o diagrama de origem e leva à página do processo', async () => {
+    // GGVP-158 E7: a página da perícia e o laudo novo exigem ver o caso; o link só aparece para quem pode (advogada).
+    entrarComo('advogada')
     const ficha = (await obterFicha('maria-exemplo'))!
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     const caso = screen.getByRole('link', { name: /Em perícia/ })
