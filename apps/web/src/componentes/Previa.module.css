@@ -37,6 +37,132 @@
   color: var(--cor-texto);
 }
 
+/* O balão da tarefa (Pedro, 16/10), ao lado da linha e com a ponta apontando para ela. O contorno se desenha a partir da
+   ponta: sobe pelo lado dela e dá a volta; depois o fundo enche e as linhas entram de cima para baixo. O caminho do
+   contorno é contornoDoBalao (Previa.tsx); a caixa não tem borda nem fundo, quem desenha é ele. */
+.largo {
+  width: 320px;
+}
+
+.balao {
+  width: 320px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+
+.contorno {
+  position: absolute;
+  top: 0;
+  left: -8px;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(var(--sombra-balao));
+}
+
+.contorno path {
+  fill: var(--cor-superficie);
+  stroke: var(--cor-linha);
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  animation:
+    tracar 380ms cubic-bezier(0.65, 0, 0.35, 1) both,
+    assentar 240ms ease-out 380ms both,
+    encher 220ms ease-out 220ms both;
+}
+
+/* Por cima do contorno, cada linha entra depois da anterior. */
+.balao > :not(svg) {
+  position: relative;
+  animation: entrar 220ms var(--curva) both;
+}
+.balao > :nth-child(2) {
+  animation-delay: 180ms;
+}
+.balao > :nth-child(3) {
+  animation-delay: 230ms;
+}
+.balao > :nth-child(4) {
+  animation-delay: 280ms;
+}
+.balao > :nth-child(5) {
+  animation-delay: 320ms;
+}
+.balao > :nth-child(n + 6) {
+  animation-delay: 360ms;
+}
+
+/* O resumo da IA, com a marca dela, e o espaço que ele ocupa enquanto chega. */
+.ia {
+  margin: 2px 0 8px;
+  color: var(--cor-texto);
+}
+
+.marca {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--cor-acento);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.esperando {
+  display: block;
+  height: 0.9em;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: var(--cor-linha);
+  animation: piscar 1.2s ease-in-out infinite;
+}
+.esperando:last-child {
+  width: 60%;
+}
+
+@keyframes tracar {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes assentar {
+  from {
+    stroke: var(--cor-acento);
+  }
+  to {
+    stroke: var(--cor-linha);
+  }
+}
+
+@keyframes encher {
+  from {
+    fill-opacity: 0;
+  }
+  to {
+    fill-opacity: 1;
+  }
+}
+
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes piscar {
+  50% {
+    opacity: 0.45;
+  }
+}
+
 @keyframes aparecer {
   from {
     opacity: 0;
@@ -51,6 +177,19 @@
 @media (prefers-reduced-motion: reduce) {
   .cartao {
     animation: surgir 150ms ease-out;
+  }
+  .balao {
+    animation: none;
+  }
+  .contorno path {
+    stroke-dasharray: none;
+    animation: surgir 150ms ease-out both;
+  }
+  .balao > :not(svg):nth-child(n) {
+    animation: surgir 150ms ease-out both;
+  }
+  .esperando {
+    animation: none;
   }
 }
 

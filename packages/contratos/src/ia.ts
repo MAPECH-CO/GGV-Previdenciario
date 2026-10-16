@@ -26,6 +26,21 @@ export const SugestaoDaIa = z.object({
 })
 export type SugestaoDaIa = z.infer<typeof SugestaoDaIa>
 
+/**
+ * POST /api/tarefas/resumo: o balão da tarefa na Central (Pedro, 16/10). Vai o que a linha mostra; o servidor junta o
+ * benefício e a fase do caso, e a IA explica a tarefa em poucas frases. Volta no formato de SugestaoDoResumo.
+ */
+export const PedidoDoResumoDaTarefa = z.object({
+  acao: z.string().trim().min(1).max(200),
+  detalhe: z.string().trim().max(400).default(''),
+  prazo: z.string().trim().max(40).optional(),
+  urgente: z.boolean().default(false),
+  /** No lugar do cliente: "Fila de revisão", "Acervo". */
+  contexto: z.string().trim().max(80).optional(),
+  casoId: z.uuid().optional(),
+})
+export type PedidoDoResumoDaTarefa = z.input<typeof PedidoDoResumoDaTarefa>
+
 /** GET /api/casos/:id/ia (CA4). `saida` só para quem vê dado de saúde; para os outros, nulo. */
 export const ChamadaDaIa = z.object({
   id: z.uuid(),

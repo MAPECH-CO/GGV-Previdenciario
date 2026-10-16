@@ -39,6 +39,7 @@ import { registrarRotasDesfecho } from './rotas/desfecho.ts'
 import { alimentarAcervo } from './ia/acervo.ts'
 import { sincronizarRecepcao } from './fluxo/tarefas-da-recepcao.ts'
 import { registrarRotasResultado } from './rotas/resultado.ts'
+import { registrarRotasResumoDaTarefa } from './rotas/resumo-da-tarefa.ts'
 import { registrarRotasEstudo } from './rotas/estudo.ts'
 import { registrarRotasRecurso } from './rotas/recurso.ts'
 import { registrarRotasRecomendacaoPericia } from './rotas/recomendacao-pericia.ts'
@@ -267,6 +268,7 @@ export function criarServidor({
     registrarRotasModelos(app, { banco, agora, armazenamento: arquivos })
     registrarRotasIa(app, { banco, agora })
     registrarRotasResultado(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasResumoDaTarefa(app, { banco, agora, ia: motorIa })
     registrarRotasDesfecho(app, { banco, agora })
     registrarRotasEstudo(app, { banco, agora, ia: motorIa, preparo })
     // GGVP-158 P7.1: a estratégia do caso, que a IA propõe e o Jurídico confere.

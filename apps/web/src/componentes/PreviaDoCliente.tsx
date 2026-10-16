@@ -28,7 +28,8 @@ function telefoneBonito(t: string): string {
   return t
 }
 
-function Conteudo({ id }: { id: string }) {
+/** O que a prévia mostra do cliente; o balão da tarefa usa também. */
+export function ConteudoDoCliente({ id }: { id: string }) {
   const [ficha, setFicha] = useState<Ficha | null | undefined>(undefined)
   const [falhou, setFalhou] = useState(false)
 
@@ -82,5 +83,5 @@ type Props = { id: string; nome: string; children: ReactNode }
 export function PreviaDoCliente({ id, nome, children }: Props) {
   const pode = usePode('caso.ver')
   if (!pode) return <>{children}</>
-  return <Previa rotulo={nome} conteudo={() => <Conteudo id={id} />}>{children}</Previa>
+  return <Previa rotulo={nome} conteudo={() => <ConteudoDoCliente id={id} />}>{children}</Previa>
 }
