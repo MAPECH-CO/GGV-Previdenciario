@@ -884,4 +884,16 @@ Pedido do Mateus em 16/10, sobre a lista de lacunas da mesma data: só o que o L
   - tela 1731/1731, em 204 arquivos.
 
   Sem tela nova, sem Playwright novo.
-- [ ] 12.7 Depois do merge do #104: a tela da página do processo lê o laudo novo, a espera com o prazo ou o lembrete e a lista de perícias (`dados/caso.ts` e a página), com o Playwright.
+- [x] 12.7 Depois do merge do #104: a tela da página do processo lê o laudo novo, a espera com o prazo ou o lembrete e a lista de perícias (`dados/caso.ts` e a página), com o Playwright.
+
+  Feito em 16/10, depois que o #100 a #106 entraram na main (merge sem rebase). Em `casoDoServidor`, o caso do servidor ganha:
+  - o laudo novo no cabeçalho, com o caminho da análise;
+  - o prazo e o lembrete de cada espera;
+  - o responsável e o prazo do bloco "Em perícia", que também vão para a resposta do chat ("com <responsável>"), antes em branco;
+  - o cartão "Perícias abertas" na página, cada uma com a situação, o responsável e o prazo, só no caso do servidor.
+
+  Verificado:
+  - `paginas/PaginaDoCaso.test.tsx` 23/23, com 1 novo;
+  - Playwright 29/29, com 1 novo em `busca-e-processo.e2e.ts`, mais caso, dados do processo, chat, documento médico e Recepção no servidor;
+  - tela 1755/1755, em 208 arquivos;
+  - API 1105 de 1108 sobre a main nova, com 3 pulados e nenhuma falha.

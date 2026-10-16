@@ -454,6 +454,8 @@ export type CasoNaTela = {
   passoAtual: string
   etapas: EtapaNaTela[]
   emPericia?: EmPericia
+  /** GGVP-158 P12.3 (GGVP-86 CA9): as perícias abertas do caso do servidor, cada uma com o responsável e o prazo. */
+  periciasAbertas?: { rotulo: string; situacao: string; responsavel: string; prazo?: string; href: string }[]
   pendentes: { motivo: string; desde: string; setores: string[]; itens: Laco[] } | null
   esperas: Espera[]
   tarefas: (TarefaDoCaso & { prazoFalado?: { texto: string; urgente: boolean } })[]
@@ -585,8 +587,9 @@ const reais = (valor: string) => `R$ ${formatarDecimal(Number(valor))}`
 
 /**
  * O caso do servidor (GGVP-146, parte 5): a rota já vem na visão do perfil da sessão (valores, conteúdo médico e peça só
- * para quem pode); aqui só vira o formato da tela. O que o banco não tem fica de fora: juízo, estratégia, laudo novo e
- * a pergunta do perito (que a tela da perícia faz).
+ * para quem pode); aqui só vira o formato da tela. O que o banco não tem fica de fora: juízo, estratégia e a pergunta do
+ * perito (que a tela da perícia faz). O laudo novo, o prazo e o lembrete das esperas e as perícias abertas vêm da rota
+ * (GGVP-158 P12).
  */
 async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined): Promise<CasoNaTela | null> {
   const r = await chamarApi<ProcessoDoCaso>(`/casos/${processoId}/processo`)
@@ -631,6 +634,8 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
   )
   const pe = p.pericia
   const m = pe?.marcada
+  // GGVP-158 P12.3 (GGVP-86 CA9): as perícias abertas, cada uma com quem tem a tarefa dela e o prazo; a mais nova é a de `pe`.
+  const abertasNoServidor = (p.pericias ?? []).filter((x) => !x.resultado)
   const s = p.saude
   const cids = [...new Set((s?.documentos ?? []).flatMap((d) => (d.cid ? [d.cid] : [])))]
 
@@ -657,10 +662,19 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
             rotulo: `Em perícia · ${ORIGENS[pe.origem].caso} · ${NOMES_DO_TIPO[pe.tipo]}`,
             situacao: NOMES_DA_SITUACAO[pe.situacao],
             href: `/casos/${processoId}/pericia`,
-            responsavel: '',
+            responsavel: abertasNoServidor[0]?.responsavel ?? '',
+            prazo: abertasNoServidor[0]?.prazo ?? undefined,
             data: m ? `${dataCurta(m.data, hoje)}, ${m.hora}${m.local ? ` · ${m.local}` : ''}` : undefined,
           }
         : undefined,
+    periciasAbertas: abertasNoServidor.map((x) => ({
+      rotulo: `${NOMES_DO_TIPO[x.tipo]} · ${ORIGENS[x.origem].caso}`,
+      situacao: NOMES_DA_SITUACAO[x.situacao],
+      responsavel: x.responsavel ?? 'ainda sem responsável',
+      prazo: x.prazo ?? undefined,
+      href: `/casos/${processoId}/pericia`,
+    })),
+    laudoNovo: p.laudoNovoEm ? { data: p.laudoNovoEm, href: `/casos/${processoId}/laudo-novo` } : undefined,
     pendentes: lacos.length
       ? {
           motivo: comItens.map((x) => `exigência ${DA_EXIGENCIA[x.origem]}: ${x.descricao}`).join(' · '),
@@ -671,7 +685,16 @@ async function casoDoServidor(processoId: string, quem: QuemPergunta | undefined
       : null,
     esperas: p.etapas.flatMap((e) =>
       e.aguardando
-        ? [{ quem: /^cliente/i.test(e.aguardando) ? ('cliente' as const) : e.diagrama.startsWith('D3') ? ('justica' as const) : ('inss' as const), oQue: e.aguardando, desde: hojeIso(new Date(e.desde)) }]
+        ? [
+            {
+              quem: /^cliente/i.test(e.aguardando) ? ('cliente' as const) : e.diagrama.startsWith('D3') ? ('justica' as const) : ('inss' as const),
+              oQue: e.aguardando,
+              desde: hojeIso(new Date(e.desde)),
+              // GGVP-158 P12.2 (GGVP-86 CA8): o prazo, quando há, e o lembrete pelo tipo de espera, contados no servidor.
+              prazo: e.prazo ?? undefined,
+              lembrete: e.lembrete ?? undefined,
+            },
+          ]
         : [],
     ),
     tarefas: p.tarefas.map((t) => ({

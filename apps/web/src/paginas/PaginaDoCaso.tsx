@@ -430,6 +430,30 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
               </section>
             )}
 
+            {/* GGVP-158 P12.3 (GGVP-86 CA9): as perícias abertas do caso do servidor, cada uma com o responsável e o prazo. */}
+            {c.periciasAbertas && c.periciasAbertas.length > 0 && (
+              <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="pericias-abertas">
+                <h2 id="pericias-abertas" className={base.cartaoTitulo}>
+                  Perícias abertas
+                </h2>
+                <ul className={styles.lista}>
+                  {c.periciasAbertas.map((x, i) => (
+                    <li key={`${x.rotulo}-${i}`} className={base.pericia}>
+                      <span>
+                        <LinkSePode href={x.href} texto={<strong>{x.rotulo}</strong>}>
+                          {x.rotulo}
+                        </LinkSePode>
+                        <span className={base.nota}>
+                          {x.situacao} · responsável: {x.responsavel}
+                        </span>
+                      </span>
+                      {x.prazo && <span className={`${base.situacao} ${base.neutro}`}>{curta(x.prazo)}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {semApoio && <p className={base.nota}>Sem tarefas, prazos ou documentos neste caso por enquanto.</p>}
 
             {c.peritoParaIdentificar && juridico && (

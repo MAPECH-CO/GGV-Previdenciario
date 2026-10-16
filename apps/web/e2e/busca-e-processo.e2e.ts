@@ -33,3 +33,30 @@ test('a página do processo mostra juízo e laudo da API sem inventar estratégi
   await expect(page.getByRole('link', { name: 'Analisar o laudo novo' })).toHaveAttribute('href', '/casos/' + casoId + '/laudo-novo')
   await expect(page.getByRole('region', { name: 'Estratégia do processo' })).toHaveCount(0)
 })
+
+test('GGVP-158 P12 · a página do processo do servidor: o laudo novo no cabeçalho, a espera com o lembrete e as perícias abertas', async ({ page }) => {
+  await entrarPelaApi(page, 'advogada@exemplo.ggv')
+  const medica = { tipo: 'medica', origem: 'd2-necessidade', situacao: 'agendada', marcada: { data: '2030-10-20', hora: '10:30', local: 'Agência Inventada' }, perito: null, resultado: null }
+  await page.route('**/api/casos/' + casoId + '/processo', r => r.fulfill({ json: {
+    casoId, pessoa: { id: clienteId, nome: 'Pessoa Inventada Perícias', cpf: null, nascimento: null }, beneficio: 'loas-deficiente', fase: 'administrativa', desfecho: null, etapaAtual: 'inss',
+    identificadores: { nb: null, protocolo: null, cnj: null }, senhaGovNoCofre: false, transcricoes: 0,
+    etapas: [{ diagrama: 'D2', passo: 'D2.04', aguardando: 'INSS decidir', desde: '2030-10-01T12:00:00.000Z', prazo: null, lembrete: 'a vigília confere o Meu INSS todo dia útil' }],
+    laudoNovoEm: '2030-10-02',
+    linha: [], documentos: [], tarefas: [], exigencias: [], prazos: [], publicacoes: [], proximoPasso: null, valores: null, saude: null,
+    pericia: medica,
+    pericias: [
+      { ...medica, responsavel: 'Pessoa Inventada Orienta', prazo: '2030-10-20' },
+      { tipo: 'social', origem: 'd2-necessidade', situacao: 'marcar', marcada: null, perito: null, resultado: null, responsavel: 'Jurídico administrativo', prazo: '2030-10-12' },
+    ],
+  } }))
+  await page.route('**/api/casos/' + casoId + '/juizo', r => r.fulfill({ json: { juizo: 'Juízo Inventado', vara: 'Vara Inventada', juiz: 'Pessoa Julgadora Inventada', entendimentos: [], base: '2030-10-01', porBeneficio: [], tempoAteASentenca: null, processos: [] } }))
+  await page.route('**/api/processos/' + casoId + '/parecer', r => r.fulfill({ json: { processo: { id: casoId } } }))
+  await page.route('**/api/processos/' + casoId + '/pericia', r => r.fulfill({ status: 404, json: { erro: 'Sem perícia no teste' } }))
+  await page.goto('/casos/' + casoId)
+  await expect(page.getByRole('link', { name: /^Laudo novo · 02\/10/ }).first()).toHaveAttribute('href', '/casos/' + casoId + '/laudo-novo')
+  await expect(page.getByRole('region', { name: 'Esperando alguém de fora' })).toContainText('lembrete: a vigília confere o Meu INSS todo dia útil')
+  const abertas = page.getByRole('region', { name: 'Perícias abertas' })
+  await expect(abertas.getByRole('listitem')).toHaveCount(2)
+  await expect(abertas).toContainText('responsável: Pessoa Inventada Orienta')
+  await expect(abertas).toContainText('responsável: Jurídico administrativo')
+})

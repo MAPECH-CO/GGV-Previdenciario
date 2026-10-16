@@ -424,6 +424,39 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(document.body.textContent!.match(/ainda não há próximo passo/g)).toHaveLength(1)
   })
 
+  it('GGVP-158 P12 · do banco: o laudo novo no cabeçalho, a espera com o prazo e o lembrete, e as perícias abertas com responsável e prazo', async () => {
+    const marcada = { data: '2026-10-20', hora: '10:30', local: 'Agência Santo Amaro' }
+    ligarServidor(
+      doBanco({
+        laudoNovoEm: '2026-10-05',
+        etapas: [
+          {
+            diagrama: 'D2',
+            passo: 'D2.E3',
+            aguardando: 'cliente entregar o documento',
+            desde: '2026-10-03T12:00:00.000Z',
+            prazo: '2026-10-15',
+            lembrete: 'cobrança: 2 tentativas, com 3 dias entre elas; depois, a Sênior',
+          },
+        ],
+        // A mais nova é a de `pericia` (a médica marcada); a social, a marcar, espera o Jurídico administrativo.
+        pericias: [
+          { tipo: 'medica', origem: 'd2-necessidade', situacao: 'agendada', marcada, perito: 'Dr. Perito', resultado: null, responsavel: 'Igor', prazo: '2026-10-20' },
+          { tipo: 'social', origem: 'd2-necessidade', situacao: 'marcar', marcada: null, perito: null, resultado: null, responsavel: 'Jurídico administrativo', prazo: '2026-10-12' },
+        ],
+      }),
+    )
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    const [laudoNovo] = await screen.findAllByRole('link', { name: /Laudo novo/ })
+    expect([laudoNovo.textContent, laudoNovo.getAttribute('href')]).toEqual(['Laudo novo · 05/10', `/casos/${CASO}/laudo-novo`])
+    expect(secao('Esperando alguém de fora').textContent).toContain('desde 03/10 · prazo 15/10 · lembrete: cobrança: 2 tentativas, com 3 dias entre elas; depois, a Sênior')
+    const abertas = within(secao('Perícias abertas')).getAllByRole('listitem').map((l) => l.textContent ?? '')
+    expect(abertas).toHaveLength(2)
+    expect([abertas[0].includes('responsável: Igor'), abertas[0].includes('20/10')]).toEqual([true, true])
+    expect([abertas[1].includes('responsável: Jurídico administrativo'), abertas[1].includes('12/10')]).toEqual([true, true])
+  })
+
   it('sem tarefas nem documentos, as caixas deles não aparecem; a vigília da fase segue em Prazos', async () => {
     ligarServidor(doBanco({ tarefas: [], prazos: [], documentos: [], proximoPasso: null }))
     entrarComo('advogada')
