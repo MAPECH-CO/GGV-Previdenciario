@@ -11,6 +11,19 @@
   width: min(820px, 100%);
 }
 
+/* Pedro, 16/10: no computador, o chat e a fila ocupam quase a tela toda, e tudo dentro cresce junto (texto, espaços,
+   ícones, botões) por uma escala só, sem esticar. A largura em % não muda com o zoom; a máxima em px cresce com ele. */
+@media (min-width: 1024px) {
+  .pagina {
+    padding: 28px clamp(20px, 5vw, 96px);
+  }
+
+  .coluna {
+    width: min(1400px, 100%);
+    zoom: 1.15;
+  }
+}
+
 .painel {
   display: flex;
   flex-direction: column;

@@ -76,13 +76,13 @@ describe('TarefaLinha', () => {
       Reflect.deleteProperty(window, 'matchMedia')
     })
 
-    it('com o mouse parado ou o foco na linha, o balão abre com o resumo da IA da tarefa', async () => {
+    it('o "i" da linha, com o mouse ou o foco, abre o balão com o resumo da IA da tarefa', async () => {
       Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value: () => ({ matches: true }) })
       const resumo = 'A cliente ainda não mandou o laudo. Ligue hoje e peça a foto do documento.'
       const fetch = vi.fn(async () => new Response(JSON.stringify({ sugestao: { texto: resumo }, motivo: null }), { status: 200 }))
       vi.stubGlobal('fetch', fetch)
       desenhar({ ...tarefa, processoId: '3c02ce6b-e09a-4205-a371-ad87a62394dc' })
-      act(() => screen.getByRole('link', { name: 'Maria das Graças Oliveira · Cobrar documento' }).focus())
+      act(() => screen.getByRole('button', { name: 'O que é a tarefa Maria das Graças Oliveira · Cobrar documento' }).focus())
       const balao = screen.getByRole('tooltip', { name: 'Maria das Graças Oliveira · Cobrar documento' })
       expect(await screen.findByText(resumo)).toBeTruthy()
       expect(balao.textContent).toContain('Resumo da IA')
@@ -95,7 +95,7 @@ describe('TarefaLinha', () => {
       Object.defineProperty(window, 'matchMedia', { configurable: true, writable: true, value: () => ({ matches: true }) })
       vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ sugestao: null, motivo: 'A IA não resumiu agora.' }), { status: 200 })))
       desenhar({ ...tarefa, acao: 'Conferir contrato' })
-      act(() => screen.getByRole('link', { name: 'Maria das Graças Oliveira · Conferir contrato' }).focus())
+      act(() => screen.getByRole('button', { name: 'O que é a tarefa Maria das Graças Oliveira · Conferir contrato' }).focus())
       expect(await screen.findByText(/A IA não resumiu agora. Abra a tarefa/)).toBeTruthy()
     })
   })

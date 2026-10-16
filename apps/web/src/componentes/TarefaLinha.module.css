@@ -3,7 +3,10 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  /* Pedro, 16/10: a linha mais alta, com respiro. */
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 18px 20px;
   background: var(--cor-superficie);
 }
 
@@ -37,7 +40,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   min-width: 0;
 }
 
@@ -107,4 +110,33 @@
   flex: none;
   color: var(--cor-texto-suave);
   font-size: var(--fonte-18);
+}
+
+/* O "i" que abre o balão da tarefa (Pedro, 16/10): por cima do link esticado da linha, como o nome do cliente. */
+.info {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-18);
+  cursor: help;
+}
+
+.info:hover,
+.info[aria-describedby] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+}
+
+.info:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 1px;
 }

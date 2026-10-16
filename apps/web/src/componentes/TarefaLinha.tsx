@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { destinoDaTarefa, resumirTarefa } from '../dados/tarefas.ts'
 import type { Tarefa } from '../dados/tipos.ts'
 import { usePode } from '../sessao.ts'
+import { Icone } from './Icone.tsx'
 import { Previa } from './Previa.tsx'
 import estilo from './Previa.module.css'
 import { ConteudoDoCliente } from './PreviaDoCliente.tsx'
@@ -58,55 +59,61 @@ function BalaoDaTarefa({ tarefa }: Props) {
 
 /**
  * Uma tarefa da fila. A linha inteira abre o passo do caso; o nome do cliente abre a ficha dele. Sem tela própria, a linha
- * abre a ficha; sem cliente, não é link (GGVP-120 CA4). Com o mouse parado na linha, o balão ao lado explica a tarefa.
- * Os dois links são irmãos (nunca um dentro do outro): o da ação se estica por cima da linha com ::after.
+ * abre a ficha; sem cliente, não é link (GGVP-120 CA4). O "i" no fim da linha abre o balão que explica a tarefa (Pedro,
+ * 16/10), com o mouse em cima ou no toque.
+ * Os links são irmãos (nunca um dentro do outro): o da ação se estica por cima da linha com ::after; o nome e o "i" ficam
+ * por cima dele.
  */
 export function TarefaLinha({ tarefa }: Props) {
   const { cliente, contexto, acao, detalhe, prazo, urgente } = tarefa
   const quem = cliente?.nome ?? contexto ?? ''
   const destino = destinoDaTarefa(tarefa)
+  const titulo = quem ? `${quem} · ${acao}` : acao
 
   return (
-    <Previa lado="direita" rotulo={quem ? `${quem} · ${acao}` : acao} conteudo={() => <BalaoDaTarefa tarefa={tarefa} />}>
-      <li className={`${styles.linha} ${urgente ? styles.urgente : ''}`}>
-        <span className={styles.ponto} aria-hidden="true" />
-        <div className={styles.corpo}>
-          <div className={styles.titulo}>
-            <span className={styles.texto}>
-              {cliente ? (
-                <a className={`${styles.quem} ${styles.cliente}`} href={`/clientes/${cliente.id}`}>
-                  {cliente.nome}
-                </a>
-              ) : (
-                <strong className={styles.quem}>{contexto}</strong>
-              )}
-              {destino ? (
-                <a className={styles.acao} href={destino} aria-label={`${quem} · ${acao}`}>
-                  {' · '}
-                  {acao}
-                </a>
-              ) : (
-                <span>
-                  {' · '}
-                  {acao}
-                </span>
-              )}
-            </span>
-          </div>
-          <p className={styles.detalhe}>{detalhe}</p>
+    <li className={`${styles.linha} ${urgente ? styles.urgente : ''}`}>
+      <span className={styles.ponto} aria-hidden="true" />
+      <div className={styles.corpo}>
+        <div className={styles.titulo}>
+          <span className={styles.texto}>
+            {cliente ? (
+              <a className={`${styles.quem} ${styles.cliente}`} href={`/clientes/${cliente.id}`}>
+                {cliente.nome}
+              </a>
+            ) : (
+              <strong className={styles.quem}>{contexto}</strong>
+            )}
+            {destino ? (
+              <a className={styles.acao} href={destino} aria-label={titulo}>
+                {' · '}
+                {acao}
+              </a>
+            ) : (
+              <span>
+                {' · '}
+                {acao}
+              </span>
+            )}
+          </span>
         </div>
-        {prazo && (
-          <span className={styles.prazo}>
-            {urgente && <span className="so-leitor">Urgente: </span>}
-            {prazo}
-          </span>
-        )}
-        {destino && (
-          <span className={styles.seta} aria-hidden="true">
-            ›
-          </span>
-        )}
-      </li>
-    </Previa>
+        <p className={styles.detalhe}>{detalhe}</p>
+      </div>
+      {prazo && (
+        <span className={styles.prazo}>
+          {urgente && <span className="so-leitor">Urgente: </span>}
+          {prazo}
+        </span>
+      )}
+      <Previa balao rotulo={titulo} conteudo={() => <BalaoDaTarefa tarefa={tarefa} />}>
+        <button type="button" className={styles.info} aria-label={`O que é a tarefa ${titulo}`}>
+          <Icone nome="info" />
+        </button>
+      </Previa>
+      {destino && (
+        <span className={styles.seta} aria-hidden="true">
+          ›
+        </span>
+      )}
+    </li>
   )
 }
