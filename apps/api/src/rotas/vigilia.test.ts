@@ -4,9 +4,11 @@ import { join } from 'node:path'
 import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { armazenamentoLocal } from '../armazenamento.ts'
+import { armazenamentoLocal, type Armazenamento } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { caso, etapa, eventoAuditoria, exigencia, pessoa, resultadoInss, tarefa, usuario, processoAcervo } from '../banco/esquema.ts'
+import { acervoTrecho, caso, documento, etapa, eventoAuditoria, exigencia, pessoa, resultadoInss, tarefa, usuario, processoAcervo } from '../banco/esquema.ts'
+import { SEM_CASO, alimentarAcervo, buscarNoAcervo } from '../ia/acervo.ts'
+import { DIMENSOES_DO_VETOR, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_CARTA, MSG_COMUNICACAO, MSG_FORA_DA_VIGILIA } from './vigilia.ts'
@@ -153,5 +155,61 @@ describe('GGVP-48 · indeferido segue para a Justiça', () => {
     const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/encerrar`, cookies: await cookieDe('helena'), payload: { motivo: 'Cliente desistiu' } })
     expect([r.statusCode, r.json().erro]).toEqual([409, 'Este caso não está esperando o despacho da Sênior.'])
     expect((await banco.select().from(caso).where(eq(caso.id, casoId)))[0].fase).toBe('judicial')
+  })
+})
+
+describe('GGVP-52 · o motivo do indeferimento no banco de motivos e no acervo', () => {
+  const VETOR = Array.from({ length: DIMENSOES_DO_VETOR }, () => 0.01)
+  /** A IA de mentira dos vetores do acervo: com `cai`, o serviço responde 503. */
+  const iaDoAcervo = (cai = false) =>
+    criarIa({
+      banco,
+      ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' },
+      fetch: async () => (cai ? new Response('fora', { status: 503 }) : new Response(JSON.stringify({ data: [{ embedding: VETOR }] }))),
+    })
+  const doMotivo = async () => (await banco.select().from(acervoTrecho)).filter((t) => t.origem === 'Motivo de indeferimento')
+
+  it('GGVP-52 CA2 · o motivo salvo vai ao banco de motivos e ao acervo: a busca de outro caso o acha, com a referência do caso e sem o nome da cliente', async () => {
+    expect((await registrar(INDEFERIDO)).statusCode).toBe(201)
+    const [res] = await banco.select().from(resultadoInss).where(eq(resultadoInss.casoId, casoId))
+    expect([res.motivoIndeferimento, res.motivoEscrito]).toEqual([INDEFERIDO.motivoInss, INDEFERIDO.motivoEscrito])
+    const achados = await buscarNoAcervo(banco, { casoId: SEM_CASO, beneficio: null, consulta: 'renda do filho que não mora com ela', saude: true })
+    expect(achados).toContainEqual(expect.objectContaining({ tipo: 'acervo', referencia: `caso:${casoId}`, trecho: expect.stringContaining('somou a renda do filho') }))
+    expect(JSON.stringify(achados)).not.toContain('Maria Souza')
+    // A rodada grava o trecho no acervo, com o caso.
+    await alimentarAcervo(banco, iaDoAcervo())
+    expect((await doMotivo()).map((t) => [t.casoId, t.referencia, t.texto])).toEqual([[casoId, `caso:${casoId}`, INDEFERIDO.motivoEscrito]])
+  })
+
+  it('GGVP-52 CA5 · a falha em cada gravação fica visível e a nova tentativa grava uma vez só: o registro no banco de motivos e o trecho no acervo', async () => {
+    // O banco de motivos: o armazenamento cai na primeira tentativa; nada fica gravado pela metade.
+    const local = armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-')))
+    let cair = true
+    const instavel: Armazenamento = {
+      salvar: async (chave, conteudo, mime) => {
+        if (cair) throw new Error('o disco não respondeu')
+        return local.salvar(chave, conteudo, mime)
+      },
+      ler: local.ler,
+    }
+    app = criarServidor({ banco, armazenamento: instavel })
+    const falhou = await registrar(INDEFERIDO)
+    expect(falhou.statusCode).toBeGreaterThanOrEqual(500)
+    expect([await banco.select().from(resultadoInss), await banco.select().from(documento)]).toEqual([[], []])
+    expect((await banco.select().from(caso).where(eq(caso.id, casoId)))[0].fase).toBe('administrativa')
+    cair = false
+    expect((await registrar(INDEFERIDO)).statusCode).toBe(201)
+    expect((await registrar(INDEFERIDO)).statusCode).toBe(409)
+    expect((await banco.select().from(resultadoInss)).map((r) => r.casoId)).toEqual([casoId])
+
+    // O acervo: a IA cai no vetor; o trecho fica sem vetor e a falha aparece nas chamadas da IA do caso.
+    expect(await alimentarAcervo(banco, iaDoAcervo(true))).toMatchObject({ vetores: 0 })
+    expect((await doMotivo()).map((t) => [t.casoId, t.embedding])).toEqual([[casoId, null]])
+    const chamadas = (await app.inject({ method: 'GET', url: `/api/casos/${casoId}/ia`, cookies: await cookieDe('gabi') })).json().chamadas
+    expect(chamadas.map((c: { finalidade: string; situacao: string }) => [c.finalidade, c.situacao])).toContainEqual(['vetor_acervo', 'falhou'])
+    // A rodada seguinte completa o mesmo trecho, sem outro.
+    expect(await alimentarAcervo(banco, iaDoAcervo())).toMatchObject({ novos: 0, vetores: 1 })
+    expect(await alimentarAcervo(banco, iaDoAcervo())).toEqual({ novos: 0, vetores: 0 })
+    expect((await doMotivo()).map((t) => [t.casoId, t.embedding?.length])).toEqual([[casoId, DIMENSOES_DO_VETOR]])
   })
 })

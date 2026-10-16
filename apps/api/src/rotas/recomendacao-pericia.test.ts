@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, decisao, etapa, exigencia, parecerMedico, pericia, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, decisao, etapa, exigencia, parecerMedico, pericia, pessoa, processoAcervo, publicacao, tarefa, usuario } from '../banco/esquema.ts'
+import { REGRA_DA_CHANCE } from '../fluxo/chance.ts'
 import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -143,5 +144,64 @@ describe('GGVP-158 P8.1 · quem abre a recomendação fica registrado', () => {
     comIa({ oQueLevar: [] })
     expect((await chamar('gabi', 'POST', `/api/pericias/${doInss}/recomendacao/sugestao`)).json().recomendacao).toBeNull()
     expect(await leituras()).toEqual([])
+  })
+})
+
+describe('GGVP-151 e GGVP-38 · a chance do caso com a recomendação da perícia aberta', () => {
+  const CHANCE_INVENTADA = 'A chance é de 99%: este perito sempre concede.'
+  let doFator = ''
+  /** A IA de mentira escreve a recomendação e, nos fatores da chance, um número que não é o do código. */
+  function comIaQueInventa() {
+    pedidos = []
+    const fetch = async (_url: unknown, init?: RequestInit) => {
+      const corpo = JSON.parse(String(init?.body)) as { messages: { content: string }[] }
+      const daRecomendacao = corpo.messages[0].content.includes('para uma perícia do cliente')
+      if (daRecomendacao) pedidos.push(corpo.messages[1].content)
+      else doFator = corpo.messages[1].content
+      return new Response(JSON.stringify({ choices: [{ message: { content: daRecomendacao ? JSON.stringify(RECOMENDACAO) : CHANCE_INVENTADA } }] }))
+    }
+    app = criarServidor({ banco, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste', IA_PERMITE_DADO_DE_SAUDE: 'sim' }, fetch }) })
+  }
+  /** O acervo conferido do mesmo benefício: dois favoráveis, um desfavorável e uma desistência (que não conta). */
+  async function acervoDecidido() {
+    const [gabi] = await banco.select().from(usuario).where(eq(usuario.email, 'gabi@exemplo.ggv'))
+    const desfechos = ['deferido', 'procedente_total', 'improcedente', 'desistencia']
+    await banco
+      .insert(processoAcervo)
+      .values(desfechos.map((desfecho, i) => ({ fonte: 'teste', beneficio: 'bpc_loas_deficiente', desfecho, desfechoConferidoPor: gabi.id, criadoEm: new Date(Date.UTC(2026, 8, 10 + i, 12)) })))
+    // De outro benefício: não entra na conta.
+    await banco.insert(processoAcervo).values({ fonte: 'teste', beneficio: 'bpc_loas_idoso', desfecho: 'improcedente', desfechoConferidoPor: gabi.id })
+  }
+
+  it('GGVP-151 CA2 · com a recomendação aberta (perícia sem resultado), a chance vem com os casos e a data da base', async () => {
+    comIaQueInventa()
+    await acervoDecidido()
+    const abertas = (await chamar('gabi', 'GET', `/api/casos/${casoId}/pericias`)).json().pericias
+    expect(abertas.map((p: { id: string; resultado: string | null; aprovada: unknown }) => [p.id, p.resultado, p.aprovada]).sort()).toEqual(
+      [
+        [doInss, null, null],
+        [doJuiz, null, null],
+      ].sort(),
+    )
+    expect((await chamar('gabi', 'POST', `/api/pericias/${doInss}/recomendacao/sugestao`)).json().recomendacao.oQueLevar).toEqual(RECOMENDACAO.oQueLevar)
+    const r = await chamar('gabi', 'POST', `/api/casos/${casoId}/chance`)
+    expect(r.statusCode).toBe(200)
+    const chance = r.json()
+    expect([chance.casos, chance.favoraveis, chance.porcentagem, chance.baseEm, chance.regra]).toEqual([3, 2, 67, '2026-09-13T12:00:00.000Z', REGRA_DA_CHANCE])
+    // O Atendimento não vê a chance.
+    expect((await chamar('ana', 'POST', `/api/casos/${casoId}/chance`)).statusCode).toBe(403)
+  })
+
+  it('GGVP-38 CA7 · o número vem do código, a partir do acervo: a IA que escreve outro número não muda a porcentagem, só explica com a regra como fonte; a recomendação não leva número do perito', async () => {
+    comIaQueInventa()
+    await acervoDecidido()
+    await chamar('gabi', 'POST', `/api/pericias/${doJuiz}/recomendacao/sugestao`)
+    expect(pedidos).toHaveLength(1)
+    expect(pedidos[0]).toContain('Perito: não identificado')
+    expect(pedidos[0]).not.toMatch(/\d+ ?%/)
+    const chance = (await chamar('gabi', 'POST', `/api/casos/${casoId}/chance`)).json()
+    expect(chance.porcentagem).toBe(67)
+    expect(doFator).toContain('Chance calculada pelo sistema: 67% em 3 casos parecidos')
+    expect(chance.fatores).toMatchObject({ texto: CHANCE_INVENTADA, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] })
   })
 })

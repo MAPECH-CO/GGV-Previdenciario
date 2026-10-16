@@ -26,6 +26,7 @@ import {
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_CASO_NAO_ENCONTRADO } from './processo.ts'
+import { etapaDaOrigem, setoresPendentes } from '../../../web/src/regras/caso.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -328,5 +329,46 @@ describe('GGVP-86 CA14 · os dados do processo dentro da tarefa (Pedro, 14/10)',
   it('o Financeiro, que não vê o caso, não recebe o resumo; caso que não existe ou id torto: 404', async () => {
     expect((await resumo('julia')).statusCode).toBe(403)
     for (const id of ['00000000-0000-4000-8000-000000000000', 'antonio-exemplo-1']) expect((await resumo('gabi', id)).statusCode).toBe(404)
+  })
+})
+
+describe('GGVP-86 · a página do processo do caso do servidor', () => {
+  /** A etapa da decisão da perícia (D2.03), que o caso de exemplo já concluiu. */
+  const daDecisao = async () => (await banco.select().from(etapa).where(and(eq(etapa.casoId, casoId), eq(etapa.passo, 'D2.03'))))[0].id
+
+  it('GGVP-86 CA2 · a perícia em andamento vem no bloco da perícia, ligada à etapa que a pediu (o INSS, no D2.03)', async () => {
+    // Antes: a única perícia do caso já tem resultado, e o bloco "Em perícia" não aparece.
+    expect((await ver('gabi')).json().pericia.situacao).toBe('concluida')
+    await banco.insert(pericia).values({ casoId, tipo: 'social', chamadaPorEtapaId: await daDecisao(), criadoEm: new Date(Date.now() + 60_000) })
+    const { pericia: p } = (await ver('gabi')).json()
+    expect([p.tipo, p.origem, p.marcada, p.perito, p.resultado]).toEqual(['social', 'd2-necessidade', null, null, null])
+    expect(p.situacao).not.toBe('concluida')
+    expect(etapaDaOrigem(p.origem)).toBe('inss')
+  })
+
+  it('GGVP-86 CA3 · o caso esperando setores: os itens vêm por setor, com quem cumpriu, e só o setor que não subiu o card fica pendente', async () => {
+    const [x] = await banco.insert(exigencia).values({ casoId, origem: 'inss', descricao: 'Declaração de composição do grupo familiar', recebidaEm: '2026-10-04', prazo: '2026-10-19' }).returning()
+    await banco.insert(exigenciaItem).values([
+      { exigenciaId: x.id, perfilResponsavel: 'documentacao', descricao: 'Montar a declaração', situacao: 'cumprido', cumpridoEm: new Date('2026-10-06T14:00:00Z'), cumpridoPor: ids.fabio },
+      { exigenciaId: x.id, perfilResponsavel: 'atendimento', descricao: 'Colher a assinatura do cliente', situacao: 'pendente' },
+    ])
+    const doGrupo = (await ver('gabi')).json().exigencias.find((e: { descricao: string }) => e.descricao === x.descricao)
+    expect(doGrupo.itens).toEqual([
+      { setor: 'Atendimento', descricao: 'Colher a assinatura do cliente', situacao: 'pendente', cumpridoEm: null, cumpridoPor: null },
+      { setor: 'Documentação', descricao: 'Montar a declaração', situacao: 'cumprido', cumpridoEm: '2026-10-06T14:00:00.000Z', cumpridoPor: 'fabio' },
+    ])
+    const lacos = doGrupo.itens.map((i: { setor: string; situacao: string; cumpridoEm: string | null }) => ({ setor: i.setor, subiu: i.situacao === 'cumprido' && i.cumpridoEm ? i.cumpridoEm : undefined }))
+    expect(setoresPendentes(lacos)).toEqual(['Atendimento'])
+  })
+
+  it('GGVP-86 CA11 · cada documento do caso vem com a origem (por onde chegou) e a data', async () => {
+    await banco.insert(documento).values({ ...arquivo('comprovante-de-endereco.pdf', 'comprovante_residencia', false, 4), origem: 'scanner' })
+    const docs = (await ver('gabi')).json().documentos.map((d: { nome: string; origem: string; data: string }) => [d.nome, d.origem, d.data])
+    expect(docs).toEqual([
+      ['comprovante-de-endereco.pdf', 'scanner', '2026-10-04'],
+      ['pacote-peticao.pdf', 'portal', '2026-10-03'],
+      ['laudo-ortopedista.pdf', 'portal', '2026-10-02'],
+      ['rg-e-cpf.pdf', 'portal', '2026-10-01'],
+    ])
   })
 })
