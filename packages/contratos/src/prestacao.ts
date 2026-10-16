@@ -62,6 +62,8 @@ export const PrestacaoDoCaso = z.object({
   acordo: z.object({ entrada: z.string(), parcelas: ParcelasNaPrestacao.nullable() }).nullable().default(null),
   versoes: z.array(VersaoDaPrestacao),
   agendamento: z.object({ quando: z.string(), local: z.string(), acompanhante: z.string().nullable() }).nullable(),
+  /** GGVP-92 CA5 (GGVP-158 L2): o texto do modelo ativo do aviso ao cliente, para a Sênior revisar antes do OK. */
+  aviso: z.string().nullable().default(null),
   podeEditar: z.boolean(),
   podeReceber: z.boolean(),
 })
@@ -138,13 +140,28 @@ export const ROTULO_FORMA_DE_PAGAMENTO: Record<(typeof FORMAS_DE_PAGAMENTO)[numb
 }
 const vazioEhNada = (v: unknown) => (v === '' || v === null ? undefined : v)
 
-/** POST /api/casos/:id/prestacao (CA5): concluir exige a conferência com a carta. Honorários e repasse são do servidor. */
+/**
+ * GGVP-92 CA5 (GGVP-158 L2): as quatro conferências do OK, com o rótulo da tela. A fonte dos valores segue a carta de
+ * concessão até o Lucas decidir entre ela e a sentença (CA3).
+ */
+export const CONFERENCIAS_DO_OK = {
+  conferiCarta: 'Conferi os valores com a carta de concessão',
+  conferiHonorarios: 'Conferi os honorários com o contrato',
+  conferiDadosBancarios: 'Conferi que o Atendimento confirmou os dados bancários do cliente',
+  revisouAviso: 'Revisei o texto do aviso ao cliente',
+} as const
+const marcada = (rotulo: string) => z.literal(true, { error: `Marque "${rotulo}"` })
+
+/** POST /api/casos/:id/prestacao (CA5): concluir exige as quatro conferências. Honorários e repasse são do servidor. */
 export const SalvarPrestacao = z.object({
   valorRecebido: Decimal('Informe o valor recebido (atrasados), como 1.234,56').refine((n) => n > 0, 'Informe o valor recebido (atrasados), como 1.234,56'),
   percentual: Decimal('Informe o percentual de honorários do contrato (0 a 100)', 100),
   formaPagamento: z.preprocess(vazioEhNada, z.enum(FORMAS_ACEITAS, { error: 'Escolha a forma de pagamento da lista' }).optional()),
   prazoPagamento: DataObrigatoria('Informe o prazo de pagamento (dd/mm/aaaa)'),
-  conferiCarta: z.literal(true, { error: 'Marque "Conferi os valores com a carta de concessão"' }),
+  conferiCarta: marcada(CONFERENCIAS_DO_OK.conferiCarta),
+  conferiHonorarios: marcada(CONFERENCIAS_DO_OK.conferiHonorarios),
+  conferiDadosBancarios: marcada(CONFERENCIAS_DO_OK.conferiDadosBancarios),
+  revisouAviso: marcada(CONFERENCIAS_DO_OK.revisouAviso),
   // GGVP-158 P6.3: o resultado abre editável (Lucas, 06/10): os honorários ajustados por quem confere, o combinado do
   // contrato e a parte paga na Caixa, quando o escritório vai junto (07/10). Sem custas por enquanto.
   honorarios: z.preprocess(vazioEhNada, Decimal('Informe os honorários, como 1.234,56').optional()),
