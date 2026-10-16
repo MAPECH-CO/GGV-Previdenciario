@@ -234,7 +234,11 @@ test('GGVP-44 e GGVP-98 · a Sênior conclui (Mateus, 14/10); o Financeiro receb
   await page.getByLabel('Forma de pagamento (opcional)').selectOption('pix')
   await page.getByLabel('Prazo de pagamento').fill(emDias(20))
   await expect(page.getByRole('button', { name: 'Concluir a prestação' })).toBeDisabled()
+  // GGVP-92 CA5 (GGVP-158 L2): as quatro conferências do OK.
   await page.getByLabel('Conferi os valores com a carta de concessão').check()
+  await page.getByLabel('Conferi os honorários com o contrato').check()
+  await page.getByLabel('Conferi que o Atendimento confirmou os dados bancários do cliente').check()
+  await page.getByLabel('Revisei o texto do aviso ao cliente').check()
   await page.getByRole('button', { name: 'Concluir a prestação' }).click()
   await expect(page.getByRole('status')).toContainText('O Financeiro recebe e, depois, avisa o cliente')
 
