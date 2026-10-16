@@ -30,7 +30,7 @@ export function ResumoDaExigencia({ x }: { x: ExigenciaDoCaso }) {
       ) : (
         <span className={styles.selo}>Prazo: informe os dias que o INSS deu</span>
       )}
-      {x.regraPrazo && <p className={styles.dica}>Contado pelo sistema, pelo lado seguro (G12): {x.regraPrazo}.</p>}
+      {x.regraPrazo && <p className={styles.dica}>Contado pelo sistema, pelo lado seguro: {x.regraPrazo}.</p>}
       {!x.feriadosCadastrados && <p className={styles.dica}>Feriados não cadastrados: por enquanto o prazo só pula sábado e domingo.</p>}
     </section>
   )
@@ -234,7 +234,7 @@ export function TratarExigencia({ casoId, embutida = false }: { casoId: string; 
       {x.podeDecidir ? (
         <form className={styles.cartao} onSubmit={decidir} noValidate>
           <h2 className={styles.cartaoTitulo}>O que a exigência pede?</h2>
-          <p className={styles.dica}>Quem decide é você, não o sistema (G5).</p>
+          <p className={styles.dica}>Quem decide é você, não o sistema.</p>
           <fieldset className={styles.cartao}>
             <legend className={styles.rotulo}>Pedido</legend>
             {(Object.keys(ROTULO_PEDE) as Pede[]).map((p) => (

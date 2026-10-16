@@ -53,6 +53,25 @@ describe('GGVP-30 · rodadas da vigília', () => {
     expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'alarme_suporte'))).length).toBe(1)
   })
 
+  it('GGVP-158 I13 · o erro do banco ou da leitura da resposta não leva o texto da publicação à rodada, ao alarme nem ao suporte', async () => {
+    await planejarDia(banco, [vazia], new Date('2026-10-05T10:00:00Z'))
+    const [r] = await rodadas()
+    const doBanco = Object.assign(new Error('Failed query: insert into "publicacao" params: djen,,2026-10-05,Fulano de Tal (exemplo): laudo de ansiedade'), { name: 'DrizzleQueryError' })
+    const quebrada = fonteQue('djen', async () => {
+      throw doBanco
+    })
+    const enviados: Alarme[] = []
+    const suporte: Suporte = async (a) => {
+      enviados.push(a)
+      return { canal: 'enviado', jira: 'desligado' }
+    }
+    const motivo = 'erro inesperado ao ler ou gravar as publicações (DrizzleQueryError)'
+    expect(await rodar(banco, r.id, quebrada, as('2026-10-05T11:00:00Z'), 60_000, suporte)).toEqual({ situacao: 'falhou', erro: motivo })
+    expect((await rodadas())[0].erro).toBe(motivo)
+    const alarmes = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'alarme_suporte'))
+    expect(JSON.stringify([enviados, alarmes])).not.toContain('Fulano')
+  })
+
   it('CA8, CA10 (grupo 4) · a chave da AASP recusada vira falha de credencial, sem a chave no erro nem no alarme ao suporte', async () => {
     const chave = 'chave-secreta-de-teste-0123456789'
     const recusa = { buscar: (async () => new Response('{}', { status: 401 })) as typeof fetch, esperar: async () => {} }
@@ -117,7 +136,7 @@ describe('GGVP-158 P5.10 · o alarme da vigília chega ao suporte', () => {
     await batida(banco, [], as('2026-10-05T11:00:00Z'), suporte)
     await batida(banco, [], as('2026-10-05T11:01:00Z'), suporte)
     expect(avisos.map((a) => a.texto)).toEqual([`não trouxe as publicações. Motivo: ${MSG_SEM_FONTE}`])
-    expect(await semFonteHoje(banco, new Date('2026-10-05T15:00:00Z'))).toBe((await alarmes())[0].id)
+    expect(await semFonteHoje(banco, new Date('2026-10-05T15:00:00Z'))).toEqual({ id: (await alarmes())[0].id, avisado: true })
     await batida(banco, [], as('2026-10-06T11:00:00Z'), suporte)
     expect(avisos).toHaveLength(2)
   })

@@ -20,7 +20,7 @@ test('CA1, CA3 e CA4 · a linha do tempo da Cleide: com e sem deficiência, sem 
   await expect(metalurgica.nth(1)).toContainText('com deficiência · leve')
   await expect(metalurgica.nth(2)).toContainText('sem prova da época')
   await expect(page.getByText('indicador PCD no CNIS').first()).toBeVisible()
-  await expect(page.getByText('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código (G19)')).toBeVisible()
+  await expect(page.getByText('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código')).toBeVisible()
 })
 
 test('CA2 · um agravamento novo muda o grau a partir da data e recalcula o enquadramento', async ({ page }) => {

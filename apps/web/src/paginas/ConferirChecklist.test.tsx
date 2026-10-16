@@ -61,7 +61,7 @@ describe('Conferir checklist · tela do passo', () => {
     })
     await arquivarTudo('rita-exemplo')
     await abrir()
-    expect(item('Ficha de grupo familiar').textContent).toBe('Ficha de grupo familiarchegou sem assinatura (G1)falta')
+    expect(item('Ficha de grupo familiar').textContent).toBe('Ficha de grupo familiarchegou sem assinaturafalta')
   })
 
   // Desde a GGVP-47 o Auxílio-Acidente tem lista: o exemplo sem lista é a aposentadoria do Antônio.
@@ -69,6 +69,22 @@ describe('Conferir checklist · tela do passo', () => {
     await abrir('antonio-exemplo-1')
     expect(screen.getByText(/Aposentadoria por Incapacidade Permanente ainda não tem lista de documentos obrigatórios aprovada\. O escritório monta a lista/)).toBeTruthy()
     expect(screen.getByText(/Liberar ao Jurídico: bloqueado\. Aposentadoria por Incapacidade Permanente ainda não tem lista/)).toBeTruthy()
+  })
+
+  it('GGVP-158 E10 (15/10) · o Atendimento abre o checklist para as boas-vindas, sem o botão de concluir a conferência; a Documentação tem o botão', async () => {
+    try {
+      entrarComo('atendimento')
+      await abrir()
+      expect(screen.queryByRole('button', { name: /Gerar cobrança das pendências|Concluir a conferência/ })).toBeNull()
+      expect(screen.getByRole('note').textContent).toContain('Quem confere o checklist é a Documentação')
+      expect(await screen.findByRole('region', { name: /Boas-vindas/ })).toBeTruthy()
+      cleanup()
+      entrarComo('documentacao')
+      await abrir()
+      expect(screen.getByRole('button', { name: 'Gerar cobrança das pendências' })).toBeTruthy()
+    } finally {
+      entrarComo()
+    }
   })
 
   it('GGVP-101 CA1 · incompleto, "Gerar cobrança das pendências" registra a conferência e manda a cobrança ao Atendimento', async () => {

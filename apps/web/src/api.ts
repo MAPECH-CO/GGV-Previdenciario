@@ -6,15 +6,23 @@ const MARCA_ENTROU = 'ggv.entrou' // só diz "já entrou neste navegador", para 
 
 export type Resposta<T> = { ok: true; dados: T } | { ok: false; status: number; erro: string }
 
+/** GGVP-158 I20: sem resposta (a rede caiu, o servidor está fora), a chamada volta como erro, para a tela dizer. */
+export const MSG_SEM_RESPOSTA = 'O servidor não respondeu: confira a conexão e tente de novo. Se já tinha enviado, confira antes de repetir.'
+
 export async function chamarApi<T>(caminho: string, init: { method?: string; corpo?: unknown } = {}): Promise<Resposta<T>> {
   // FormData (envio com arquivo) vai como está: o navegador põe o content-type com a fronteira.
   const formulario = init.corpo instanceof FormData
-  const resposta = await fetch(`/api${caminho}`, {
-    method: init.method ?? 'GET',
-    headers: init.corpo === undefined || formulario ? undefined : { 'content-type': 'application/json' },
-    body: init.corpo === undefined ? undefined : formulario ? (init.corpo as FormData) : JSON.stringify(init.corpo),
-    credentials: 'same-origin',
-  })
+  let resposta: Response
+  try {
+    resposta = await fetch(`/api${caminho}`, {
+      method: init.method ?? 'GET',
+      headers: init.corpo === undefined || formulario ? undefined : { 'content-type': 'application/json' },
+      body: init.corpo === undefined ? undefined : formulario ? (init.corpo as FormData) : JSON.stringify(init.corpo),
+      credentials: 'same-origin',
+    })
+  } catch {
+    return { ok: false, status: 0, erro: MSG_SEM_RESPOSTA }
+  }
   const tentativaDeEntrar = caminho === '/sessao' && init.method === 'POST' // 401 ali é senha errada, não sessão vencida
   if (resposta.status === 401 && !tentativaDeEntrar) irParaEntrar()
   if (resposta.status === 204) return { ok: true, dados: undefined as T }
@@ -26,7 +34,12 @@ export type Baixado = { ok: true; blob: Blob; nome: string } | { ok: false; stat
 
 /** Baixa um arquivo da API (o kit para imprimir). Sessão expirada (401) leva ao login, como em `chamarApi`. */
 export async function baixarApi(caminho: string): Promise<Baixado> {
-  const resposta = await fetch(`/api${caminho}`, { credentials: 'same-origin' })
+  let resposta: Response
+  try {
+    resposta = await fetch(`/api${caminho}`, { credentials: 'same-origin' })
+  } catch {
+    return { ok: false, status: 0, erro: MSG_SEM_RESPOSTA }
+  }
   if (resposta.status === 401) irParaEntrar()
   if (!resposta.ok) {
     const corpo = await resposta.json().catch(() => ({}))

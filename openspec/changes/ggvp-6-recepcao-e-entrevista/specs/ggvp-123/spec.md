@@ -81,9 +81,10 @@ Quando o Atendimento registra a falta do lead à entrevista, SHALL remarcar com 
 - **Então** remarca com o cliente
 
 ### Requirement: CA10 · O cartão "Reuniões" da ficha marca a reunião
-Teste do Pedro (14/10): o botão "Marcar e iniciar reunião (com transcrição)" do cartão "Reuniões" não fazia nada, mas tinha cara de ativo.
 - O botão SHALL levar à marcação do cliente, a mesma do "Marcar entrevista" (no Figma, "Marcar reunião"), com o rótulo "Marcar reunião (com transcrição)".
 - Quem não pode marcar (sem `ficha.editar`) MUST NOT ver o botão.
+
+Teste do Pedro (14/10): o botão "Marcar e iniciar reunião (com transcrição)" do cartão "Reuniões" não fazia nada, mas tinha cara de ativo.
 
 #### Scenario: CA10 · A Sênior marca pela ficha
 - **Dado** a ficha do cliente aberta pela Sênior

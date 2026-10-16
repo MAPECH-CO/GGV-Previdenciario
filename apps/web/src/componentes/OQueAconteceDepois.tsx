@@ -2,10 +2,10 @@ import { Cartao } from './Cartao.tsx'
 import styles from './OQueAconteceDepois.module.css'
 
 const PASSOS = [
-  'Marcar a entrevista com a advogada: presencial, vídeo ou telefone. Convite pelo Chatwoot com modelo (GGVP-102).',
-  'Iniciar com gravação e transcrição. O aviso de gravação é a primeira coisa (G10).',
+  'Marcar a entrevista com a advogada: presencial, vídeo ou telefone. Convite pelo Chatwoot com modelo.',
+  'Iniciar com gravação e transcrição. O aviso de gravação é a primeira coisa.',
   'A cliente preenche a ficha pelo link. Na entrevista, a IA aponta o que faltou.',
-  'Se não virar cliente, o motivo fica registrado (G16).',
+  'Se não virar cliente, o motivo fica registrado.',
 ]
 
 /** "O que acontece depois" (Figma 73:438). */

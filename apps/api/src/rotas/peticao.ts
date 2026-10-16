@@ -8,6 +8,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AprovarPeticao, faltaCompletar, numeroDeJurimetriaNoTexto, MinutaDaIa, NovaVersao, PedirMinuta, PedirOutraVersao, PedirPeticao, PeticaoInicial, ProtocolarPeticao, ROTULO_BENEFICIO, pode, type Beneficio, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { resumoDoErro } from '../servidor.ts'
 import { caso, configuracao, decisao, documento, etapa, exigencia, exigenciaItem, identificadorCaso, parecerMedico, peticao, peticaoVersao, pessoa, protocoloJudicial, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { diferenca } from '../fluxo/diferenca.ts'
 import { lembreteDoLaco, limitesDeCobranca } from '../fluxo/exigencia.ts'
@@ -28,6 +29,8 @@ export const MSG_JA_PEDIDA = 'A petição inicial deste caso já foi pedida.'
 export const MSG_CITADO_DE_OUTRO_CASO = 'Um documento citado não é deste caso.'
 export const MSG_SEM_PEDIDO = 'A petição inicial deste caso ainda não foi pedida.'
 export const MSG_PROTOCOLADA = 'A petição já foi protocolada: não muda mais.'
+/** GGVP-158 I9: o armazenamento não respondeu na conferência do pacote; nada foi bloqueado. */
+export const MSG_PACOTE_SEM_LEITURA = 'Não deu para ler o pacote no armazenamento agora: nada foi bloqueado. Tente de novo em alguns minutos.'
 export const MSG_SO_A_ULTIMA = 'Só a última versão pode ser aprovada.'
 export const MSG_NADA_A_CONFERIR = 'Não há versão esperando a conferência.'
 export const MSG_CITADO_NAO_FALTA = 'Este documento citado não está faltando.'
@@ -483,7 +486,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
           passo: 'D3.06',
           tipo: 'aprovacao_peticao',
           resultado: `versao ${ultima.numero}`,
-          justificativa: 'Li a petição na íntegra; fundamentos, pedidos e valores conferem com o caso; nada contradiz o requisito do benefício (G18).',
+          justificativa: 'Li a petição na íntegra; fundamentos, pedidos e valores conferem com o caso; nada contradiz o requisito do benefício.',
           decididoPor: quem,
           perfil: pedido.perfilAtivo!,
           decididoEm: agora(),
@@ -667,11 +670,20 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
       await bloqueio(pedido, casoId, 'G7', 'D3.07', { travas: falhando.map((t) => t.nome) })
       return negar(resposta, 409, `Trava falhando: ${falhando.map((t) => `${t.nome} (${t.evidencia})`).join('; ')}.`)
     }
-    // CA9: o pacote não pode ter mudado depois da aprovação: confere o hash de cada arquivo no armazenamento.
+    // CA9: o pacote não pode ter mudado depois da aprovação: confere o hash de cada arquivo no armazenamento. GGVP-158 I9: a
+    // leitura que falha não é pacote mudado: responde 503, sem o bloqueio do G7, e a advogada tenta de novo.
     const divergentes: string[] = []
     for (const a of (aprovada.pacote ?? []) as ArquivoDoPacote[]) {
       const [doc] = await banco.select().from(documento).where(eq(documento.id, a.documentoId))
-      const conteudo = doc ? await armazenamento.ler(doc.chaveArmazenamento).catch(() => null) : null
+      let conteudo: Buffer | null = null
+      if (doc) {
+        try {
+          conteudo = await armazenamento.ler(doc.chaveArmazenamento)
+        } catch (e) {
+          pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(e) }, 'o pacote não foi lido no armazenamento')
+          return negar(resposta, 503, MSG_PACOTE_SEM_LEITURA)
+        }
+      }
       if (!conteudo || hashDe(conteudo) !== a.hash) divergentes.push(a.nome)
     }
     if (divergentes.length) {

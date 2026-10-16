@@ -35,7 +35,7 @@ describe('GGVP-49 · Tarefa de perícia aberta pelo sistema (Figma 14:534)', () 
   it('Lucas, 02/10 · a próxima ação, a data em que foi aberta, os prazos máximos e o botão até a tarefa', async () => {
     render(comSessao(<PericiaAberta processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { name: 'O que acontece agora' })
-    expect(screen.getByText(/O Jurídico administrativo marca a perícia médica de Maria pelo Meu INSS \(senha no cofre, G9\)/)).toBeTruthy()
+    expect(screen.getByText(/O Jurídico administrativo marca a perícia médica de Maria pelo Meu INSS \(senha no cofre\)/)).toBeTruthy()
     const prazos = screen.getByRole('heading', { name: 'Datas e prazos máximos' }).closest('section')!.textContent
     expect(prazos).toContain('Tarefa aberta em06/10/2026 16:10, pelo sistema')
     expect(prazos).toContain('liberado em 07/10/2026 08:00 (D2.E1)')
@@ -79,6 +79,8 @@ describe('GGVP-49 · Central do Jurídico administrativo (Figma 2051:173 e 2107:
 
 describe('GGVP-49 · o caso "Em perícia" (Figma 2179:2 e a ficha)', () => {
   it('CA1 · a ficha mostra "Em perícia" com o diagrama de origem e leva à página do processo', async () => {
+    // GGVP-158 E7: a página da perícia e o laudo novo exigem ver o caso; o link só aparece para quem pode (advogada).
+    entrarComo('advogada')
     const ficha = (await obterFicha('maria-exemplo'))!
     render(comSessao(<CasoEmAndamento ficha={ficha} />))
     const caso = screen.getByRole('link', { name: /Em perícia/ })

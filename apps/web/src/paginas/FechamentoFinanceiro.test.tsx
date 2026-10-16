@@ -63,7 +63,10 @@ it('registro recusado não aparece como ligação registrada', async () => {
 it('editar um valor exige conferir novamente antes do OK', async () => {
   servidor(prestacao)
   render(<PrestarContas casoId={id} />)
+  // GGVP-92 CA5 (GGVP-158 L2): as quatro conferências.
   fireEvent.click(await screen.findByLabelText('Conferi os valores com a carta de concessão'))
+  for (const rotulo of ['Conferi os honorários com o contrato', 'Conferi que o Atendimento confirmou os dados bancários do cliente', 'Revisei o texto do aviso ao cliente'])
+    fireEvent.click(screen.getByLabelText(rotulo))
   expect((screen.getByRole('button', { name: 'Registrar nova versão' }) as HTMLButtonElement).disabled).toBe(false)
   fireEvent.change(screen.getByLabelText('Honorários do contrato (%)'), { target: { value: '20' } })
   expect((screen.getByLabelText('Conferi os valores com a carta de concessão') as HTMLInputElement).checked).toBe(false)

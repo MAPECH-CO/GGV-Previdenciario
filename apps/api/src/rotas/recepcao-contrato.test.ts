@@ -208,7 +208,10 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
 
     expect(await json('ana', 'POST', `${base}/conferencia/aviso`, { mensagem: ' ' })).toEqual({ erro: 'Escreva a mensagem.' })
     const avisado = await json('ana', 'POST', `${base}/conferencia/aviso`, { mensagem: 'Joana, falta a página 4 assinada.' })
-    expect(avisado.ficha.contatos.at(-1)).toMatchObject({ canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
+    // GGVP-158 I4: o portal não envia este aviso; o registro diz isso, e não "avisou pelo WhatsApp".
+    expect(avisado.ficha.contatos.at(-1)).toMatchObject({ canal: 'Registro, sem envio pelo portal', texto: 'Aviso da pendência no contrato assinado: Joana, falta a página 4 assinada.' })
+    expect(avisado.ficha.historico.at(-1).oQue).toBe('Registrou o aviso da pendência no contrato assinado; o portal não o enviou ao cliente')
+    expect(JSON.stringify(avisado.ficha.historico)).not.toContain('Avisou o cliente pelo WhatsApp')
 
     expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'x' })).toEqual({ erro: 'Escreva o que corrigir.' })
     expect(await json('ana', 'POST', `${base}/verificacao`, { tudoCerto: false, oQueCorrigir: 'página 4', paginaCorrigida: { nome: 'pagina.exe', tamanho: 10 } })).toEqual({
@@ -249,7 +252,7 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
     const entregue = await json('ana', 'POST', `${base}/copia/entrega`, ENTREGA)
     expect(entregue.contrato).toMatchObject({ etapa: 'entregue', copia: { entrega: { entregueEm: '2026-10-08', quemRecebeu: 'Joana Ribeiro', quem: 'ana' } } })
     expect(entregue.ficha.processos[0]).toEqual(
-      expect.objectContaining({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício (D1.21)' }),
+      expect.objectContaining({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício' }),
     )
     expect(entregue.ficha.processos[0].prazo).toBeUndefined()
     expect(entregue.ficha.agendamentos.find((a: { data: string }) => a.data === '2026-10-14').estado).toBe('realizado')
@@ -309,6 +312,23 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
     await percentual(25)
     const [guardado] = await banco.select().from(contratoRecepcao).where(eq(contratoRecepcao.casoId, processoId))
     expect((guardado.dados as { contrato: { percentualHonorarios?: number } }).contrato.percentualHonorarios).toBe(30)
+  })
+
+  it('GGVP-158 E2 (15/10) · a cópia da Recepção leva o percentual e o acordo só a quem conduz o contrato ou vê valores; a Documentação, o Jurídico adm, a advogada e a Sênior recebem o contrato sem eles', async () => {
+    for (const [apelido, perfil] of [['dora', 'documentacao'], ['igor', 'juridico_adm'], ['lauro', 'socio']] as const)
+      await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+    await app.inject({ method: 'PUT', url: '/api/configuracao/modelos/contrato-completo-loas/honorarios', cookies: await cookieDe('helena'), payload: { percentual: 30 } })
+    const { processoId } = await gerar(await lead(), 'loas-idoso', { entrada: '500,00', parcelas: { quantidade: '4', valor: '300,00' } })
+    const contrato = async (apelido: string) =>
+      (await json(apelido, 'GET', '/api/recepcao')).contratos.find((c: { processoId: string }) => c.processoId === processoId) as { percentualHonorarios?: number; acordo?: object; etapa: string }
+    for (const apelido of ['dora', 'igor', 'gabi', 'helena']) {
+      const c = await contrato(apelido)
+      expect([apelido, c.etapa, c.percentualHonorarios, c.acordo]).toEqual([apelido, 'assinatura', undefined, undefined])
+    }
+    for (const apelido of ['ana', 'lauro']) {
+      const c = await contrato(apelido)
+      expect([apelido, c.percentualHonorarios, c.acordo]).toEqual([apelido, 30, { entrada: 500, parcelas: { quantidade: 4, valor: 300 } }])
+    }
   })
 
   it('CA1 · o kit usa sempre a versão em vigor: a que vale na hora de gerar, e o kit guarda qual foi', async () => {
@@ -552,6 +572,20 @@ describe('GGVP-158 P4.4 · o contrato assinado de verdade: o arquivo fica guarda
     await reabrir({ ...TUDO_CERTO, faltam: ['pág. 4 (rubrica)'] })
     const { concluido } = await assinar()
     expect(concluido.contrato).toMatchObject({ etapa: 'conferir', leitura: { faltam: ['pág. 4 (rubrica)'] } })
+  })
+
+  it('GGVP-158 I10 · o armazenamento que falha ao ler o assinado não prende o contrato em "leitura": vai à conferência', async () => {
+    await app.close()
+    let fora = false
+    const ler = async (chave: string) => (fora ? Promise.reject(new Error('Supabase Storage respondeu 502')) : arquivos.ler(chave))
+    app = criarServidor({ banco, agora: () => relogio, armazenamento: { ...arquivos, ler }, conversor: null, ia: criarIa({ banco, ambiente: { OPENAI_API_KEY: 'chave-de-teste-openai' }, fetch, agora: () => relogio }) })
+    const base = await gerado(await lead())
+    await json('ana', 'POST', `${base}/impressao`)
+    await digitalizar(base, PDF)
+    fora = true
+    const r = await chamar('ana', 'POST', `${base}/assinatura-em-papel`)
+    expect(r.statusCode).toBe(200)
+    expect(r.json().contrato).toMatchObject({ etapa: 'conferir', leitura: { pendencias: [MSG_CONTRATO_SEM_IA] } })
   })
 
   it('sem IA: o contrato vai à conferência, com o motivo', async () => {

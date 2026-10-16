@@ -69,7 +69,7 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar', () => {
 
   it('CA1, CA5 e CA6 · a decisão é obrigatória, e o "Não fechou" exige o motivo (G16)', () => {
     expect(motivoParadoDoFechamento(estado({ fechou: null }), HOJE)).toBe('Responda se fechou com o escritório.')
-    expect(motivoParadoDoFechamento(estado({ motivo: '' }), HOJE)).toBe('Escolha o motivo: sem ele o lead não pode ser encerrado (G16).')
+    expect(motivoParadoDoFechamento(estado({ motivo: '' }), HOJE)).toBe('Escolha o motivo: sem ele o lead não pode ser encerrado.')
     expect(motivoParadoDoFechamento(estado({ recontatar: null }), HOJE)).toBe('Responda se vale recontatar numa data prevista.')
     expect(motivoParadoDoFechamento(estado({ detalhe: 'x'.repeat(501) }), HOJE)).toBe('Detalhe até 500 caracteres.')
     expect(motivoParadoDoFechamento(estado({}), HOJE)).toBeNull()

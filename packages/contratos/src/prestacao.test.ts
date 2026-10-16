@@ -8,19 +8,28 @@ import {
   MSG_VALOR_DA_PARCELA,
   ReceberPrestacao,
   RegistrarEnvio,
+  CONFERENCIAS_DO_OK,
   SalvarPrestacao,
   calcularPrestacao,
 } from './prestacao.ts'
 
 const erro = (r: { error?: { issues: { message: string }[] } }) => r.error?.issues[0]?.message
-const OK = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true }
+const OK = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true, conferiHonorarios: true, conferiDadosBancarios: true, revisouAviso: true }
 
 describe('GGVP-44 · prestação de contas', () => {
   it('CA5 · valor em pt-BR, percentual e prazo; concluir exige a conferência com a carta', () => {
-    expect(SalvarPrestacao.parse(OK)).toEqual({ valorRecebido: 12345.67, percentual: 30, formaPagamento: 'pix', prazoPagamento: '2026-10-30', conferiCarta: true })
+    expect(SalvarPrestacao.parse(OK)).toEqual({ valorRecebido: 12345.67, percentual: 30, formaPagamento: 'pix', prazoPagamento: '2026-10-30', conferiCarta: true, conferiHonorarios: true, conferiDadosBancarios: true, revisouAviso: true })
     expect(erro(SalvarPrestacao.safeParse({ ...OK, conferiCarta: false }))).toBe('Marque "Conferi os valores com a carta de concessão"')
     expect(erro(SalvarPrestacao.safeParse({ ...OK, valorRecebido: '0' }))).toBe('Informe o valor recebido (atrasados), como 1.234,56')
     expect(erro(SalvarPrestacao.safeParse({ ...OK, percentual: '101' }))).toBe('Informe o percentual de honorários do contrato (0 a 100)')
+  })
+
+  it('GGVP-158 L2 · GGVP-92 CA5 · o OK pede as quatro conferências, cada uma com a sua mensagem', () => {
+    expect(Object.keys(CONFERENCIAS_DO_OK)).toEqual(['conferiCarta', 'conferiHonorarios', 'conferiDadosBancarios', 'revisouAviso'])
+    for (const [campo, rotulo] of Object.entries(CONFERENCIAS_DO_OK)) {
+      expect(erro(SalvarPrestacao.safeParse({ ...OK, [campo]: false }))).toBe(`Marque "${rotulo}"`)
+      expect(erro(SalvarPrestacao.safeParse({ ...OK, [campo]: undefined }))).toBe(`Marque "${rotulo}"`)
+    }
   })
 
   it('forma de pagamento: opcional, mas só da lista', () => {

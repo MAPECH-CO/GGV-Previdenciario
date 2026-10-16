@@ -145,7 +145,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                   Confira se a deficiência de {ficha.nome.split(' ')[0]} está provada em cada período de contribuição e no grau certo. Registre o início, o grau e os
                   agravamentos com a data: cada vínculo do CNIS se parte sozinho. Período com deficiência sem documento da época aparece em laranja: é o que pedir.
                 </p>
-                <p className={styles.nota}>O tempo e o enquadramento são calculados por código, nunca pela IA (G19).</p>
+                <p className={styles.nota}>O tempo e o enquadramento são calculados por código, nunca pela IA.</p>
               </section>
 
               {aviso && (
@@ -324,7 +324,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
 
               <section className={styles.cartao} aria-labelledby="enquadramento">
                 <h2 id="enquadramento" className={styles.cartaoTitulo}>
-                  Enquadramento dos períodos PCD (G19)
+                  Enquadramento dos períodos PCD
                 </h2>
                 {!e ? (
                   <p className={parecer.detalhe}>Sem período com deficiência nos vínculos: não há enquadramento.</p>
@@ -398,7 +398,7 @@ export function LinhaDaDeficiencia({ processoId }: { processoId: string }) {
                       </>
                     )}
                     <p className={parecer.detalhe}>
-                      Calculado por código (LC 142, art. 3º; Decreto 3.048, art. 70-E), nunca pela IA (G19). A mesma conta aparece no parecer e na resposta à
+                      Calculado por código (LC 142, art. 3º; Decreto 3.048, art. 70-E), nunca pela IA. A mesma conta aparece no parecer e na resposta à
                       exigência do INSS.
                     </p>
                   </>

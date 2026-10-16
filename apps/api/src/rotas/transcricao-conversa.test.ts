@@ -114,7 +114,7 @@ describe('GGVP-133 · transcrição de verdade na conversa do Relacionamento', (
     ])
     expect(r.gravacao.trechos[2].texto).toContain(SENHA_RETIRADA)
     expect(JSON.stringify(r)).not.toContain('Girassol2024')
-    expect(r.gravacao.extraidas).toEqual([{ id: 'senha', rotulo: 'Senha do gov.br', valor: 'dita na conversa: não consta na transcrição (G9)', destino: 'cofre' }])
+    expect(r.gravacao.extraidas).toEqual([{ id: 'senha', rotulo: 'Senha do gov.br', valor: 'dita na conversa: não consta na transcrição', destino: 'cofre' }])
     expect(r.conversa.analise.mudancas).toEqual([])
     expect(r.conversa.analise.daIa.resumo).toBe('A cliente contou que mudou de endereço.')
     expect(r.ficha.historico.map((h: { oQue: string }) => h.oQue)).toContain('A transcrição da conversa ficou pronta: está nas Transcrições do card')
@@ -191,7 +191,7 @@ describe('GGVP-140 · a IA de verdade lê a conversa do Relacionamento', () => {
       pendencia: 'Atendimento: pedir o comprovante do endereço novo.',
       daIa: { resumo: 'A cliente mudou de endereço e confirmou o telefone.', chamadaId: expect.any(String), modelo: 'gpt-4.1-mini', alerta: null },
     })
-    expect(r.conversa.analise.observacao).toBe('A senha do gov.br foi dita em voz alta: saiu da transcrição (G9). Para o cofre, o cliente digita.')
+    expect(r.conversa.analise.observacao).toBe('A senha do gov.br foi dita em voz alta: saiu da transcrição. Para o cofre, o cliente digita.')
     // G9: a senha não foi à IA nem volta em nenhum texto; a IA leu a fala como dado.
     expect(pedidos.conteudos).toHaveLength(1)
     expect(pedidos.conteudos[0]).toMatch(/^<conteudo>\n/)

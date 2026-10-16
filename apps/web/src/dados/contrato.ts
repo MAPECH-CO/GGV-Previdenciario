@@ -444,7 +444,7 @@ export async function registrarTentativaDeAssinatura(processoId: string, canal: 
       codigo: 'D1.17',
       cliente: { id: ficha.id, nome: ficha.nome },
       acao: 'Colher assinatura · limite de tentativas',
-      detalhe: `${nomeBeneficio(processo.beneficio)} · ${n} tentativas sem assinatura (G15) · o Atendimento tentou em ${a.tentativas.map((t) => dataCurta(t.data, hoje)).join(' e ')}`,
+      detalhe: `${nomeBeneficio(processo.beneficio)} · ${n} tentativas sem assinatura · o Atendimento tentou em ${a.tentativas.map((t) => dataCurta(t.data, hoje)).join(' e ')}`,
       prazo: 'hoje',
       urgente: true,
       href: `/contrato/${processoId}/assinatura`,
@@ -452,7 +452,7 @@ export async function registrarTentativaDeAssinatura(processoId: string, canal: 
       setor: 'Jurídico',
     }
     banco.tarefas.push(tarefa)
-    ficha.historico.push(evento(`Subiu para a advogada sênior: ${n} tentativas sem assinatura (G15)`))
+    ficha.historico.push(evento(`Subiu para a advogada sênior: ${n} tentativas sem assinatura`))
   }
   gravar(banco)
   return contrato

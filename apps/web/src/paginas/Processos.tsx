@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { DESFECHOS_DA_LISTA, FASES_DA_LISTA, ROTULO_DESFECHO_DA_LISTA, ROTULO_FASE_DA_LISTA, type ListaDeProcessos } from '@ggv/contratos'
 import { baixarCsv, comTodos, consultarBase, plural, useTermo } from '../dados/bases.ts'
 import { mesAno } from '../regras/bases.ts'
+import { Previa } from '../componentes/Previa.tsx'
+import previa from '../componentes/Previa.module.css'
 import { CampoDaBusca, Etiqueta, Filtro, MolduraDaBase, Paginacao } from './Base.tsx'
 import styles from './Bases.module.css'
 
@@ -11,6 +13,40 @@ import styles from './Bases.module.css'
 const EXITOS: [string, string][] = [['', 'Todos'], ...DESFECHOS_DA_LISTA.map((d): [string, string] => [d, ROTULO_DESFECHO_DA_LISTA[d]])]
 const FASES: [string, string][] = [['', 'Todas'], ...FASES_DA_LISTA.map((f): [string, string] => [f, ROTULO_FASE_DA_LISTA[f]])]
 const INICIO = { foro: '', juiz: '', perito: '', beneficio: '', exito: '', fase: '', ordem: 'ajuizamento' }
+
+type LinhaDoProcesso = ListaDeProcessos['processos'][number]
+
+/** A prévia do processo sai da própria linha da lista: não busca nada de novo. */
+function PreviaDoProcesso({ p, children }: { p: LinhaDoProcesso; children: ReactNode }) {
+  const campos: [string, string | null | undefined][] = [
+    ['Autor', p.autor],
+    ['Fase', ROTULO_FASE_DA_LISTA[p.fase]],
+    ['Benefício', p.beneficio],
+    ['Desfecho', ROTULO_DESFECHO_DA_LISTA[p.desfecho]],
+    ['Tribunal', p.foro],
+    ['Juiz', p.juiz],
+    ['Perito', p.perito],
+    ['Ajuizado', p.ajuizadoEm ? mesAno(p.ajuizadoEm) : null],
+  ]
+  return (
+    <Previa
+      rotulo={p.numero ?? 'Sem número ainda'}
+      conteudo={() => (
+        <>
+          {campos
+            .filter((c): c is [string, string] => Boolean(c[1]))
+            .map(([rotulo, valor]) => (
+              <p key={rotulo} className={previa.linha}>
+                {rotulo}: {valor}
+              </p>
+            ))}
+        </>
+      )}
+    >
+      {children}
+    </Previa>
+  )
+}
 
 /** `cliente`: vindo da contagem de processos em Clientes, só os daquele cliente. */
 export function Processos({ cliente: doCliente }: { cliente?: string }) {
@@ -120,9 +156,11 @@ export function Processos({ cliente: doCliente }: { cliente?: string }) {
             {lista?.processos.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <a className={styles.link} href={`/casos/${p.id}`}>
-                    {p.numero ?? 'Sem número ainda'}
-                  </a>
+                  <PreviaDoProcesso p={p}>
+                    <a className={styles.link} href={`/casos/${p.id}`}>
+                      {p.numero ?? 'Sem número ainda'}
+                    </a>
+                  </PreviaDoProcesso>
                   <div className={styles.fase}>{ROTULO_FASE_DA_LISTA[p.fase]}</div>
                 </td>
                 <td>

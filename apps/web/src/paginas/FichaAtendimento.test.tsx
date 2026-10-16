@@ -31,7 +31,7 @@ describe('Ficha de atendimento · tela do passo', () => {
     expect(screen.getByText('05/10/2026 · preenchida sozinha, sem edição')).toBeTruthy()
     expect(salvar().disabled).toBe(true)
     expect(screen.getByText('Falta: CPF e Data de nascimento.')).toBeTruthy()
-    expect(screen.getByText('A senha do gov.br vai para o cofre, nunca em campo de texto (G9).')).toBeTruthy()
+    expect(screen.getByText('A senha do gov.br vai para o cofre, nunca em campo de texto.')).toBeTruthy()
   })
 
   it('CA7 · o benefício vem do catálogo do escritório, com "Não sei ainda"', async () => {

@@ -112,6 +112,6 @@ export function enquadramentoDoCaso(processoId: string): string | undefined {
   return e && textoDoEnquadramento(e)
 }
 
-/** "grau moderada · 16 anos, 3 meses e 5 dias convertidos · mínimo de 24 anos · calculado por código (G19)" */
+/** "grau moderada · 16 anos, 3 meses e 5 dias convertidos · mínimo de 24 anos · calculado por código" */
 export const textoDoEnquadramento = (e: Enquadramento) =>
-  `grau ${e.preponderante} · ${tempoFalado(tempo(e.convertido))} convertidos · mínimo de ${e.minimo} anos · calculado por código (G19)`
+  `grau ${e.preponderante} · ${tempoFalado(tempo(e.convertido))} convertidos · mínimo de ${e.minimo} anos · calculado por código`

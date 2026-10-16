@@ -44,16 +44,18 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia, papelDa,
 import type { RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { criarCobranca } from './recepcao-cobranca.ts'
+import { motivoSemEnvio } from './mensagens.ts'
 
 export const MSG_COMPROMISSO_NAO_ENCONTRADO = 'Compromisso não encontrado.'
+export const MSG_CONFIRMACAO_NA_SENIOR = 'A confirmação passou do limite de tentativas e está com a advogada sênior (G15).'
 export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
 export const MSG_DESISTENCIA = 'A desistência é do lead, na entrevista marcada.'
 
 const PASSOS: Record<string, string> = {
-  Entrevista: 'D1.09 · Atender e entrevistar',
-  'Retirada da cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
-  'Entregar cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
-  'Recontatar lead': 'D1.14 · Recontatar lead',
+  Entrevista: 'Atender e entrevistar',
+  'Retirada da cópia do contrato': 'Entregar a cópia do contrato',
+  'Entregar cópia do contrato': 'Entregar a cópia do contrato',
+  'Recontatar lead': 'Recontatar lead',
 }
 const CANAL = { ligacao: 'Ligação', mensagem: 'Chatwoot' } as const
 const CANAL_FALADO = { ligacao: 'ligação', mensagem: 'mensagem pelo Chatwoot' } as const
@@ -196,6 +198,11 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
   // A cópia das telas: as fichas da Recepção, as tarefas abertas, os compromissos internos e as gravações, ao abrir cada
   // tela. A gravação com dado de saúde só vai a quem tem `dado_saude.ver_detalhe` (bloco 3a). GGVP-158 P8.1: quando vai,
   // a leitura fica registrada, uma linha por abertura (a lista leva as gravações de todos).
+  const semValores = (contrato: ContratoGuardado['contrato'], perfil: string | null): ContratoGuardado['contrato'] => {
+    if (pode(perfil, 'contrato.conduzir') || pode(perfil, 'valores.ver')) return contrato
+    const { percentualHonorarios: _percentual, acordo: _acordo, ...resto } = contrato
+    return resto
+  }
   app.get('/api/recepcao', ver, async (pedido) => {
     const todas = await fichasDaRecepcao()
     const checklists = await checklistsDas(todas)
@@ -207,7 +214,9 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       tarefas: await tarefas(),
       internos: await internos(),
       gravacoes: lista,
-      contratos: (await banco.select().from(contratoRecepcao)).map((c) => (c.dados as ContratoGuardado).contrato),
+      // GGVP-158 E2 (15/10): o percentual de honorários e o acordo são valores (perfis.md): só quem conduz o contrato
+      // (Atendimento) ou vê valores (Financeiro e Sócio) os recebe; a Documentação, o Jurídico adm, a advogada e a Sênior, não.
+      contratos: (await banco.select().from(contratoRecepcao)).map((c) => semValores((c.dados as ContratoGuardado).contrato, pedido.perfilAtivo)),
       // Bloco 5b: as leituras dos documentos, para a conferência e as tarefas da Documentação.
       leituras: await leiturasDe(),
       // Bloco 5c: o checklist de cada caso, calculado no servidor (o kit do escritório, o acidente e a criança do banco), as
@@ -388,7 +397,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       if (!entrevista || ficha.situacao !== 'lead') return negar(resposta, 400, MSG_DESISTENCIA)
       const papel = papelDa(pedido.perfilAtivo)
       if (!MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) || !podeRegistrarOMotivo(envio.motivo, papel))
-        return negar(resposta, 400, 'Escolha o motivo da lista (G16).')
+        return negar(resposta, 400, 'Escolha o motivo da lista.')
       if ((envio.detalhe ?? '').length > TAMANHO_DO_DETALHE) return negar(resposta, 400, `O detalhe vai até ${TAMANHO_DO_DETALHE} caracteres.`)
       const em = envio.recontatar ? dataParaIso(envio.recontatar.data) : null
       if (envio.recontatar && (!em || em < hoje())) return negar(resposta, 400, 'Data do recontato inválida.')
@@ -405,7 +414,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       } else {
         ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
         await arquivar(ficha, envio.motivo, detalhe)
-        registro = evento(`${desistiu} Lead arquivado com o motivo (G16)`, quem)
+        registro = evento(`${desistiu} Lead arquivado com o motivo`, quem)
       }
       ficha.historico.push(registro)
       await guardar(ficha)
@@ -441,6 +450,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!ficha.telefone) return negar(resposta, 400, 'Sem telefone: complete na ficha.')
+    const semEnvio = await motivoSemEnvio(banco, agora(), { pessoaId: ficha.id, modelo: 'convite', texto: entrada.data.mensagem, oQue: 'o convite' })
+    if (semEnvio) return negar(resposta, 409, semEnvio)
     a.conviteEnviadoEm = agora().toISOString()
     ficha.contatos.push({ data: hoje(), canal: 'Chatwoot', texto: `Convite da entrevista de ${quandoNaAgenda(a)}: ${entrada.data.mensagem}` })
     const registro = evento('Enviou o convite da entrevista pelo Chatwoot', await nomeDe(pedido))
@@ -476,6 +487,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
     if (!achado) return negar(resposta, 404, MSG_COMPROMISSO_NAO_ENCONTRADO)
     const { ficha, agendamento: a } = achado
     if (!ficha.telefone) return negar(resposta, 400, 'Sem telefone: complete na ficha.')
+    const semEnvio = await motivoSemEnvio(banco, agora(), { pessoaId: ficha.id, modelo: 'confirmacao', texto: entrada.data.mensagem, oQue: 'a mensagem de confirmação' })
+    if (semEnvio) return negar(resposta, 409, semEnvio)
     ficha.contatos.push({ data: hoje(), canal: 'Chatwoot', texto: `Confirmação da entrevista de ${quandoNaConfirmacao(a)}: ${entrada.data.mensagem}` })
     const registro = evento('Mandou a mensagem de confirmação da entrevista pelo Chatwoot', await nomeDe(pedido))
     ficha.historico.push(registro)
@@ -496,6 +509,8 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       return negar(resposta, 400, 'Esta entrevista não espera confirmação.')
     const proxima = a.confirmacao?.proximaEm
     if (r.resultado === 'sem-resposta' && proxima && proxima > hoje()) return negar(resposta, 400, `A próxima tentativa é em ${dataCurta(proxima, hoje())}.`)
+    // GGVP-158 E4 (15/10): passou do limite, a decisão é da Sênior (G15); o Atendimento não registra outra tentativa, como na cobrança.
+    if (r.resultado === 'sem-resposta' && a.confirmacao?.naSenior) return negar(resposta, 409, MSG_CONFIRMACAO_NA_SENIOR)
 
     const quem = await nomeDe(pedido)
     const confirmacao = (a.confirmacao ??= { tentativas: [] })

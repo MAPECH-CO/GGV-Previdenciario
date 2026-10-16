@@ -49,11 +49,12 @@ describe('GGVP-78 · a Central do Financeiro, como no Figma (59:863)', () => {
   it('o topo com os Resultados (GGVP-96) e o painel Financeiro; sem o resto da Gestão, Clientes nem Processos; a busca, o chat e o Suporte', () => {
     render(comSessao(<CentralFinanceiro />))
     expect(screen.getByRole('heading', { level: 1, name: 'Início do Financeiro' })).toBeTruthy()
-    expect(topo()).toEqual(['Início', 'Agenda', 'Resultados', 'Financeiro', 'Custas'])
+    // Sem ver o caso, sem a Agenda; um item só de gestão (os Resultados) fica solto, sem o menu da Gestão.
+    expect(topo()).toEqual(['Início', 'Financeiro', 'Custas', 'Resultados'])
     expect(screen.getByRole('link', { name: 'Financeiro' }).getAttribute('href')).toBe('/financeiro')
     // GGVP-157: a visão das custas, onde o Financeiro aprova os custos sem abrir o processo.
     expect(screen.getByRole('link', { name: 'Custas' }).getAttribute('href')).toBe('/custas')
-    expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Buscar nas suas tarefas' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['Prestações recebidas', 'Documento novo', 'Resumo do cliente']))
     expect(screen.getByRole('button', { name: '✦ Suporte' })).toBeTruthy()
   })

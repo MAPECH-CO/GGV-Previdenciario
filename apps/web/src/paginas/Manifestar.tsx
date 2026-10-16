@@ -72,9 +72,11 @@ export function Manifestar({ casoId }: { casoId: string }) {
   async function aprovar(numero: number) {
     const entrada = AprovarVersao.safeParse({ aprovei })
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Marque a aprovação.')
-    const r = await chamarApi(`/casos/${casoId}/manifestacao/versoes/${numero}/aprovacao`, { method: 'POST', corpo: entrada.data })
+    const r = await chamarApi<{ ok: true; aviso?: string }>(`/casos/${casoId}/manifestacao/versoes/${numero}/aprovacao`, { method: 'POST', corpo: entrada.data })
     if (!r.ok) return setErro(r.erro)
     pronto(`Versão ${numero} aprovada.`)
+    // GGVP-158 A4 (G22): a IA não leu a versão; o servidor aprovou com o aviso, e a advogada confere à mão.
+    if (r.dados.aviso) setErro(r.dados.aviso)
   }
 
   async function protocolar() {
@@ -134,7 +136,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
         </p>
       ) : m.faltam.length > 0 ? (
         <section className={styles.cartao} aria-label="Bloqueado">
-          <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')} (G21).</p>
+          <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')}.</p>
           <ul className={styles.lista} aria-label="Pendentes">
             {m.pendentes.map((p) => (
               <LinhaPendente key={p.id} casoId={casoId} p={p} podeEncerrar={m.podeEncerrarSemProva} aoPedirDilacao={() => setTipo('dilacao')} />
@@ -185,7 +187,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
             <>
               <label className={styles.escolha} htmlFor={ids.aprovei}>
                 <input id={ids.aprovei} type="checkbox" checked={aprovei} onChange={(e) => setAprovei(e.target.checked)} />
-                Aprovei a versão da manifestação (G6)
+                Aprovei a versão da manifestação
               </label>
               <div className={styles.acoes}>
                 <button type="button" className={styles.botao} disabled={!aprovei} onClick={() => void aprovar(ultima.numero)}>

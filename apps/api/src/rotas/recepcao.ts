@@ -146,6 +146,8 @@ export const MSG_FICHA_DIGITALIZADA = 'Anexe a ficha digitalizada (PDF ou imagem
 export const MSG_SEM_DRIVE = 'O Drive do escritório não está ligado.'
 export const MSG_PASTA_SEM_CPF = 'A pasta nova só nasce com o CPF.'
 export const MSG_DRIVE_SO_LEITURA = 'O Drive está só leitura: a pasta não pode ser criada.'
+/** GGVP-158 I8: a lista do Drive não respondeu; sem ela, a pasta nova poderia repetir a do cliente que já existe. */
+export const MSG_DRIVE_FORA = 'O Drive não respondeu: nenhuma pasta foi criada. Tente de novo em alguns minutos.'
 
 /**
  * GGVP-158 P4.2: a senha do gov.br escrita na ficha em papel vai ao cofre, só se quem lê cadastra no cofre (G9). A ficha
@@ -623,6 +625,8 @@ export function registrarRotasRecepcao(app: FastifyInstance, { banco, agora = ()
     if (nova) {
       if (!ficha.cpf) return negar(resposta, 400, MSG_PASTA_SEM_CPF)
       if (drive.soLeitura) return negar(resposta, 400, MSG_DRIVE_SO_LEITURA)
+      // GGVP-158 I8: a pasta nova só depois de a lista de "#5. CLIENTES" responder: com o Drive fora, "nenhuma pasta" não vale.
+      if (!(await drive.drive.pastas(drive.pastas.clientes).catch(() => null))) return negar(resposta, 503, MSG_DRIVE_FORA)
       const marca = `pessoa:${ficha.id}`
       const titulo = `${ficha.nome} X A CLASSIFICAR`
       const id = (await drive.drive.achar(marca)) ?? (await drive.drive.criarPasta(titulo, drive.pastas.clientes, marca))

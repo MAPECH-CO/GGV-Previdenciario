@@ -22,7 +22,7 @@ describe('Analisar ficha · tela do passo', () => {
     expect(screen.getByText('acidentário e senha do gov.br')).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Sim — abrir 2ª ficha' })).toBeTruthy()
     expect(screen.getByText('gov.br: sem senha')).toBeTruthy()
-    expect(screen.getByText('A senha do gov.br vai para o cofre, nunca em texto (G9).')).toBeTruthy()
+    expect(screen.getByText('A senha do gov.br vai para o cofre, nunca em texto.')).toBeTruthy()
     expect(confirmar().disabled).toBe(true)
   })
 

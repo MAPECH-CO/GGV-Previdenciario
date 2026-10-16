@@ -24,8 +24,9 @@ const SENHA = 'senha-do-portal-1'
 let banco: Banco
 let fechar: () => Promise<void>
 let app: ReturnType<typeof criarServidor>
-// Quinta, 08/10/2026, meio-dia em Brasília.
-const relogio = new Date('2026-10-08T15:00:00Z')
+// Quinta, 08/10/2026, meio-dia em Brasília. O teste do dia seguinte (GGVP-158 I1) adianta o relógio.
+const HOJE = new Date('2026-10-08T15:00:00Z')
+let relogio = HOJE
 const NUNCA_A_SENHA = 'O escritório nunca pede a sua senha do gov.br por mensagem.'
 
 async function cookieDe(apelido: string) {
@@ -58,6 +59,7 @@ const pedidoDeComplemento = (fichaId: string, processoId: string, mais: Partial<
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
+  relogio = HOJE
   app = criarServidor({ banco, agora: () => relogio })
   for (const [apelido, perfil] of [['ana', 'atendimento'], ['igor', 'juridico_adm'], ['marcos', 'financeiro'], ['paula', 'advogada']] as const)
     await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
@@ -89,9 +91,9 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     const url = `/api/fichas/${fichaId}/mensagens`
     const envio = (texto: string) => ({ modelo: 'cobranca', texto, conversa: conversas[0].id })
     expect((await chamar('marcos', 'POST', url, envio('Olá!'))).statusCode).toBe(403)
-    expect((await json('ana', 'POST', url, envio('Olá, Maria! Mande a sua senha do gov.br por aqui.'))).erro).toBe('O escritório nunca pede a senha do gov.br por mensagem (G9).')
-    expect((await json('ana', 'POST', url, envio('Na perícia, não conte que você trabalha.'))).erro).toBe('Nunca oriente a esconder ou mudar a situação real (G11).')
-    expect((await json('ana', 'POST', url, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
+    expect((await json('ana', 'POST', url, envio('Olá, Maria! Mande a sua senha do gov.br por aqui.'))).erro).toBe('O escritório nunca pede a senha do gov.br por mensagem.')
+    expect((await json('ana', 'POST', url, envio('Na perícia, não conte que você trabalha.'))).erro).toBe('Nunca oriente a esconder ou mudar a situação real.')
+    expect((await json('ana', 'POST', url, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/^Não peça nem sugira CID/)
     const recusas = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(recusas.map((r) => (r.detalhe as { portao: string }).portao)).toEqual(['G9', 'G11', 'G20'])
     expect(JSON.stringify(recusas)).not.toMatch(/CID da doença|trabalha/)
@@ -142,7 +144,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     expect(pronta.texto).toMatch(/^Olá, Maria! Aqui é do escritório GGV\. .*\n1\. Desde quando a paciente apresenta o quadro\?\n2\. Qual a previsão de duração\?\n/s)
     expect(pronta.texto.endsWith(NUNCA_A_SENHA)).toBe(true)
     const envio = (texto: string) => ({ modelo: 'complemento', texto, conversa: pronta.conversas[0].id, processoId })
-    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
+    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/^Não peça nem sugira CID/)
     // GGVP-158: sem o Chatwoot, nada sai, e o que não saiu não conta como tentativa do laço (G15). A que sai pelo Chatwoot
     // conta: ver "GGVP-146 · ... o complemento que sai".
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'falhou', erro: MSG_SIMULADO, processoId })
@@ -159,7 +161,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     const { fichaId, processoId } = await cliente()
     const tentativas = ['2026-09-30', '2026-10-03'].map((dia) => ({ dia, canal: 'chatwoot' as const, resultado: 'sem-resposta' as const, quem: 'ana' }))
     await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
-    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide \(G15\)\.$/)
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide\.$/)
   })
 
   it('o resultado desfavorável: só com o resumo aprovado pelo Jurídico, e o texto aprovado não muda', async () => {
@@ -330,6 +332,53 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     const ficha = await json('ana', 'GET', `/api/fichas/${fichaId}`)
     expect(ficha.historico.at(-1)).toMatchObject({ oQue: 'Enviou pelo Chatwoot a mensagem «Boas-vindas» (enviada)', quem: 'ana' })
     expect(ficha.contatos.at(-1)).toMatchObject({ canal: 'Chatwoot · 12:00 · enviada' })
+  })
+
+  it('GGVP-158 I1 · a mesma mensagem não sai de novo no mesmo dia, mas sai no dia seguinte (a cobrança diária)', async () => {
+    const chamadas = await comChatwoot({
+      'GET /contacts/search?q=87654321': { payload: [{ id: 31, name: 'Maria Ribeiro', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 's', inbox: { id: 9, name: 'GGV PREV' } }] }] },
+      'GET /contacts/31/conversations': { payload: [{ id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 }] },
+      'GET /conversations/502/messages': { payload: [{}] },
+      'POST /conversations/502/messages': { id: 9001, status: 'sent' },
+    })
+    const { fichaId } = await cliente()
+    const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
+    const url = `/api/fichas/${fichaId}/mensagens`
+    const envio = { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 }
+    const hoje = await json('ana', 'POST', url, envio)
+    expect((await json('ana', 'POST', url, envio)).id).toBe(hoje.id)
+    expect(posts(chamadas)).toHaveLength(1)
+    relogio = new Date('2026-10-09T15:00:00Z')
+    const amanha = await json('ana', 'POST', url, envio)
+    expect(amanha).toMatchObject({ status: 'enviada', conversa: 502 })
+    expect(amanha.id).not.toBe(hoje.id)
+    expect(posts(chamadas)).toHaveLength(2)
+  })
+
+  it('GGVP-158 I5 · o envio que esgotou o tempo e saiu não sai de novo: o "Tentar de novo" acha a mensagem na conversa', async () => {
+    let primeira = true
+    const segundos = Math.floor(relogio.getTime() / 1000)
+    let texto = ''
+    const chamadas = await comChatwoot({
+      'GET /contacts/search?q=87654321': { payload: [{ id: 31, name: 'Maria Ribeiro', phone_number: '+5511987654321', contact_inboxes: [{ source_id: 's', inbox: { id: 9, name: 'GGV PREV' } }] }] },
+      'GET /contacts/31/conversations': { payload: [{ id: 502, inbox_id: 9, status: 'open', last_activity_at: 1759910000 }] },
+      // O Chatwoot gravou a mensagem, mas a resposta não chegou a tempo (o portal desistiu).
+      'GET /conversations/502/messages': () => ({ payload: primeira ? [] : [{ id: 9100, content: texto, message_type: 1, status: 'delivered', created_at: segundos }] }),
+      'POST /conversations/502/messages': () => {
+        primeira = false
+        throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+      },
+    })
+    const { fichaId } = await cliente()
+    const pronta = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)
+    texto = pronta.texto
+    const url = `/api/fichas/${fichaId}/mensagens`
+    const envio = { modelo: 'boas-vindas', texto, conversa: 502 }
+    expect(await json('ana', 'POST', url, envio)).toMatchObject({ status: 'falhou', erro: 'o Chatwoot não respondeu; tente de novo em alguns minutos' })
+    const deNovo = await json('ana', 'POST', url, envio)
+    expect(deNovo).toMatchObject({ status: 'entregue', conversa: 502 })
+    expect(posts(chamadas)).toHaveLength(1)
+    expect((await banco.select({ id: mensagem.chatwootMensagemId }).from(mensagem).where(eq(mensagem.id, deNovo.id)))[0].id).toBe(9100)
   })
 
   it('sem o contato no Chatwoot, cria o contato na caixa, abre a conversa e envia', async () => {

@@ -27,7 +27,7 @@ describe('Liberar o caso ao Jurídico (GGVP-18)', () => {
       'O checklist está incompleto. Falta: Comprovante de renda.',
     )
     expect(travaDaLiberacao({ ...pronto, parecer: { situacao: 'pendente' } })).toBe(
-      'Não dá para liberar ao Jurídico: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico (G17).',
+      'Não dá para liberar ao Jurídico: a IA analisou, mas o parecer médico ainda não foi confirmado por pessoa do Jurídico.',
     )
     expect(travaDaLiberacao({ ...pronto, conferiAssinaturas: false })).toBe('Marque o checklist e as assinaturas e datas: os dois são conferência sua.')
     expect(travaDaLiberacao({ ...pronto, conferiChecklist: false })).toBe('Marque o checklist e as assinaturas e datas: os dois são conferência sua.')
@@ -37,12 +37,12 @@ describe('Liberar o caso ao Jurídico (GGVP-18)', () => {
   it('GGVP-33 CA1 · o G17 trava as três ações e diz o que falta em cada situação', () => {
     const insuficiente = { situacao: 'insuficiente' as const, quem: 'Dra. Paula', data: '2026-10-06' }
     expect(travaDoParecer('liberar', 'loas-deficiente', insuficiente)).toBe(
-      'Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).',
+      'Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito.',
     )
     expect(travaDoParecer('aprovar-inss', 'aposentadoria-pcd', { situacao: 'contraditorio' })).toBe(
-      'Não dá para aprovar para o INSS: um documento contradiz o requisito do benefício e o parecer está Contraditório (G18).',
+      'Não dá para aprovar para o INSS: um documento contradiz o requisito do benefício e o parecer está Contraditório.',
     )
-    expect(travaDoParecer('pedir-peticao', 'auxilio-acidente', undefined)).toBe('Não dá para pedir a petição: falta o parecer médico "Suficiente", confirmado por pessoa (G17).')
+    expect(travaDoParecer('pedir-peticao', 'auxilio-acidente', undefined)).toBe('Não dá para pedir a petição: falta o parecer médico "Suficiente", confirmado por pessoa.')
     expect(travaDoParecer('pedir-peticao', 'auxilio-acidente', { situacao: 'pendente' })).toMatch(/ainda não foi confirmado por pessoa/)
     expect(travaDoParecer('aprovar-inss', 'loas-deficiente', { situacao: 'suficiente' })).toBeNull()
     expect(travaDoParecer('liberar', 'loas-idoso', undefined)).toBeNull()
@@ -70,9 +70,9 @@ describe('G18 no Auxílio-Acidente (GGVP-47, CA4)', () => {
     const parecer = { ...suficiente, contradicoes: [naoConsolidada] }
     expect(parecerEmOrdem('auxilio-acidente', parecer)).toBe(false)
     expect(travaDoParecer('liberar', 'auxilio-acidente', parecer)).toBe(
-      'Não dá para liberar ao Jurídico: a análise da IA achou documento que contradiz o requisito do benefício (lesão ainda não consolidada). O caso fica parado até o Jurídico conferir o parecer (G18). Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.',
+      'Não dá para liberar ao Jurídico: a análise da IA achou documento que contradiz o requisito do benefício (lesão ainda não consolidada). O caso fica parado até o Jurídico conferir o parecer. Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.',
     )
-    expect(travaDaLiberacao({ ...pronto, beneficio: 'auxilio-acidente', nomeBeneficio: 'Auxílio Acidentário', parecer })).toContain('(G18)')
+    expect(travaDaLiberacao({ ...pronto, beneficio: 'auxilio-acidente', nomeBeneficio: 'Auxílio Acidentário', parecer })).toContain('O caso fica parado até o Jurídico conferir o parecer')
   })
 
   it('sem redução da capacidade também trava, sem a sugestão de troca; fora do Auxílio-Acidente, a troca não aparece', () => {

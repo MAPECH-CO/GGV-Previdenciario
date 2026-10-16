@@ -24,7 +24,7 @@ async function cookieDe(apelido: string) {
 const ver = async (apelido: string) => app.inject({ method: 'GET', url: `/api/casos/${casoId}/conferencia`, cookies: await cookieDe(apelido) })
 const decidir = async (apelido: string, corpo: object) =>
   app.inject({ method: 'POST', url: `/api/casos/${casoId}/conferencia`, cookies: await cookieDe(apelido), payload: corpo })
-/** Parecer confirmado por pessoa do Jurídico (G17); `confirmado: false` é só a sugestão da IA. */
+/** Parecer confirmado por pessoa do Jurídico; `confirmado: false` é só a sugestão da IA. */
 const parecer = (resultado: 'suficiente' | 'insuficiente', confirmado = true) =>
   banco.insert(parecerMedico).values({
     casoId,
@@ -108,7 +108,7 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     // O kit vigente antes de o caso abrir (GGVP-104 CA1: o caso fica com o kit da época); o RG vem do caso-base.
     await banco.insert(kitDocumento).values({ beneficio: 'bpc_loas_deficiente', tipoDocumento: 'comprovante_de_residencia', vigenteDesde: new Date('2026-01-01T00:00:00Z') })
     const r = await decidir('helena', { decisao: 'aprovar' })
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam comprovante_de_residencia.'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Checklist incompleto: faltam comprovante_de_residencia.'])
   })
 
   const recusasDoG1 = async () =>
@@ -118,7 +118,7 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     await parecer('suficiente')
     await banco.delete(kitDocumento)
     const r = await decidir('helena', { decisao: 'aprovar' })
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.'])
     expect(await recusasDoG1()).toEqual(['G1'])
     expect(await tarefasAbertas()).toEqual([['D2.01', 'senior']])
   })
@@ -127,7 +127,7 @@ describe('GGVP-23 · portões ao aprovar (no servidor)', () => {
     await parecer('suficiente')
     await banco.update(contrato).set({ situacao: 'enviado' })
     const r = await decidir('helena', { decisao: 'aprovar' })
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'Contrato não assinado (G1): o caso não tem o contrato assinado.'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'Contrato não assinado: o caso não tem o contrato assinado.'])
     expect(await recusasDoG1()).toEqual(['G1'])
   })
 
@@ -450,7 +450,7 @@ describe('GGVP-127 · o caso devolvido pela Sênior: ajustar e liberar de novo',
     await parecer('suficiente')
     await banco.insert(kitDocumento).values({ beneficio: 'bpc_loas_deficiente', tipoDocumento: 'cnis', obrigatorio: true, vigenteDesde: new Date('2000-01-01') })
     const g1 = await liberar('ana')
-    expect([g1.statusCode, g1.json().erro]).toEqual([409, 'Checklist incompleto (G1): faltam cnis.'])
+    expect([g1.statusCode, g1.json().erro]).toEqual([409, 'Checklist incompleto: faltam cnis.'])
     const bloqueios = (await banco.select().from(eventoAuditoria)).filter((e) => e.acao === 'liberacao_recusada').map((e) => (e.detalhe as { portao: string }).portao)
     expect(bloqueios).toEqual(['G17', 'G1'])
     expect(await tarefasAbertas()).toEqual([['D1.ajuste', 'atendimento']])

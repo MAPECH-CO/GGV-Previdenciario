@@ -1,22 +1,25 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca, ID_DA_BUSCA } from '../componentes/CampoBusca.tsx'
+import { ID_DA_BUSCA } from '../componentes/BuscaGlobal.tsx'
 import { ChatDoPortal } from '../componentes/ChatDoPortal.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
-import { ITENS_DA_GESTAO } from '../componentes/itensDaGestao.ts'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
 import { usePerfil } from '../dados/perfis.ts'
-import { editaRoteiro } from '../dados/roteiro.ts'
 import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import type { Tarefa } from '../dados/tipos.ts'
-import { usePode } from '../sessao.ts'
 import styles from './CentralAtendimento.module.css'
 import naoConstruida from './NaoConstruida.module.css'
 
 // Figma: "Central de trabalho · Sênior" (59:609), com as tarefas do setor da Sênior líder (1600:672). É a tela inicial
 // de quem entra como Sênior (App.tsx).
+// Sem sessão (os testes da tela sozinha); com sessão, o topo vem do perfil (componentes/menuDoPerfil.ts).
+const navegacao: ItemNavegacao[] = [
+  { id: 'inicio', rotulo: 'Início', href: '/' },
+  { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
+]
+
 const CHAT = {
   exemplo: 'Ex.: “o que estourou o limite de cobrança esta semana?”',
   sugestoes: ['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo'],
@@ -35,28 +38,14 @@ export function CentralSenior({ deExemplo = [] }: { deExemplo?: Tarefa[] }) {
   // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
   const minhasDoSetor = useMinhasDoSetor()
   const tarefas = doServidor && juntarMinhas([...doServidor, ...deExemplo, ...doChat], minhasDoSetor)
-  // Os atalhos de hoje no topo: os estudos de caso (GGVP-19), os roteiros de laudos (GGVP-135, P13), a Gestão (GGVP-109,
-  // GGVP-75) e a importação da planilha (GGVP-146).
-  const estudos = usePode('estudo.ver')
-  const gestao = usePode('gestao.ver')
-  const importar = usePode('configuracao.editar')
-  const itens: ItemNavegacao[] = [
-    { id: 'inicio', rotulo: 'Início', href: '/' },
-    { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
-    ...(estudos ? [{ id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }] : []),
-    ...(editaRoteiro(perfil?.id) ? [{ id: 'roteiros', rotulo: 'Roteiros de laudos', href: '/roteiros' }] : []),
-    ...(gestao ? ITENS_DA_GESTAO : []),
-    ...(importar ? [{ id: 'importar', rotulo: 'Importar planilha', href: '/gestao/importar' }] : []),
-  ]
 
   return (
     <>
       <title>Início da Sênior · GGV Previdenciário</title>
-      <Topbar itens={itens} ativo="inicio" funcao="Sênior" />
+      <Topbar itens={navegacao} ativo="inicio" funcao="Sênior" tarefas={tarefas ?? []} />
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Sênior</h1>
-          <CampoBusca tarefas={tarefas ?? []} />
           <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Sênior" />
           {tarefas && (
             <FilasDeTarefas

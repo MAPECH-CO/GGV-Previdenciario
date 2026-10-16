@@ -1,27 +1,30 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { diaLocal, formatarDecimal, isoParaData, normalizarDecimal } from '@ggv/campos'
-import { FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
+import { CONFERENCIAS_DO_OK, FORMAS_DE_PAGAMENTO, ROTULO_FORMA_DE_PAGAMENTO, SalvarPrestacao, calcularPrestacao, type PrestacaoDoCaso } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import { Moldura } from './Moldura.tsx'
 import styles from './Passo.module.css'
 
 const reais = (texto: string | null) => (texto === null ? '—' : `R$ ${formatarDecimal(Number(texto))}`)
 const dia = (iso: string | null) => (iso ? (isoParaData(diaLocal(iso)) ?? iso) : '—')
+type Conferencia = keyof typeof CONFERENCIAS_DO_OK
+/** GGVP-92 CA5 (GGVP-158 L2): as quatro conferências do OK; mudar um valor desmarca todas. */
+const NENHUMA: Record<Conferencia, boolean> = { conferiCarta: false, conferiHonorarios: false, conferiDadosBancarios: false, revisouAviso: false }
 
 /**
  * Prestação de contas do benefício deferido (GGVP-44, advogada). Os valores são calculados por código (CA5): a tela
  * mostra a prévia com a mesma conta do servidor. Concluir abre o Financeiro e o Atendimento juntos (CA2).
  */
 export function PrestarContas({ casoId, embutida = false }: { casoId: string; embutida?: boolean }) {
-  const ids = { valor: useId(), percentual: useId(), forma: useId(), prazo: useId(), conferi: useId() }
+  const ids = { valor: useId(), percentual: useId(), forma: useId(), prazo: useId() }
   const [p, setP] = useState<PrestacaoDoCaso | null>(null)
   const [versao, setVersao] = useState(0)
   const [valor, setValor] = useState('')
   const [percentual, setPercentual] = useState('')
   const [forma, setForma] = useState('')
   const [prazo, setPrazo] = useState('')
-  const [conferi, setConferi] = useState(false)
+  const [marcadas, setMarcadas] = useState(NENHUMA)
   const [erro, setErro] = useState('')
   const [feito, setFeito] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -47,7 +50,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
   async function concluir(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
     if (ocupado.current || !p?.podeEditar) return
-    const corpo = { valorRecebido: valor, percentual, formaPagamento: forma, prazoPagamento: isoParaData(prazo) ?? '', conferiCarta: conferi }
+    const corpo = { valorRecebido: valor, percentual, formaPagamento: forma, prazoPagamento: isoParaData(prazo) ?? '', ...marcadas }
     const entrada = SalvarPrestacao.safeParse(corpo)
     if (!entrada.success) return setErro(entrada.error.issues[0]?.message ?? 'Confira os campos.')
     ocupado.current = true
@@ -57,7 +60,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
       const r = await chamarApi<{ versao: number }>(`/casos/${casoId}/prestacao`, { method: 'POST', corpo })
       if (!r.ok) return setErro(r.erro)
       setErro('')
-      setConferi(false)
+      setMarcadas(NENHUMA)
       setFeito(
         r.dados.versao === 1
           ? 'Prestação concluída. O Financeiro recebe e, depois, avisa o cliente e marca a ida ao banco.'
@@ -111,7 +114,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
         {['Entrada do contrato', 'Parcelas do contrato', 'Parte na Caixa'].map(rotulo => <label key={rotulo} className={styles.rotulo}>
           {rotulo}<input className={styles.campo} disabled value="" placeholder="Ainda indisponível" />
         </label>)}
-        <p className={styles.dica}>Quem faz a prestação e dá o OK é a Sênior (G8). A edição direta dos honorários ainda não está disponível.</p>
+        <p className={styles.dica}>Quem faz a prestação e dá o OK é a Sênior. A edição direta dos honorários ainda não está disponível.</p>
       </section>
 
       {atual && (
@@ -147,13 +150,13 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
             inputMode="decimal"
             placeholder="0,00"
             value={valor}
-            onChange={(e) => { setValor(e.target.value); setConferi(false) }}
+            onChange={(e) => { setValor(e.target.value); setMarcadas(NENHUMA) }}
             onBlur={() => valorNum !== null && setValor(formatarDecimal(valorNum))}
           />
           <label className={styles.rotulo} htmlFor={ids.percentual}>
             Honorários do contrato (%)
           </label>
-          <input id={ids.percentual} className={styles.campo} inputMode="decimal" value={percentual} onChange={(e) => { setPercentual(e.target.value); setConferi(false) }} />
+          <input id={ids.percentual} className={styles.campo} inputMode="decimal" value={percentual} onChange={(e) => { setPercentual(e.target.value); setMarcadas(NENHUMA) }} />
           {!p.percentualContrato && <p className={styles.dica}>O contrato não tem o percentual: informe o combinado com o cliente.</p>}
           {previa && (
             <p className={styles.selo} aria-label="Valores calculados">
@@ -163,7 +166,7 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
           <label className={styles.rotulo} htmlFor={ids.forma}>
             Forma de pagamento (opcional)
           </label>
-          <select id={ids.forma} className={styles.campo} value={forma} onChange={(e) => { setForma(e.target.value); setConferi(false) }}>
+          <select id={ids.forma} className={styles.campo} value={forma} onChange={(e) => { setForma(e.target.value); setMarcadas(NENHUMA) }}>
             <option value="">Escolha</option>
             {FORMAS_DE_PAGAMENTO.map((f) => (
               <option key={f} value={f}>
@@ -175,18 +178,22 @@ export function PrestarContas({ casoId, embutida = false }: { casoId: string; em
           <label className={styles.rotulo} htmlFor={ids.prazo}>
             Prazo de pagamento
           </label>
-          <input id={ids.prazo} className={styles.campo} type="date" value={prazo} onChange={(e) => { setPrazo(e.target.value); setConferi(false) }} />
-          <label className={styles.escolha} htmlFor={ids.conferi}>
-            <input id={ids.conferi} type="checkbox" checked={conferi} onChange={(e) => setConferi(e.target.checked)} />
-            Conferi os valores com a carta de concessão
-          </label>
+          <input id={ids.prazo} className={styles.campo} type="date" value={prazo} onChange={(e) => { setPrazo(e.target.value); setMarcadas(NENHUMA) }} />
+          <p className={styles.rotulo}>Texto do aviso ao cliente, que o Financeiro manda depois do OK</p>
+          <blockquote className={styles.dica}>{p.aviso ?? 'Sem o modelo "Confirmação da ida ao banco" na Configuração.'}</blockquote>
+          {(Object.entries(CONFERENCIAS_DO_OK) as [Conferencia, string][]).map(([campo, rotulo]) => (
+            <label key={campo} className={styles.escolha}>
+              <input type="checkbox" checked={marcadas[campo]} onChange={(e) => setMarcadas({ ...marcadas, [campo]: e.target.checked })} />
+              {rotulo}
+            </label>
+          ))}
           {erro && (
             <p className={styles.erro} role="alert">
               {erro}
             </p>
           )}
           <div className={styles.acoes}>
-            <button type="submit" className={styles.botao} disabled={!conferi || salvando}>
+            <button type="submit" className={styles.botao} disabled={!Object.values(marcadas).every(Boolean) || salvando}>
               {atual ? 'Registrar nova versão' : 'Concluir a prestação'}
             </button>
           </div>

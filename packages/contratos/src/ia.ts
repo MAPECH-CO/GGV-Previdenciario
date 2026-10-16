@@ -52,17 +52,19 @@ export function faltaCompletar(texto: string): string | null {
   return i >= 0 && t.indexOf(']', i) >= 0 ? 'O texto ainda tem [completar]: preencha antes de aprovar.' : null
 }
 
-export const MSG_JURIMETRIA_NO_TEXTO = 'O texto cita número de jurimetria (G22): tire antes de aprovar.'
+export const MSG_JURIMETRIA_NO_TEXTO = 'O texto cita número de jurimetria: tire antes de aprovar.'
 
 /**
  * GGVP-158 P5.12 (G22): o número de jurimetria fica fora do texto da peça que vai ao juiz. Casa o formato que o portal
  * mostra: a taxa com os casos ("71% em 34 laudos", "71% · 24 de 34 processos"), a data da base ("· base de 07/10"), a
  * chance com a porcentagem e o tempo médio em dias. Percentual de lei ("acréscimo de 25%"), os entendimentos e os
  * processos de exemplo passam. Os padrões têm repetição limitada e rodam no texto com os espaços juntados: tempo linear.
- * ponytail: número de jurimetria escrito de outro jeito passa; a revisão da advogada segue valendo.
+ * ponytail: número de jurimetria escrito de outro jeito passa; a revisão da advogada segue valendo (15/10: "dos/das" entrou).
  */
 const FORMATOS_DA_JURIMETRIA = [
-  /\d{1,3}(?:,\d{1,2})? ?% ?(?:· |em |de |\(|, )?(?:\d{1,6} de )?\d{1,6} (?:casos|laudos|processos|decisões|decisoes)\b/,
+  // GGVP-158 E8 (15/10): também escrito "dos/das" ("71% dos 34 laudos", "24 dos 34 processos") e a taxa "dos casos" sem a contagem.
+  /\d{1,3}(?:,\d{1,2})? ?% ?(?:· |em |de |dos |das |\(|, )?(?:\d{1,6} (?:de|dos|das) )?\d{1,6} (?:casos|laudos|processos|decisões|decisoes)\b/,
+  /\d{1,3}(?:,\d{1,2})? ?% d[oa]s (?:casos|laudos|processos|decisões|decisoes)\b/,
   /(?:·|,) base de \d{1,2}\/\d{1,2}\b/,
   /\bchance\b[^.%]{0,40}?\d{1,3}(?:,\d{1,2})? ?%/,
   /\d{1,3}(?:,\d{1,2})? ?% de chance\b/,

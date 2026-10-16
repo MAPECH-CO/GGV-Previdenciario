@@ -110,7 +110,7 @@ describe('GGVP-53 · Marcar a perícia (Figma 10:374)', () => {
   it('G9 · sem campo de senha: a marcação é pelo Meu INSS, com a senha do cofre', async () => {
     await abrir()
     expect(screen.queryByLabelText(/senha/i)).toBeNull()
-    expect(screen.getByText(/A marcação é pelo Meu INSS, com a senha do cofre \(G9\)/)).toBeTruthy()
+    expect(screen.getByText(/A marcação é pelo Meu INSS, com a senha do cofre:/)).toBeTruthy()
   })
 })
 
@@ -175,7 +175,7 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     expect(screen.getByRole('link', { name: 'Maria Exemplo · Decidir a perícia' }).getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia')
     unmount()
     render(comSessao(<ProcessoPericia processoId="maria-exemplo-1" />))
-    await screen.findByRole('heading', { name: 'Decisão da advogada responsável (G15)' })
+    await screen.findByRole('heading', { name: 'Decisão da advogada responsável' })
     fireEvent.change(screen.getByLabelText(/Justificativa/), { target: { value: 'Cliente internada; o médico dá alta na semana que vem.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Autorizar mais uma remarcação' }))
     expect(await screen.findByText('Remarcação autorizada: a tarefa de marcar volta para o Jurídico administrativo.')).toBeTruthy()
@@ -192,6 +192,18 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     expect(within(docs).getByText('o conteúdo fica com o Jurídico')).toBeTruthy()
     // O Antônio é ficha de exemplo: o arquivo não está no portal, e a tela diz isso no lugar do link.
     expect(within(docs).getByText('sem arquivo no portal')).toBeTruthy()
+  })
+
+  it('GGVP-158 E9 (15/10) · o Sócio lê tudo: na página da perícia, o laudo não fica "com o Jurídico" para ele, como para a advogada', async () => {
+    await enviarArquivos('antonio-exemplo', {
+      origem: 'card',
+      arquivos: ['rg', 'laudo'].map((tipo, i) => ({ nome: `${tipo}.pdf`, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(60 + i).padStart(64, '0') })),
+    })
+    entrarComo('socio')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
+    const docs = (await screen.findByRole('heading', { name: 'Documentos (abrir cada um)' })).closest('section')!
+    expect(within(docs).queryByText('o conteúdo fica com o Jurídico')).toBeNull()
+    expect(within(docs).getAllByText('sem arquivo no portal').length).toBeGreaterThan(0)
   })
 
   it('GGVP-158 · com sessão, o Início da página do processo é a tela inicial de quem entrou, e não a Central da advogada', async () => {

@@ -59,6 +59,21 @@ afterEach(async () => {
 })
 
 describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
+  it('GGVP-158 E10 (15/10) · as decisões da conferência da leitura são da Documentação: o Atendimento e a Sênior recebem 403 ao arquivar, liberar, mover e usar no cadastro', async () => {
+    const id = '00000000-0000-4000-8000-000000000001'
+    for (const apelido of ['ana', 'helena']) {
+      for (const [metodo, url, corpo] of [
+        ['POST', `/api/fichas/${id}/documentos-lidos/arquivar`, { conferi: true, documentos: [] }],
+        ['POST', `/api/documentos-lidos/${id}/liberar`, undefined],
+        ['POST', `/api/documentos-lidos/${id}/mover`, { processoId: id, motivo: 'é da outra pessoa' }],
+        ['POST', `/api/documentos-lidos/${id}/cadastro`, { campo: 'cpf' }],
+      ] as const) {
+        const r = await chamar(apelido, metodo, url, corpo)
+        expect([apelido, url, r.statusCode]).toEqual([apelido, url, 403])
+      }
+    }
+  })
+
   it('card: o documento entra na pasta da ficha e a IA lê; o repetido não sobrescreve; o laudo vai ao Jurídico sem resumo', async () => {
     const fichaId = await lead()
     expect((await chamar('julia', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', arquivos: [doc('RG.pdf', 'rg')] })).statusCode).toBe(403)
@@ -241,6 +256,19 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
   beforeEach(async () => {
     await app.close()
     app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), leituraSimulada: true })
+  })
+
+  it('GGVP-158 I7 · o registro digital só conta o arquivo cujo conteúdo chegou; o que não chegou segura a tarefa', async () => {
+    const fichaId = await lead()
+    const { tarefa } = await json('ana', 'POST', `/api/fichas/${fichaId}/encaminhamentos`, { motivo: 'documento', setor: 'Documentação · ADM' })
+    await enviar(fichaId, doc('RG.pdf', 'rg', sha(PDF_RG)))
+    const registrar = () => chamar('dora', 'POST', `/api/tarefas/${tarefa.id}/registro`, { forma: 'digital', conferiTipos: true, conferiPapel: false })
+    const semConteudo = await registrar()
+    expect([semConteudo.statusCode, semConteudo.json().erro]).toEqual([409, '1 arquivo anexado ao card não chegou ao portal: envie de novo antes de registrar.'])
+    expect((await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, tarefa.id)))[0].concluidaEm).toBeNull()
+    expect((await conteudo(fichaId, PDF_RG)).statusCode).toBe(201)
+    const ok = await registrar()
+    expect([ok.statusCode, ok.json().evento.oQue]).toEqual([200, 'Registrou o recebimento de 1 documento digitais, anexados ao card; conferiu o tipo de cada documento'])
   })
 
   it('laudo com caso: guardado como documento sensível do caso e documento médico não conferido; o mesmo conteúdo não duplica', async () => {

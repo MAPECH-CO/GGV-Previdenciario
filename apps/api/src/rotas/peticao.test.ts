@@ -13,7 +13,7 @@ import { MSG_CHAMADA_DE_OUTRO_CASO, criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 import { MSG_COMPROVANTE } from './manifestacao.ts'
-import { MSG_CITADO_DE_OUTRO_CASO, MSG_CITADO_NAO_FALTA, MSG_CNJ_DE_OUTRO_CASO, MSG_DOCUMENTO_QUE_FALTA, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_PROTOCOLADA, MSG_SO_A_ULTIMA } from './peticao.ts'
+import { MSG_CITADO_DE_OUTRO_CASO, MSG_CITADO_NAO_FALTA, MSG_CNJ_DE_OUTRO_CASO, MSG_DOCUMENTO_QUE_FALTA, MSG_NADA_A_CONFERIR, MSG_NADA_A_PEDIR, MSG_PACOTE_SEM_LEITURA, MSG_PROTOCOLADA, MSG_SO_A_ULTIMA } from './peticao.ts'
 
 // A petição inicial (GGVP-63, 67, 71), do pedido ao protocolo, pelas rotas de verdade desde o registro do indeferido.
 const SENHA = 'senha-do-portal-1'
@@ -348,7 +348,7 @@ describe('GGVP-67 · conferir a petição', () => {
   it('GGVP-158 P5.12 · a versão com número de jurimetria não se aprova (G22); tirado o número, aprova', async () => {
     expect((await editar(`${V1}\nEste juízo julga procedentes 71% em 34 processos · base de 07/10.`)).statusCode).toBe(201)
     const r = await aprovar(2)
-    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria (G22): tire antes de aprovar.'])
+    expect([r.statusCode, r.json().erro]).toEqual([409, 'O texto cita número de jurimetria: tire antes de aprovar.'])
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'jurimetria_no_texto'))
     expect(b.detalhe).toMatchObject({ portao: 'G22', passo: 'D3.06' })
     expect((await editar(`${V1}\nEste juízo entende que o laudo do assistente técnico vale.`)).statusCode).toBe(201)
@@ -384,13 +384,13 @@ describe('GGVP-67 · conferir a petição', () => {
   it('CA2, CA5, CA6, CA9 (G6, G18) · só a última, com as três marcações; fica quem aprovou e o identificador, e o protocolo abre', async () => {
     await editar(V1 + '\nDo valor da causa')
     expect((await aprovar(1)).json().erro).toBe(MSG_SO_A_ULTIMA)
-    expect((await aprovar(2, { liNaIntegra: true, conferem: true })).json().erro).toBe('Marque "Nada contradiz o requisito do benefício (G18)"')
+    expect((await aprovar(2, { liNaIntegra: true, conferem: true })).json().erro).toBe('Marque "Nada contradiz o requisito do benefício"')
     expect((await aprovar(2)).statusCode).toBe(201)
     const x = await ler()
     expect([x.versoes[1].aprovadaPor, x.versoes[1].aprovadaEm, x.podeAprovar]).toEqual(['gabi', AGORA.toISOString(), false])
     expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
     const [d] = await banco.select().from(decisao).where(eq(decisao.tipo, 'aprovacao_peticao'))
-    expect([d.passo, d.resultado, d.justificativa]).toEqual(['D3.06', 'versao 2', expect.stringContaining('(G18)')])
+    expect([d.passo, d.resultado, d.justificativa]).toEqual(['D3.06', 'versao 2', expect.stringContaining('nada contradiz o requisito do benefício')])
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'peticao_aprovada'))
     expect((ev.detalhe as { hash: string }).hash).toBe(x.versoes[1].hash)
     expect((await aprovar(2)).json().erro).toBe(MSG_NADA_A_CONFERIR)
@@ -571,6 +571,19 @@ describe('GGVP-71 · protocolar no tribunal', () => {
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pacote_divergente'))
     expect(ev.detalhe).toMatchObject({ arquivos: ['carta.pdf'], versao: 1 })
     expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+  })
+
+  it('GGVP-158 I9 · o armazenamento que falha na leitura não vira "pacote mudou": 503, sem bloqueio G7, e o protocolo segue depois', async () => {
+    await app.close()
+    let fora = true
+    const instavel: Armazenamento = { ...arquivos, ler: async (chave) => (fora ? Promise.reject(new Error('Supabase Storage respondeu 502')) : arquivos.ler(chave)) }
+    app = criarServidor({ banco, agora: () => AGORA, armazenamento: instavel })
+    const r = await protocolar()
+    expect([r.statusCode, r.json().erro]).toEqual([503, MSG_PACOTE_SEM_LEITURA])
+    expect(await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'pacote_divergente'))).toEqual([])
+    expect(await abertas()).toEqual(['advogada · Protocolar na Justiça'])
+    fora = false
+    expect((await protocolar()).statusCode).toBe(201)
   })
 
   it('o mesmo número de processo não vai para dois casos', async () => {

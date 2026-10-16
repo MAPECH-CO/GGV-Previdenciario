@@ -3,10 +3,11 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { RespostaDoChat } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, peticao, peticaoVersao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, gravacaoRecepcao, modelo, peticao, peticaoVersao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
+import { SENHA_RETIRADA } from '../../../web/src/regras/entrevista.ts'
 import { MODELO_DA_REGRA, MSG_CLIENTE_NAO_ACHADO, MSG_PECA_ANTES_DO_DESPACHO, MSG_SEM_ACESSO } from './chat.ts'
 
 const SENHA = 'senha-do-portal-1'
@@ -185,13 +186,13 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
     await banco.insert(documentoMedico).values({ documentoId: d.id, tipo: 'laudo', dataEmissao: '2026-09-20', cid: 'M54.5' })
   }
 
-  it('16.4 · o modelo recebe as quatro ferramentas de leitura e, com um caso, a de criar tarefa só para quem atribui tarefa (GGVP-158 P7.3)', async () => {
+  it('16.4 · o modelo recebe as ferramentas de leitura (o acervo só para quem vê as peças, GGVP-158 L1) e, com um caso, a de criar tarefa só para quem atribui tarefa (GGVP-158 P7.3)', async () => {
     await perguntar('ana', 'Oi', casoId)
-    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['buscar_no_acervo', 'explicar_portao', 'ler_caso', 'minhas_tarefas'])
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['explicar_portao', 'ler_caso', 'minhas_tarefas'])
     montar({ ...CHAVE, IA_PERMITE_DADO_DE_SAUDE: 'sim' })
     chamadas = []
     await perguntar('helena', 'Oi', casoId)
-    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('criar_tarefa')
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toEqual(expect.arrayContaining(['buscar_no_acervo', 'criar_tarefa']))
   })
 
   it('16.4, GGVP-162 CA6 · o Atendimento lê o caso pela ficha da cliente: o benefício e a etapa, sem a página do processo; a fonte é o caso', async () => {
@@ -242,6 +243,34 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
       { tipo: 'regra', referencia: 'tarefas da Central' },
       { tipo: 'regra', referencia: 'G8' },
     ])
+  })
+
+  it('GGVP-158 L1 (16/10) · o acervo é de quem vê as peças: nada dele chega ao modelo pela pergunta do Financeiro, da Documentação ou do Atendimento', async () => {
+    const [d] = await banco
+      .insert(usuario)
+      .values({ email: 'dora@exemplo.ggv', nome: 'dora', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['documentacao'], trocarSenha: false })
+      .returning()
+    ids.dora = d.id
+    const [p] = await banco.insert(pessoa).values({ nome: 'Joana Pereira Lima', situacao: 'cliente' }).returning()
+    await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'aposentadoria_idade', fase: 'administrativa' })
+    // A entrevista que não foi do Jurídico: a transcrição conferida entra no acervo sem a marca de saúde.
+    await banco.insert(gravacaoRecepcao).values({
+      id: 'gravacao-do-atendimento',
+      pessoaId: p.id,
+      soJuridico: false,
+      dados: { trechos: [{ aos: 10, quem: 'Joana Pereira Lima', papel: 'cliente', texto: 'Parei de trabalhar na roça em março.', prova: true }], extraidas: [] },
+    })
+    await banco.insert(modelo).values({ tipo: 'peticao', nome: 'Rural', conteudo: 'Modelo de petição: trabalho na roça e a prova do tempo rural.' })
+    const vistos = []
+    for (const apelido of ['julia', 'dora', 'ana']) {
+      chamadas = []
+      roteiro = [ferramenta('buscar_no_acervo', { consulta: 'trabalhar na roça' }), { role: 'assistant', content: 'Sem caso parecido.' }]
+      await perguntar(apelido, 'Tem caso parecido de quem parou de trabalhar na roça?')
+      const visto = JSON.stringify(chamadas.map((c) => c.corpo.messages))
+      const ferramentas = chamadas[0].corpo.tools?.map((t) => t.function.name) ?? []
+      vistos.push({ apelido, transcricao: visto.includes('roça em março'), modelo: visto.includes('Modelo de petição'), acervo: ferramentas.includes('buscar_no_acervo') })
+    }
+    expect(vistos).toEqual(['julia', 'dora', 'ana'].map((apelido) => ({ apelido, transcricao: false, modelo: false, acervo: false })))
   })
 })
 
@@ -303,7 +332,7 @@ describe('GGVP-142 · a ação só com o clique de quem pediu (CA3)', () => {
     roteiro = [ferramenta('pedir_peca', { peca: 'Petição inicial' })]
     const r = await perguntar('gabi', 'Faz a petição inicial da Vera', casoId)
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('pedir_peca')
-    expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Vera Lúcia · Petição inicial', travas: expect.arrayContaining([expect.stringContaining('(G6)')]) })
+    expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Vera Lúcia · Petição inicial', travas: expect.arrayContaining([expect.stringContaining('A IA não assina nem protocola')]) })
     // GGVP-158 P7.3: sem o despacho da Sênior, a peça não é pedida, e nenhuma tarefa nasce.
     roteiro = [{ role: 'assistant', content: 'Não deu.' }]
     const antes = await confirmar('gabi', r.acao!.id)
@@ -401,6 +430,37 @@ describe('12/10 · a fala do microfone vira texto (POST /api/chat/fala)', () => 
     const semSaude = await falar('gabi', formulario(Buffer.from([1])))
     expect(semSaude.statusCode).toBe(503)
     expect(semSaude.json().erro).toBe('A transcrição não funcionou: a IA não está autorizada a ler dado de saúde neste ambiente.')
+  })
+})
+
+describe('GGVP-158 A1 · a senha do gov.br sai antes da IA e da tela (G9)', () => {
+  it('a senha digitada na pergunta e a que veio no histórico não chegam ao modelo', async () => {
+    roteiro = [{ role: 'assistant', content: 'Não guarde a senha aqui: use o cofre.' }]
+    const r = await app.inject({
+      method: 'POST',
+      url: '/api/chat',
+      cookies: await cookieDe('ana'),
+      payload: { texto: 'a senha é Abc@2024, pode guardar?', anteriores: [{ de: 'pessoa', texto: 'qual a senha dela?' }, { de: 'pessoa', texto: 'Maria@1958' }] },
+    })
+    expect(r.statusCode, r.body).toBe(200)
+    const enviado = JSON.stringify(chamadas.map((c) => c.corpo.messages))
+    expect(enviado).not.toContain('Abc@2024')
+    expect(enviado).not.toContain('Maria@1958')
+    expect(enviado).toContain(SENHA_RETIRADA)
+  })
+
+  it('a senha dita no microfone não volta na caixa de texto', async () => {
+    falaTranscrita = { text: 'a senha do gov é Girassol2024', segments: [{ speaker: 'A', start: 0, end: 2, text: 'a senha do gov é Girassol2024' }] }
+    const fronteira = '----fala'
+    const corpo = Buffer.concat([
+      Buffer.from(`--${fronteira}\r\nContent-Disposition: form-data; name="audio"; filename="fala.webm"\r\nContent-Type: audio/webm\r\n\r\n`),
+      Buffer.from([1, 2, 3, 4]),
+      Buffer.from(`\r\n--${fronteira}--\r\n`),
+    ])
+    const r = await app.inject({ method: 'POST', url: '/api/chat/fala', cookies: await cookieDe('ana'), payload: corpo, headers: { 'content-type': `multipart/form-data; boundary=${fronteira}` } })
+    expect(r.statusCode, r.body).toBe(200)
+    expect(r.json().texto).not.toContain('Girassol2024')
+    expect(r.json().texto).toContain(SENHA_RETIRADA)
   })
 })
 

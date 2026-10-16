@@ -46,7 +46,7 @@ async function conferirOContrato(processoId: string) {
   const dados = linha.dados as { contrato: object }
   await banco.update(contratoRecepcao).set({ dados: { ...dados, contrato: { ...dados.contrato, etapa: 'copia' } } }).where(eq(contratoRecepcao.casoId, processoId))
 }
-const CONTRATO_NAO_ASSINADO = 'Contrato não assinado (G1): o caso não tem o contrato assinado.'
+const CONTRATO_NAO_ASSINADO = 'Contrato não assinado: o caso não tem o contrato assinado.'
 
 beforeEach(async () => {
   ;({ banco, fechar } = await abrirBancoEmbutido())
@@ -83,6 +83,17 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     expect(situacoes(await json('dora', 'GET', url)).rg).toBe('recebido')
   })
 
+  it('GGVP-158 E10 (15/10) · conferir o checklist é da Documentação: o Atendimento e a Sênior recebem 403 e nada é gravado; a Documentação confere', async () => {
+    const { processoId } = await casoDe('loas-idoso')
+    for (const apelido of ['ana', 'sara']) {
+      const r = await chamar(apelido, 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+      expect([apelido, r.statusCode]).toEqual([apelido, 403])
+    }
+    expect(await banco.select().from(conferenciaChecklist)).toHaveLength(0)
+    expect((await chamar('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)).statusCode).toBe(200)
+    expect(await banco.select().from(conferenciaChecklist)).toHaveLength(1)
+  })
+
   it('a conferência grava a situação calculada; a incompleta abre uma cobrança só; o checklist vai na cópia das telas', async () => {
     const { processoId } = await casoDe('loas-idoso')
     const url = `/api/processos/${processoId}/checklist/conferencia`
@@ -98,8 +109,8 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     expect(r.cobrancas).toMatchObject([{ processoId, abertaEm: '2026-10-08', tentativas: [], decisoes: [] }])
     expect(r.checklists).toMatchObject([{ processoId, conferencia: r.conferencia }])
 
-    // Conferir de novo não abre a segunda cobrança.
-    expect((await json('ana', 'POST', url)).cobrancas).toHaveLength(1)
+    // Conferir de novo não abre a segunda cobrança (GGVP-158 E10: quem confere é a Documentação).
+    expect((await json('dora', 'POST', url)).cobrancas).toHaveLength(1)
     const { checklists } = await json('ana', 'GET', '/api/recepcao')
     expect(checklists).toMatchObject([{ processoId, beneficio: 'LOAS Idoso', checklist: { temLista: true, completo: false }, conferencia: { completo: false } }])
   })
@@ -143,7 +154,7 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
 
     await completarOKit(fichaId, processoId)
 
-    expect((await liberar()).erro).toBe(`${MSG_G1} a conferência do checklist completo (D1.21).`)
+    expect((await liberar()).erro).toBe(`${MSG_G1} a conferência do checklist completo.`)
     expect((await json('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)).conferencia).toMatchObject({ completo: true, faltam: [] })
     // GGVP-158 P3.2: o contrato assinado, mas ainda não conferido, barra a liberação com a mesma regra da aprovação.
     expect((await liberar()).erro).toBe(CONTRATO_NAO_ASSINADO)
@@ -232,7 +243,7 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
       { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
     ])
     expect((await json('ana', 'GET', url)).situacao).toBe('na-senior')
-    expect(await json('ana', 'POST', `${url}/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })).toEqual({ erro: 'Passou do limite de 2 tentativas: a sênior decide (G15).' })
+    expect(await json('ana', 'POST', `${url}/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })).toEqual({ erro: 'Passou do limite de 2 tentativas: a sênior decide.' })
     expect(await json('ana', 'POST', `${url}/adiamento`, { para: '2026-10-14' })).toEqual({ erro: 'Passou do limite: a sênior decide.' })
 
     const decisao = { opcao: 'nova-tentativa', justificativa: 'A cliente está viajando e volta no dia 20', prazo: '2026-10-20' }
@@ -250,7 +261,7 @@ describe('GGVP-125 · bloco 5c: a cobrança dos documentos no servidor', () => {
       { dia: '2026-10-05', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' },
     ])
     const mensagem = (c: { fichaId: string; processoId: string }) => json('ana', 'GET', `/api/fichas/${c.fichaId}/mensagens/cobranca?processo=${c.processoId}`)
-    expect(await mensagem(naSenior)).toMatchObject({ trava: 'Passou do limite de 2 tentativas: a sênior decide (G15).', texto: '' })
+    expect(await mensagem(naSenior)).toMatchObject({ trava: 'Passou do limite de 2 tentativas: a sênior decide.', texto: '' })
 
     const hoje = await cobrancaAberta([{ dia: '2026-10-08', canal: 'ligacao', resultado: 'sem-resposta', quem: 'ana' }])
     expect((await mensagem(hoje)).trava).toMatch(/^A próxima tentativa é em .+, 3 dias depois da última\.$/)
@@ -356,6 +367,9 @@ describe('GGVP-158 P7.2 · as tarefas da Recepção são linhas da tabela de tar
     // Conferido o checklist do cliente novo, as boas-vindas também esperam o Atendimento.
     expect(await linha('ana', `boas-vindas-${processoId}`)).toMatchObject({ titulo: 'Enviar boas-vindas', detalhe: 'LOAS Idoso · checklist conferido · 6 pendências' })
 
+    // GGVP-158 I3: pelo Chatwoot, a tentativa só conta com a cobrança que saiu hoje; por ligação, segue sem mensagem.
+    const pelaConversa = await chamar('ana', 'POST', `/api/processos/${processoId}/cobranca/tentativas`, { canal: 'chatwoot', resultado: 'sem-resposta' })
+    expect([pelaConversa.statusCode, pelaConversa.json().erro]).toEqual([409, 'Envie a cobrança pelo Chatwoot antes de registrar.'])
     await json('ana', 'POST', `/api/processos/${processoId}/cobranca/tentativas`, { canal: 'ligacao', resultado: 'sem-resposta' })
     expect(await linha('ana', cobrar)).toMatchObject({ prazo: '2026-10-11', urgente: false, detalhe: expect.stringMatching(/ · 2ª tentativa$/) })
 
@@ -391,10 +405,10 @@ describe('GGVP-158 P7.2 · as tarefas da Recepção são linhas da tabela de tar
       passo: 'D1.23',
       prazo: '2026-10-05',
       urgente: true,
-      detalhe: 'LOAS Idoso · 2 tentativas sem resposta · limite (G15)',
+      detalhe: 'LOAS Idoso · 2 tentativas sem resposta · passou do limite',
       tela: `/casos/${processoId}/cobranca/decidir`,
     })
-    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({ prazo: null, urgente: false, detalhe: expect.stringMatching(/ · na sênior: decidir \(G15\)$/) })
+    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({ prazo: null, urgente: false, detalhe: expect.stringMatching(/ · na sênior: decidir$/) })
 
     const decisao = { opcao: 'nova-tentativa', justificativa: 'A cliente está viajando e volta no dia 20', prazo: '2026-10-20' }
     expect((await chamar('sara', 'POST', `/api/processos/${processoId}/cobranca/decisao`, decisao)).statusCode).toBe(200)

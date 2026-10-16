@@ -293,7 +293,7 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
     const corrigidos = registro.itens.filter((i) => i.corrigido).length
     await anotar(
       c,
-      `Registrou o parecer médico do ${nomeBeneficio(c.processo.beneficio)}: ${NOMES_DO_PARECER[registro.situacao]} (G17)${corrigidos > 0 ? `; corrigiu ${corrigidos} ${corrigidos === 1 ? 'item' : 'itens'} da IA` : ''}`,
+      `Registrou o parecer médico do ${nomeBeneficio(c.processo.beneficio)}: ${NOMES_DO_PARECER[registro.situacao]}${corrigidos > 0 ? `; corrigiu ${corrigidos} ${corrigidos === 1 ? 'item' : 'itens'} da IA` : ''}`,
       pedido,
     )
     if (laudoNovoEm)
@@ -314,7 +314,7 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
   // GGVP-33 CA2 (G17; Lucas, 01/10, Q14): a primeira Sênior pede a dispensa, com a justificativa.
   app.post<{ Params: { id: string } }>('/api/processos/:id/parecer/dispensa', daSenior, async (pedido, resposta) => {
     const entrada = DispensarParecer.safeParse(pedido.body)
-    const motivo = entrada.success ? motivoParaNaoPedirDispensa(entrada.data.justificativa) : 'A justificativa é obrigatória: por que seguir sem a prova médica (G17).'
+    const motivo = entrada.success ? motivoParaNaoPedirDispensa(entrada.data.justificativa) : 'A justificativa é obrigatória: por que seguir sem a prova médica.'
     if (motivo || !entrada.success) return negar(resposta, 400, motivo!)
     const c = await acharCaso(pedido.params.id)
     if (!c) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
@@ -335,7 +335,7 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
       decididoEm: agora(),
     })
     // GGVP-158 P8.6: o histórico da ficha é de todos os perfis; a justificativa fica na decisão, para o Jurídico e o Sócio.
-    await anotar(c, 'Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)', pedido)
+    await anotar(c, 'Pediu a dispensa do parecer médico (1ª aprovação da sênior)', pedido)
     await historico(quem, 'dispensa_parecer_pedida', pedido, `caso:${c.id}`)
     return resposta.code(201).send(await tela(c, 'juridico'))
   })
@@ -381,8 +381,8 @@ export function registrarRotasParecer(app: FastifyInstance, { banco, agora = () 
     await anotar(
       c,
       aprova
-        ? `Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por ${dispensa!.pedidaPor} e ${nome} (G17)`
-        : `Recusou a dispensa do parecer médico pedida por ${dispensa!.pedidaPor}: o caso continua esperando o parecer (G17)`,
+        ? `Aprovou a dispensa do parecer médico (2ª aprovação da sênior): dispensado por ${dispensa!.pedidaPor} e ${nome}`
+        : `Recusou a dispensa do parecer médico pedida por ${dispensa!.pedidaPor}: o caso continua esperando o parecer`,
       pedido,
     )
     await historico(quem, aprova ? 'parecer_dispensado' : 'dispensa_parecer_negada', pedido, `caso:${c.id}`)

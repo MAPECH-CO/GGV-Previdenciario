@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
+import { ATENDIMENTO, entrarPelaApi, trocarDeUsuario } from './entrar.ts'
 
 // GGVP-97 · Boas-vindas ao cliente: depois da conferência do checklist, conferir a mensagem e enviar pelo Chatwoot
 // simulado; quem já era cliente não recebe; sem telefone, a falha vira tarefa. Cada teste começa da semente.
@@ -9,10 +10,17 @@ const tokens: Tokens = JSON.parse(readFileSync(new URL('../src/design/figma-toke
 const rgb = (hex: string) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 
 test('CA1, CA2, CA4 e CA5 · conferido o checklist, a mensagem com as pendências sai uma vez pelo Chatwoot e fica no histórico', async ({ page }) => {
+  // GGVP-158 E10 (15/10): quem confere o checklist é a Documentação; as boas-vindas são do Atendimento.
+  await page.goto('/casos/rita-exemplo-1/checklist')
+  await expect(page.getByRole('region', { name: 'Boas-vindas' })).toContainText('Depois de concluir a conferência do checklist')
+  await expect(page.getByRole('button', { name: 'Gerar cobrança das pendências' })).toHaveCount(0)
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
+  await page.goto('/casos/rita-exemplo-1/checklist')
+  await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(page.getByText(/✓ Conferido às/)).toBeVisible()
+  await trocarDeUsuario(page, ATENDIMENTO)
   await page.goto('/casos/rita-exemplo-1/checklist')
   const bloco = page.getByRole('region', { name: 'Boas-vindas' })
-  await expect(bloco).toContainText('Depois de concluir a conferência do checklist')
-  await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
 
   const mensagem = bloco.getByRole('textbox', { name: 'Mensagem (confira antes de enviar)' })
   await expect(mensagem).toHaveValue(/Olá, Rita! Boas-vindas ao escritório GGV\./)
@@ -36,8 +44,12 @@ test('CA3 · quem já era cliente não recebe as boas-vindas', async ({ page }) 
 })
 
 test('CA6 · sem telefone, a falha fica no histórico e vira "Reenviar boas-vindas" na Central', async ({ page }) => {
+  await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/marta-exemplo-1/checklist')
   await page.getByRole('button', { name: 'Gerar cobrança das pendências' }).click()
+  await expect(page.getByText(/✓ Conferido às/)).toBeVisible()
+  await trocarDeUsuario(page, ATENDIMENTO)
+  await page.goto('/casos/marta-exemplo-1/checklist')
   const bloco = page.getByRole('region', { name: 'Boas-vindas' })
   await bloco.getByRole('checkbox', { name: 'Conferi a mensagem' }).check()
   await bloco.getByRole('button', { name: 'Enviar pelo Chatwoot' }).click()

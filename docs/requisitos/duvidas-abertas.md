@@ -1,6 +1,6 @@
 # Dúvidas e decisões do produto
 
-Atualizado em 12/10/2026 na GGVP-159, com as decisões fornecidas pelo Pedro. “Respondida” registra a regra do produto; não significa que toda tela ou integração já foi entregue. As pendências abaixo continuam abertas para o Lucas. Não houve consulta ao Jira nesta atualização.
+Atualizado em 12/10/2026 na GGVP-159, com as decisões fornecidas pelo Pedro; em 15/10, a varredura de fluxo e permissões da GGVP-158 (Mateus) acrescentou as linhas marcadas "15/10", sem decidir nenhuma. “Respondida” registra a regra do produto; não significa que toda tela ou integração já foi entregue. As pendências abaixo continuam abertas para o Lucas. Não houve consulta ao Jira nesta atualização.
 
 ## Perguntas originais
 
@@ -36,6 +36,16 @@ Atualizado em 12/10/2026 na GGVP-159, com as decisões fornecidas pelo Pedro. �
 - A IA recomenda o benefício sempre e a advogada confirma. A IA preenche a ficha depois da entrevista, quem atende confere e a Sênior pode desfazer.
 - Valor da causa e renda por pessoa do LOAS ficam visíveis para advogada, Sócio e Financeiro; a disponibilidade dos campos depende das rotas do Mateus, sem ampliar o acesso do Financeiro ao caso ou às peças.
 
+## Abertas da GGVP-158, lacunas do servidor (16/10)
+
+Registradas pela change `ggvp-158-lacunas-do-servidor`, sem decidir. O código dela vai até onde a regra já existe.
+
+| Assunto | O que precisa de resposta | Quem decide |
+|---|---|---|
+| A IA monta a prestação (GGVP-92 CA1) | Os números já saem do código (CA4). O que a IA monta: o texto da prestação para o cliente, a origem de cada valor lida dos documentos, ou os dois? Com quais fontes: a carta de concessão, como hoje, ou a sentença e o comprovante, como diz o cartão (CA3)? | Lucas |
+| Dados bancários "alterados há pouco" (GGVP-92 CA10) | A mudança que espera a segunda confirmação já trava o OK da prestação. Depois de confirmada, por quantos dias ela ainda pede nova verificação antes do OK? E quem verifica de novo: a Sênior, na prestação, ou outra pessoa? | Lucas |
+| "Digitalizar (scanner simulado)" fora dos testes (GGVP-17 CA10) | A rota simulada só existe com `LEITURA_SIMULADA`, e o botão dá 404 na homologação. Duas saídas: a tela some com o botão fora dos testes, ou a homologação liga pastas de teste do Drive (tarefa 1.15 da `ggvp-158-fechamento`) e o papel entra pela rodada do scanner. Nas duas, o botão não chama a rota simulada fora dos testes; o que muda é se a tela diz que o lote chega pelo scanner do Drive. | Mateus (o Drive), com o Pedro (o botão) |
+
 ## Continuam abertas com Lucas
 
 | Assunto | O que precisa de resposta |
@@ -54,3 +64,17 @@ Atualizado em 12/10/2026 na GGVP-159, com as decisões fornecidas pelo Pedro. �
 | LGPD e fornecedores | Contratos com OpenAI e Mistral e condições do tratamento/transferência. A autorização funcional de usar saúde não encerra esta pendência. |
 | Região do banco | Região do Supabase a aprovar. Não verificada nem alterada nesta história. |
 | Treinamento | Data, participantes, responsável e aceite. O material em `docs/treinamento/por-perfil.md` não significa treinamento realizado. |
+| Recebimento antes do banco (15/10) | O Financeiro confirma o recebimento antes de "Levei o cliente ao banco" (a GGVP-98 CA9 testa assim); na história do sistema, a ida ao banco vem antes. Qual é a ordem. |
+| "Aprovar o resumo" e "Explicar o resultado" (15/10) | Hoje só nascem no caso perdido; no deferido ou procedente, o cliente não recebe o resumo explicado. É isso mesmo. |
+| Telefone ao Financeiro (15/10) | O Financeiro não vê o telefone do cliente na tarefa da ida ao banco; por onde liga. |
+| Orientação por ligação (15/10) | Registrar a orientação por ligação conclui o passo sem mensagem pelo Chatwoot (GGVP-53). Vale assim. |
+| Exigência perto de vencer (15/10) | Só a Sênior recebe o aviso (G21); a advogada responsável não. É o desenho. |
+| Cobrança de documento (15/10) | A Documentação registra a cobrança (D1.23); o BPMN põe a cobrança no Atendimento. Quem cobra. |
+
+## Abertas com o Pedro (telas), 15/10
+
+- "Olhei, sem novidade" tem rota no servidor e não tem botão na tela da vigília do Meu INSS.
+- A espera do INSS pela perícia (D2.E1) aparece urgente enquanto a perícia corre; o motor não pausa o prazo (GGVP-105).
+- Modo misto (GGVP-125/159): tarefas de exemplo do navegador na Central da Sênior; o chat de exemplo responde o Financeiro sobre clientes da semente; a liberação ao Jurídico não entra no histórico da ficha.
+- O roteiro da tarefa não lista o kit e o modelo como pré-requisito do passo.
+- Perícia: "reunir documentos" nasce depois do "não pede"; o limite de cobrança só é conferido na tela; uma linha aparece em dobro.

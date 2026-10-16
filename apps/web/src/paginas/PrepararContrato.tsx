@@ -275,7 +275,7 @@ export function PrepararContrato({ processoId }: { processoId: string }) {
           <ul className={styles.ladoLista}>
             <li>• Se «Não, corrigir campos»: O que corrigir*</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <ul className={styles.ladoLista}>
             {CONFERENCIAS.map((c) => (
               <li key={c.id}>Conferir: {c.rotulo}</li>

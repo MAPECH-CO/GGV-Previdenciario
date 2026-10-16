@@ -44,7 +44,11 @@ export function fonteDjen(oabs: Oab[], tribunais: string[], { buscar, esperar }:
     }
     if (!resposta) throw new Error('api: o DJEN não respondeu')
     if (!resposta.ok) throw new Error(`api: o DJEN respondeu ${resposta.status}`)
-    return resposta.json()
+    // GGVP-158 I16 (G13): sem o total ou sem a lista, a resposta não diz "nada": é falha. A mensagem do JSON inválido traria
+    // um trecho do corpo (texto de publicação): no lugar dela, o motivo fixo.
+    const corpo = (await resposta.json().catch(() => null)) as { count?: unknown; items?: unknown } | null
+    if (typeof corpo?.count !== 'number' || !Array.isArray(corpo.items)) throw new Error('api: o DJEN respondeu fora do formato')
+    return corpo as { count: number; items: Comunicacao[] }
   }
 
   return {
@@ -68,7 +72,11 @@ export function fonteDjen(oabs: Oab[], tribunais: string[], { buscar, esperar }:
               pagina: String(n),
               itensPorPagina: String(POR_PAGINA),
             })
-            if (!items.length) break
+            // GGVP-158 I16: a página vazia antes do total não é o fim da busca: é a publicação que faltou.
+            if (!items.length) {
+              if (lidas < count) throw new Error(`api: o DJEN parou antes do total (${lidas} de ${count})`)
+              break
+            }
             total = count
             lidas += items.length
             for (const c of items) {

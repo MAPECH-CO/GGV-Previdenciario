@@ -46,15 +46,15 @@ test('CA3, CA9 e G9 · a IA aponta o termo jurídico; o texto que esconde a situ
   await expect(janela.getByRole('textbox')).toHaveValue(/^Olá, Rosa! Para seguir com o seu caso/)
   await janela.getByRole('textbox').fill('O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.')
   await expect(janela.getByRole('list', { name: 'A IA aponta' })).toContainText('Termo jurídico "indeferido": diga "negado".')
-  await expect(janela.getByText('Nunca oriente a esconder ou mudar a situação real (G11).')).toBeVisible()
+  await expect(janela.getByText('Nunca oriente a esconder ou mudar a situação real.')).toBeVisible()
   await expect(janela.getByRole('button', { name: 'Enviar pelo Chatwoot' })).toBeDisabled()
   await janela.getByRole('textbox').fill('Mande a sua senha do gov.br por aqui.')
-  await expect(janela.getByText('O escritório nunca pede a senha do gov.br por mensagem (G9).')).toBeVisible()
+  await expect(janela.getByText('O escritório nunca pede a senha do gov.br por mensagem.')).toBeVisible()
   await expect(janela.getByRole('button', { name: 'Enviar pelo Chatwoot' })).toBeDisabled()
   // O servidor barra de novo, para quem tentar sem a tela.
   const id = new URL(page.url()).pathname.split('/').at(-1)
   const r = await page.request.post(`/api/fichas/${id}/mensagens`, { data: { modelo: 'cobranca', texto: 'Mande a sua senha do gov.br por aqui.', conversa: 33331111 } })
-  expect([r.status(), (await r.json()).erro]).toEqual([400, 'O escritório nunca pede a senha do gov.br por mensagem (G9).'])
+  expect([r.status(), (await r.json()).erro]).toEqual([400, 'O escritório nunca pede a senha do gov.br por mensagem.'])
 })
 
 test('CA7 · o aviso de resultado favorável não sai daqui: vai pela tela do Financeiro, com o texto da prestação de contas (G8)', async ({ page }) => {
@@ -63,7 +63,7 @@ test('CA7 · o aviso de resultado favorável não sai daqui: vai pela tela do Fi
   const janela = page.getByRole('dialog', { name: 'Mensagem ao cliente · Rosa Resultado Teste' })
   await janela.getByLabel('Modelo').selectOption('resultado-favoravel')
   await expect(
-    janela.getByText('O aviso de resultado favorável sai pela tela «Avisar resultado e agendar a ida ao banco», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).'),
+    janela.getByText('O aviso de resultado favorável sai pela tela «Avisar resultado e agendar a ida ao banco», do Financeiro, com o texto que a advogada revisou na prestação de contas.'),
   ).toBeVisible()
   await expect(janela.getByRole('button', { name: 'Enviar pelo Chatwoot' })).toBeDisabled()
 })

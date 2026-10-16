@@ -1,4 +1,5 @@
 import type { EventoDaAgenda } from '../dados/tipos.ts'
+import { ComPreviaDoEvento } from './CartaoEvento.tsx'
 import styles from './AgendaMes.module.css'
 import cat from './Categorias.module.css'
 
@@ -32,14 +33,11 @@ export function AgendaMes({ semanas, mes, eventos, hoje, aoAbrir }: Props) {
               {dia === hoje && ' · hoje'}
             </span>
             {doDia.slice(0, POR_DIA).map((e) => (
-              <button
-                key={e.id}
-                type="button"
-                className={`${styles.evento} ${cat[e.estado === 'confirmar' ? 'confirmar' : e.categoria]}`}
-                onClick={() => aoAbrir(e)}
-              >
-                {e.hora} {e.titulo.split(' ')[0]}
-              </button>
+              <ComPreviaDoEvento key={e.id} evento={e}>
+                <button type="button" className={`${styles.evento} ${cat[e.estado === 'confirmar' ? 'confirmar' : e.categoria]}`} onClick={() => aoAbrir(e)}>
+                  {e.hora} {e.titulo.split(' ')[0]}
+                </button>
+              </ComPreviaDoEvento>
             ))}
             {resto > 0 && <span className={styles.mais}>+{resto === 1 ? '1 evento' : `${resto} eventos`}</span>}
           </section>

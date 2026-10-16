@@ -102,7 +102,7 @@ function fecharEntrevista(banco: Banco, ficha: Ficha, a: Agendamento, g: Gravaca
       codigo: 'D1.12',
       cliente: { id: ficha.id, nome: ficha.nome },
       acao: 'Definir benefício',
-      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', 'benefício sugerido, você decide (G3)'].join(' · '),
+      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', 'benefício sugerido, você decide'].join(' · '),
       prazo: 'hoje',
       href: `/entrevista/${a.id}/beneficio`,
       setor: 'Jurídico',
@@ -148,7 +148,7 @@ export async function obterEntrevista(agendamentoId: string): Promise<Entrevista
 
 /** POST /api/entrevistas/:id/gravacoes. Só grava com o aviso ao cliente registrado, com a hora (CA4, G10). */
 export async function iniciarGravacao(agendamentoId: string, inicio: { avisei: true }): Promise<Gravacao> {
-  if (inicio.avisei !== true) throw new Error('Avise o cliente que a conversa será gravada antes de gravar (G10).')
+  if (inicio.avisei !== true) throw new Error('Avise o cliente que a conversa será gravada antes de gravar.')
   if (agendamentoDoServidor(agendamentoId)) return (await pedirAoServidor(`/entrevistas/${agendamentoId}/gravacoes`, inicio)).gravacao
   await esperar()
   const banco = ler()
@@ -162,7 +162,7 @@ export async function iniciarGravacao(agendamentoId: string, inicio: { avisei: t
   acao(g, 'avisou', 0)
   acao(g, 'gravou', 0)
   banco.gravacoes.push(g)
-  ficha.historico.push(evento(`Avisou o cliente às ${hora(g.avisoEm)} que a conversa seria gravada (G10) e começou a gravar a entrevista`, QUEM_ADVOGADA))
+  ficha.historico.push(evento(`Avisou o cliente às ${hora(g.avisoEm)} que a conversa seria gravada e começou a gravar a entrevista`, QUEM_ADVOGADA))
   gravar(banco)
   return g
 }
@@ -313,7 +313,7 @@ export async function transcrever(gravacaoId: string, opcoes: { falhar?: boolean
   // Cada informação vem com a hora e o trecho de onde saiu, já sem senha (G9), para a advogada conferir (GGVP-133).
   const extraidas = ditas.flatMap((f) => (f.extrai ?? []).map((e): InformacaoExtraida => ({ ...e, aos: f.aos, trecho: trechos.find((t) => t.aos === f.aos)?.texto ?? '' })))
   if (g.acoes.some((x) => x.acao === 'guardou-senha')) {
-    extraidas.push({ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição (G9)', destino: 'cofre' })
+    extraidas.push({ id: 'senha', rotulo: 'Senha do gov.br', valor: 'digitada no cofre: não consta na transcrição', destino: 'cofre' })
   }
   g.trechos = trechos
   g.extraidas = extraidas

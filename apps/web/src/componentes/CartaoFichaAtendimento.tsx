@@ -1,6 +1,7 @@
 import type { Ficha } from '../dados/tipos.ts'
 import { isoParaData } from '../campos.ts'
 import { situacaoDaSenha } from '../regras/fichaAtendimento.ts'
+import { usePodeAbrir } from '../sessao.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './CartaoFichaAtendimento.module.css'
 
@@ -11,6 +12,10 @@ import styles from './CartaoFichaAtendimento.module.css'
 export function CartaoFichaAtendimento({ ficha, hoje }: { ficha: Ficha; hoje: string }) {
   const f = ficha.fichaAtendimento
   const link = `/clientes/${ficha.id}/ficha-de-atendimento`
+  const segunda = `/clientes/${ficha.id}/segunda-ficha`
+  // O link só aparece para quem abre a tela dele (o Sócio lê a ficha, mas não preenche).
+  const abreFicha = usePodeAbrir(link)
+  const abreSegunda = usePodeAbrir(segunda)
   const respostas = f && [
     ['Quantas pessoas moram na casa', f.pessoasNaCasa?.toString()],
     ['Última atividade', f.ultimaAtividade],
@@ -42,15 +47,19 @@ export function CartaoFichaAtendimento({ ficha, hoje }: { ficha: Ficha; hoje: st
         <p className={styles.texto}>
           Segunda ficha (auxílio acidentário):{' '}
           {ficha.segundaFicha ? `preenchida em ${isoParaData(ficha.segundaFicha.data)}` : 'pendente'}{' '}
-          <a className={styles.link} href={`/clientes/${ficha.id}/segunda-ficha`}>
-            {ficha.segundaFicha ? 'Abrir a segunda ficha' : 'Preencher a segunda ficha'}
-          </a>
+          {abreSegunda && (
+            <a className={styles.link} href={segunda}>
+              {ficha.segundaFicha ? 'Abrir a segunda ficha' : 'Preencher a segunda ficha'}
+            </a>
+          )}
         </p>
       )}
-      <p className={styles.senha}>gov.br: {situacaoDaSenha(ficha.senhaGov, hoje)} (G9)</p>
-      <a className={styles.link} href={link}>
-        {f || ficha.fichaAtendimentoPreenchida ? 'Abrir a ficha de atendimento' : 'Preencher a ficha'}
-      </a>
+      <p className={styles.senha}>gov.br: {situacaoDaSenha(ficha.senhaGov, hoje)}</p>
+      {abreFicha && (
+        <a className={styles.link} href={link}>
+          {f || ficha.fichaAtendimentoPreenchida ? 'Abrir a ficha de atendimento' : 'Preencher a ficha'}
+        </a>
+      )}
     </Cartao>
   )
 }

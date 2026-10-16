@@ -91,10 +91,10 @@ export function Conferencia({ casoId }: { casoId: string }) {
       <p className={styles.subtitulo}>
         {caso.cliente} · {nomeDoBeneficio(caso.beneficio)}
       </p>
-      {!caso.podeDecidir && <span className={`${styles.selo} ${styles.seloAlerta}`}>Só leitura: aprovar e reprovar são da Sênior (G2)</span>}
+      {!caso.podeDecidir && <span className={`${styles.selo} ${styles.seloAlerta}`}>Só leitura: aprovar e reprovar são da Sênior</span>}
 
       <section className={styles.cartao}>
-        <h2 className={styles.cartaoTitulo}>Checklist (G1)</h2>
+        <h2 className={styles.cartaoTitulo}>Checklist</h2>
         {!caso.checklist.cadastrado ? (
           <p className={styles.erroCampo}>Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar. <a href="/configuracao">Abrir Configuração</a></p>
         ) : caso.checklist.completo ? (
@@ -117,7 +117,7 @@ export function Conferencia({ casoId }: { casoId: string }) {
       </section>
 
       <section className={styles.cartao}>
-        <h2 className={styles.cartaoTitulo}>Parecer médico (G17)</h2>
+        <h2 className={styles.cartaoTitulo}>Parecer médico</h2>
         {caso.parecer ? (
           <>
             <span className={caso.parecer.resultado === 'suficiente' || caso.parecer.resultado === 'dispensado' ? styles.selo : `${styles.selo} ${styles.seloAlerta}`}>

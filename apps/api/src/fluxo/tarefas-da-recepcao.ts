@@ -18,6 +18,7 @@ import { boasVindasDoCaso, type RegistroDasBoasVindas } from '../../../web/src/r
 import { juntar } from '../../../web/src/regras/checklist.ts'
 import { OPCOES_DA_SENIOR, cobrancaDoCaso, type Cobranca } from '../../../web/src/regras/cobranca.ts'
 import { emAberto } from '../../../web/src/regras/busca.ts'
+import { confirmada } from '../../../web/src/regras/confirmacao.ts'
 import { dataCurta } from '../../../web/src/regras/datas.ts'
 import { beneficioDoFechamento, entrevistaRealizada, precisaRegistrarFechamento, recontatoDevido } from '../../../web/src/regras/fechamento.ts'
 
@@ -32,6 +33,9 @@ const DA_RECEPCAO: Record<string, DaRecepcao> = {
   'Registrar fechamento': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `fechamento-${p}`, tela: (p) => `/clientes/${p}/fechamento` },
   'Recontatar lead': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `recontato-${p}`, tela: (p) => `/clientes/${p}/recontato` },
   'Confirmar se a entrevista aconteceu': { passo: 'D1.03', perfil: 'atendimento', id: (p) => `confirmar-${p}`, tela: () => '/agenda?ver=lista' },
+  // GGVP-158 E3 (15/10): a confirmação que passou do limite (G15) é da Sênior; a linha da tabela da Recepção (setor Jurídico)
+  // só chegava à cópia da advogada e ao quadro do setor, nunca à fila da Sênior.
+  'Confirmar agendamento': { passo: 'D1.04', perfil: 'senior', id: (p) => `confirmar-senior-${p}`, tela: () => '/agenda?ver=lista' },
   'Pedir documento legível': { passo: 'D1.18', perfil: 'atendimento', id: (p) => `legivel-${p}`, tela: (p) => `/clientes/${p}` },
 }
 const PASSOS = [...new Set(Object.values(DA_RECEPCAO).map((t) => t.passo))]
@@ -78,7 +82,7 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
     const detalhe = [
       atual.beneficio,
       pendentes(atual.faltam),
-      naSenior ? 'na sênior: decidir (G15)' : `${atual.tentativa}ª tentativa`,
+      naSenior ? 'na sênior: decidir' : `${atual.tentativa}ª tentativa`,
       decisao && !naSenior ? `decisão da sênior: ${OPCOES_DA_SENIOR[decisao.opcao].toLowerCase()}` : '',
       c.prazo ? `prazo do ${c.prazo.de} ${dataCurta(c.prazo.data, hoje)}` : '',
     ]
@@ -86,7 +90,7 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
     doCaso('Cobrar documento', c.processoId, naSenior ? null : atual.proxima, detalhe.filter(Boolean).join(' · '))
     if (naSenior) {
       const n = c.tentativas.filter((t) => t.resultado === 'sem-resposta').length
-      doCaso('Decidir cobrança', c.processoId, c.tentativas.at(-1)!.dia, `${atual.beneficio} · ${n === 1 ? '1 tentativa' : `${n} tentativas`} sem resposta · limite (G15)`)
+      doCaso('Decidir cobrança', c.processoId, c.tentativas.at(-1)!.dia, `${atual.beneficio} · ${n === 1 ? '1 tentativa' : `${n} tentativas`} sem resposta · passou do limite`)
     }
   }
 
@@ -133,6 +137,16 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
       linhas.push({ titulo: 'Registrar fechamento', casoId: null, pessoaId: ficha.id, prazo: entrevista.data, detalhe: detalhe.join(' · ') })
     } else if (recontatoDevido(ficha, hoje).devido && ficha.fechamento?.recontatarEm)
       linhas.push({ titulo: 'Recontatar lead', casoId: null, pessoaId: ficha.id, prazo: ficha.fechamento.recontatarEm, detalhe: `motivo: ${nomeMotivo(ficha.fechamento.motivo).toLowerCase()}` })
+
+    // D1.04 (GGVP-158 E3): a entrevista futura, ainda não confirmada, cuja confirmação subiu à Sênior (G15): uma linha por
+    // pessoa, urgente desde a última tentativa, até alguém confirmar.
+    const naSenior = (ficha.agendamentos ?? []).find((a) => a.oQue === 'Entrevista' && emAberto(a) && a.data >= hoje && a.confirmacao?.naSenior === true && !confirmada(a.confirmacao))
+    if (naSenior?.confirmacao) {
+      const ultima = naSenior.confirmacao.tentativas.at(-1)
+      const n = naSenior.confirmacao.tentativas.filter((t) => t.resultado === 'sem-resposta').length
+      const detalhe = `entrevista em ${dataCurta(naSenior.data, hoje)} às ${naSenior.hora} · ${n === 1 ? '1 tentativa' : `${n} tentativas`} sem resposta · limite (G15)`
+      linhas.push({ titulo: 'Confirmar agendamento', casoId: null, pessoaId: ficha.id, prazo: ultima ? dia(ultima.quando) : hoje, detalhe })
+    }
 
     // D1.03 (teste do Pedro, 14/10): o compromisso em aberto cujo dia passou; uma linha por pessoa, no mais antigo. Só a tela
     // calculava, e o chat não a via. Marcar realizado, falta ou desistência guarda a ficha, e a linha fecha.

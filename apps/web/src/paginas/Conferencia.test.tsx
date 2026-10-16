@@ -125,7 +125,7 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     expect(screen.queryByText('Sem parecer médico.')).toBeNull()
   })
 
-  const SEM_PARECER = 'Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa (G17).'
+  const SEM_PARECER = 'Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa.'
 
   it('CA5 · sem parecer, Aprovar fica desligado com a trava do servidor, e a Sênior pode pedir a dispensa', async () => {
     servidor({ ...base, parecer: null, travaDoParecer: SEM_PARECER })
@@ -172,13 +172,13 @@ describe('Conferência da Sênior (GGVP-23)', () => {
     servidor({ ...base, checklist: { cadastrado: false, completo: true, faltam: [] } })
     render(<Conferencia casoId={CASO} />)
     expect(await aprovarDesligado()).toBe(true)
-    expect(screen.getByText('Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar (G1).')).toBeTruthy()
+    expect(screen.getAllByText('Kit do benefício não cadastrado: cadastre na Configuração antes de aprovar.').length).toBeGreaterThan(0)
   })
 
   it('CA12 · sem o contrato assinado, Aprovar fica desligado com o motivo do G1', async () => {
     servidor({ ...base, kitAssinado: false })
     render(<Conferencia casoId={CASO} />)
     expect(await aprovarDesligado()).toBe(true)
-    expect(screen.getByText('Contrato não assinado (G1): o caso não tem o contrato assinado.')).toBeTruthy()
+    expect(screen.getByText('Contrato não assinado: o caso não tem o contrato assinado.')).toBeTruthy()
   })
 })

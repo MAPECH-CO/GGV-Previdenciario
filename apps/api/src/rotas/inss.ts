@@ -47,7 +47,7 @@ import { MSG_TRAVADO, exigir, registrarBloqueio, registrarHistorico } from '../s
 import { podeMarcar, type Pericia } from '../../../web/src/regras/periciaNoCaso.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 
-export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior (G2).'
+export const MSG_SEM_OK_SENIOR = 'Só protocola depois do OK da Sênior.'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 export const MSG_COFRE_SEM_TAREFA = 'A senha do gov.br só abre com uma tarefa aberta que use o gov.br: protocolar no Meu INSS ou marcar a perícia.'
 const TAMANHO_MAXIMO = 25 * 1024 * 1024
@@ -204,8 +204,9 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
     return [...topo, ...visiveis, ...fim]
   }
 
-  // GGVP-158 P5.4: "Olhei, sem novidade": as esperas de fora do caso saem do topo até o próximo dia útil.
-  app.post<{ Params: { id: string } }>('/api/casos/:id/esperas/olhada', { preHandler: exigir(banco, 'tarefa.cumprir', agora) }, async (pedido, resposta) => {
+  // GGVP-158 P5.4: "Olhei, sem novidade": as esperas de fora do caso saem do topo até o próximo dia útil. GGVP-158 E5 (15/10):
+  // é do Jurídico, que olha o Meu INSS; o Atendimento, a Documentação e o Financeiro não apagam a linha da advogada.
+  app.post<{ Params: { id: string } }>('/api/casos/:id/esperas/olhada', { preHandler: exigir(banco, 'inss.registrar_resposta', agora) }, async (pedido, resposta) => {
     const esperas = await esperasDeFora(banco, pedido.params.id)
     if (!esperas.length) return negar(resposta, 409, MSG_SEM_ESPERA)
     for (const e of esperas) await historico(pedido.usuario!.id, 'espera_olhada', pedido, `caso:${e.casoId}`, { espera: e.id, oQue: e.oQue })
@@ -413,13 +414,16 @@ export function registrarRotasInss(app: FastifyInstance, { banco, cofre, armazen
       return negar(resposta, 423, MSG_TRAVADO)
     }
     // GGVP-103 CA5: só com tarefa aberta no caso que use o gov.br; a tarefa é o motivo que vai para o histórico (CA6).
+    // GGVP-158 E6 (15/10): quem não protocola (a advogada e a Sênior, pela exigência) só revela com a resposta à exigência
+    // (D2.05r) aberta; o protocolo e a perícia são do Jurídico administrativo.
+    const protocola = pode(pedido.perfilAtivo, 'protocolo_inss.registrar')
     const [daTabela] = await banco
       .select({ passo: tarefa.passo, titulo: tarefa.titulo })
       .from(tarefa)
-      .where(and(eq(tarefa.casoId, pedido.params.id), inArray(tarefa.passo, [...PASSOS_COM_GOVBR]), isNull(tarefa.concluidaEm)))
+      .where(and(eq(tarefa.casoId, pedido.params.id), inArray(tarefa.passo, protocola ? [...PASSOS_COM_GOVBR] : ['D2.05r']), isNull(tarefa.concluidaEm)))
     // A perícia que voltou a marcar (remarcação, autorização da advogada) é tarefa calculada da perícia, sem linha em `tarefa`.
     const paraMarcar =
-      !daTabela && (await banco.select({ documento: pericia.documento }).from(pericia).where(eq(pericia.casoId, pedido.params.id))).some((l) => l.documento && podeMarcar(l.documento as Pericia))
+      protocola && !daTabela && (await banco.select({ documento: pericia.documento }).from(pericia).where(eq(pericia.casoId, pedido.params.id))).some((l) => l.documento && podeMarcar(l.documento as Pericia))
     const tarefaDoGov = daTabela ?? (paraMarcar ? { passo: 'DP.02', titulo: 'Marcar perícia' } : undefined)
     if (!tarefaDoGov) {
       await historico(quem.id, 'cofre_uso_recusado', pedido, `caso:${pedido.params.id}`)

@@ -19,7 +19,7 @@ import {
   type FontesDaPrestacao,
 } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { agendamento, caso, contrato, contratoRecepcao, dadoBancario, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { exigir, registrarBloqueio } from '../sessao/rotas.ts'
 import type { Correio } from './mensagens.ts'
 import { criarFichario } from './recepcao.ts'
@@ -27,7 +27,7 @@ import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
-export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da Sênior na prestação de contas (G8).'
+export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da Sênior na prestação de contas.'
 export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
 /** O texto padrão do modelo (o da semente, sem a marca de exemplo). A Sênior ajusta na Configuração (GGVP-158 P6.4). */
 export const TEXTO_PADRAO_IDA_AO_BANCO =
@@ -40,6 +40,8 @@ export const MSG_ENCERRADO = 'Este caso já foi encerrado.'
 export const MSG_ANTES_DO_RECEBIMENTO = 'Registre o recebimento da prestação atual antes de avisar o cliente.'
 export const MSG_SEM_DESFECHO = 'O caso não tem desfecho nem deferimento registrado: registre o resultado antes de avisar o cliente.'
 export const MSG_DATA_PASSADA = 'A ida ao banco não pode ser marcada numa data ou hora que já passou.'
+export const MSG_BANCARIO_SEM_CONFIRMACAO =
+  'Os dados bancários do cliente mudaram e esperam a segunda confirmação, na ficha do cliente. O OK vem depois dela.'
 export const TITULO_AVISO = 'Avisar resultado e agendar a ida ao banco'
 export const TITULO_LEVAR = 'Levar ao banco'
 export const MSG_SEM_IDA = 'Não há ida ao banco marcada para levar neste caso.'
@@ -186,6 +188,7 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
         fontes: (v.fontes as FontesDaPrestacao | null) ?? null,
       })),
       agendamento: ag ? { quando: ag.quando.toISOString(), local: ag.local ?? '', acompanhante: nome(ag.acompanhanteId) } : null,
+      aviso: (await modeloAtivo())?.conteudo ?? null,
       podeEditar: pode(pedido.perfilAtivo, 'prestacao.dar_ok') && def !== null,
       podeReceber: pode(pedido.perfilAtivo, 'prestacao.registrar_recebimento') && atual !== undefined && !atual.recebidaEm && !atual.divergencia,
     })
@@ -198,6 +201,15 @@ export function registrarRotasPrestacao(app: FastifyInstance, { banco, agora = (
     if (!entrada.success) return negar(resposta, 400, entrada.error.issues[0]?.message ?? 'Confira os campos.')
     const def = await deferimento(casoId)
     if (!def) return negar(resposta, 409, MSG_SEM_DEFERIDO)
+    // GGVP-92 CA10 (GGVP-158 L3): a mudança dos dados bancários que espera a segunda confirmação (GGVP-111) vem antes do OK.
+    // O prazo de "alterados há pouco", depois de confirmados, espera o Lucas.
+    const [mudando] = await banco
+      .select({ id: dadoBancario.id })
+      .from(dadoBancario)
+      .innerJoin(caso, eq(caso.pessoaId, dadoBancario.pessoaId))
+      .where(and(eq(caso.id, casoId), isNull(dadoBancario.confirmadoEm), isNull(dadoBancario.descartadoEm)))
+      .limit(1)
+    if (mudando) return negar(resposta, 409, MSG_BANCARIO_SEM_CONFIRMACAO)
     const d = entrada.data
     // CA8: o percentual é o do contrato e não muda na prestação; sem percentual no contrato, vale o digitado, como antes.
     const doContrato = await percentualDoContrato(casoId)

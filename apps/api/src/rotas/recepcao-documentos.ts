@@ -8,6 +8,7 @@ import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '@ggv/campos
 import { ArquivamentoDosLidos, CampoLidoNoCadastro, EnvioDeArquivos, MudancaDeCaso, RegistroDoRecebimento, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { resumoDoErro } from '../servidor.ts'
 import { caso as tabelaCaso, contratoRecepcao, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -48,6 +49,8 @@ type Opcoes = { banco: Banco; agora?: () => Date; armazenamento: Armazenamento; 
 export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, agora = () => new Date(), armazenamento, leitor }: Opcoes) {
   const { hoje, evento, nomeDe, fichas, guardar, concluirTarefas, tarefas, leiturasDe, guardarLeitura, lerArquivosNovos, avisarLaudoNovo } = criarFichario(banco, agora)
   const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
+  // GGVP-158 E10 (15/10): as decisões da conferência da leitura (D1.18) são da Documentação.
+  const conferir = { preHandler: exigir(banco, 'documento.conferir', agora) }
   const historico = registrarHistorico(banco, agora)
   const lerContrato = criarLeituraDoContrato(banco, agora, leitor)
 
@@ -285,9 +288,24 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       const revisao = tarefa.lote.status === 'revisao' ? ' (o lote foi para A REVISAR)' : ''
       texto = `Registrou o recebimento de ${documentos(tarefa.lote.arquivos.length)} em papel, pelo scanner${revisao}`
     } else {
-      const anexados = ficha.arquivos.filter((a) => a.origem === 'card' && a.data === hoje()).length
-      if (anexados === 0) return negar(resposta, 400, 'Nenhum arquivo anexado ao card.')
-      texto = `Registrou o recebimento de ${documentos(anexados)} digitais, anexados ao card`
+      const anexados = ficha.arquivos.filter((a) => a.origem === 'card' && a.data === hoje())
+      if (anexados.length === 0) return negar(resposta, 400, 'Nenhum arquivo anexado ao card.')
+      // GGVP-158 I7: o anúncio entra antes do conteúdo; só conta o arquivo cujo conteúdo foi guardado no portal.
+      const hashes = [...new Set(anexados.flatMap((a) => (a.hash ? [a.hash] : [])))]
+      const guardados = new Set(
+        hashes.length
+          ? (
+              await banco
+                .select({ hash: documento.hashSha256 })
+                .from(documento)
+                .where(and(eq(documento.pessoaId, ficha.id), inArray(documento.hashSha256, hashes), isNull(documento.excluidoEm)))
+            ).map((d) => d.hash)
+          : [],
+      )
+      const faltam = anexados.filter((a) => !a.hash || !guardados.has(a.hash)).length
+      if (faltam)
+        return negar(resposta, 409, `${faltam === 1 ? '1 arquivo anexado ao card não chegou' : `${faltam} arquivos anexados ao card não chegaram`} ao portal: envie de novo antes de registrar.`)
+      texto = `Registrou o recebimento de ${documentos(anexados.length)} digitais, anexados ao card`
     }
     await concluirTarefas(ficha.id, tarefa.acao, tarefa.id)
     const registrado = evento(`${texto}; conferiu o tipo de cada documento`, await nomeDe(pedido))
@@ -320,7 +338,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
   // GGVP-81 CA4, CA7, CA9, CA16: "Arquivar", só depois de "Conferi os documentos lidos pela IA", com o tipo e a data de cada
   // documento a conferir. O duplicado só sai com a decisão da pessoa, e documento médico nunca sai. O contrato assinado
   // arquivado segue para a verificação do contrato (GGVP-85).
-  app.post<{ Params: { id: string } }>('/api/fichas/:id/documentos-lidos/arquivar', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/fichas/:id/documentos-lidos/arquivar', conferir, async (pedido, resposta) => {
     const entrada = ArquivamentoDosLidos.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Confira os documentos lidos pela IA.')
     const p = entrada.data
@@ -388,7 +406,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     const registro = evento(`Arquivou ${documentos(arquivados.length)} lidos pela IA (${tipos})${descarte}; conferiu a leitura`, quem)
     ficha.historico.push(registro)
     const contratosLidos = arquivados.filter((l) => l.tipo === 'contrato')
-    if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato (D1.19)', quem))
+    if (contratosLidos.length > 0) ficha.historico.push(evento('O contrato assinado segue para a verificação do contrato', quem))
     if (virouLaudo) await avisarLaudoNovo(ficha, casoDoLaudo, hoje(), 'Conferiu como laudo um documento que chegou com outro tipo; enviado ao Jurídico para análise', quem)
     await guardar(ficha)
     const conferidos: { id: string; tipo: string }[] = []
@@ -402,7 +420,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     // guardado no portal (GGVP-158 P4.4); o do scanner fica no Drive, e sem ele o contrato vai à conferência.
     for (const l of contratosLidos) {
       const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
-      if (arquivo) await lerContrato(arquivo.local, await conteudoGuardado(ficha.id, arquivo.hash), pedido.usuario!.id)
+      // GGVP-158 I10: o armazenamento que falha aqui não derruba o arquivamento já gravado: sem o conteúdo, a conferência.
+      const conteudo = await conteudoGuardado(ficha.id, arquivo?.hash).catch((e: unknown) => {
+        pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(e) }, 'o contrato assinado não foi lido no armazenamento')
+        return undefined
+      })
+      if (arquivo) await lerContrato(arquivo.local, conteudo, pedido.usuario!.id)
     }
     return {
       arquivados: arquivados.length,
@@ -417,7 +440,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
   })
 
   // GGVP-81 CA10: "É deste cliente": a pessoa conferiu e o documento em quarentena volta à conferência.
-  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/liberar', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/liberar', conferir, async (pedido, resposta) => {
     const achado = await leituraEFicha(pedido.params.id)
     if (!achado) return negar(resposta, 404, 'Documento não encontrado.')
     const { doc, ficha } = achado
@@ -431,7 +454,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
 
   // GGVP-81 CA11: sem motivo, recusa; com motivo, muda de caso e registra nas duas fichas. Nada é apagado: o arquivo sai da
   // pasta de origem e entra na outra, para a leitura de lá.
-  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/mover', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/mover', conferir, async (pedido, resposta) => {
     const entrada = MudancaDeCaso.safeParse(pedido.body)
     if (!entrada.success || entrada.data.motivo.length < 3) return negar(resposta, 400, 'Informe o motivo para mover o documento.')
     const { processoId, motivo } = entrada.data
@@ -475,7 +498,7 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
   })
 
   // GGVP-81 CA8: o cadastro só muda com a confirmação, campo a campo; o valor não vai ao histórico.
-  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/cadastro', editar, async (pedido, resposta) => {
+  app.post<{ Params: { id: string } }>('/api/documentos-lidos/:id/cadastro', conferir, async (pedido, resposta) => {
     const entrada = CampoLidoNoCadastro.safeParse(pedido.body)
     if (!entrada.success) return negar(resposta, 400, 'Campo inválido.')
     const { campo } = entrada.data

@@ -21,10 +21,10 @@ export function roteiroDaEntrevista(ficha: Ficha): string[] {
   const senha = ficha.senhaGov.situacao === 'no-cofre' ? 'senha no cofre' : 'sem senha no cofre'
   const roteiro = [
     'Desde quando não consegue trabalhar (DII) e qual foi o último dia trabalhado?',
-    `Acidentário já decidido antes da entrevista: ${acidentario} · ${senha} (G9)`,
+    `Acidentário já decidido antes da entrevista: ${acidentario} · ${senha}`,
     'Tratamento em curso, previsão de melhora e limitações no dia a dia',
     'O que o INSS disse no último pedido?',
-    'Laudos e exames: datas, o que dizem (sem sugerir ao médico o que escrever, G20)',
+    'Laudos e exames: datas, o que dizem (sem sugerir ao médico o que escrever)',
   ]
   if (ficha.beneficioInteresse?.startsWith('loas-')) roteiro.push('Quem mora na casa e a renda de cada um')
   return roteiro
@@ -115,7 +115,7 @@ export function situacaoDaInformacao(info: InformacaoExtraida, ficha: Ficha): 'c
 /** "Pendências que a IA apontou" (Figma 73:560): o que pedir, o que perguntar e o que confirmar. */
 export function pendenciasDaEntrevista(ficha: Ficha, extraidas: InformacaoExtraida[]): string[] {
   const pedir = extraidas.filter((e) => e.destino === 'documentacao').map((e) => e.valor)
-  const pendencias = pedir.length ? [`Pedir ${pedir.join(' e ')} (kit, G1).`] : []
+  const pendencias = pedir.length ? [`Pedir ${pedir.join(' e ')} (kit).`] : []
   if (!ficha.analise) pendencias.push('Perguntar se houve acidente de trabalho (muda o benefício).')
   const falta = [!ficha.cep && 'o CEP', !ficha.contatoApoio && !extraidas.some((e) => e.campo === 'contatoApoio') && 'o contato de apoio'].filter(Boolean)
   if (falta.length) pendencias.push(`Confirmar ${falta.join(' e ')}.`)
@@ -142,7 +142,7 @@ export function resumoDaEntrevista(ficha: Ficha, extraidas: InformacaoExtraida[]
   ].filter(Boolean)
   const beneficio = ficha.beneficioInteresse && ficha.beneficioInteresse !== 'nao-sei' ? ` Procura ${nomeBeneficio(ficha.beneficioInteresse)}.` : ''
   const dito = partes.length ? `${partes.join('; ')}.` : 'a gravação foi curta: pouco a resumir.'
-  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define (G3).`
+  return `${ficha.nome}: ${dito}${beneficio} O benefício é a advogada que define.`
 }
 
 /** O texto parcial pode estar no meio de uma senha: só exibe falas finalizadas.

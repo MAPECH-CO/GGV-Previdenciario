@@ -33,7 +33,7 @@ test('CA2, CA3, CA4, CA6 e CA7 · da tarefa à sugestão com a base e os requisi
   const ia = page.getByRole('region', { name: 'A IA sugere · você confere' })
   await expect(ia).toContainText('Auxílio por Incapacidade Temporária')
   await expect(page.getByRole('list', { name: 'Casos parecidos do acervo' }).getByRole('listitem')).toHaveCount(3)
-  await expect(page.getByRole('region', { name: 'Requisitos de Auxílio por Incapacidade Temporária' })).toContainText('(calculado por código, G19)')
+  await expect(page.getByRole('region', { name: 'Requisitos de Auxílio por Incapacidade Temporária' })).toContainText('(calculado por código)')
   await expect(page.getByRole('button', { name: 'Confirmar benefício' })).toBeDisabled()
 
   await page.getByRole('radio', { name: 'LOAS Idoso' }).click()
@@ -53,7 +53,7 @@ test('CA1 · o benefício citado pela advogada prevalece; o do acervo fica só c
   await entrevistaTranscrita(page, 'natalia-entrevista')
   await page.getByRole('link', { name: 'Definir o benefício' }).click()
   const ia = page.getByRole('region', { name: 'A IA sugere · você confere' })
-  await expect(ia).toContainText('Aposentadoria por Incapacidade Permanente · prevalece (G3)')
+  await expect(ia).toContainText('Aposentadoria por Incapacidade Permanente · prevalece')
   await expect(ia).toContainText('Auxílio por Incapacidade Temporária · só como sugestão')
   await expect(page.getByRole('radio', { name: 'O que você citou: Aposentadoria por Incapacidade Permanente' })).toHaveAttribute('aria-checked', 'true')
 })

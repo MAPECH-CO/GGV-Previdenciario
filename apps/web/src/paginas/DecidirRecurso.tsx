@@ -76,7 +76,7 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
               <dd>
                 {r.prazo ? (
                   <>
-                    <strong>{dataBr(r.prazo.fim)}</strong> · contado pelo sistema (G12)
+                    <strong>{dataBr(r.prazo.fim)}</strong> · contado pelo sistema
                   </>
                 ) : (
                   'Sem a sentença no sistema, o prazo não foi contado: confira no processo.'
@@ -196,7 +196,7 @@ export function DecidirRecurso({ casoId }: { casoId: string }) {
           </ul>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>
-            «Registrar» só habilita com a escolha e a justificativa. O prazo é contado pelo sistema, pelo lado seguro (G12). A porcentagem da chance vem da
+            «Registrar» só habilita com a escolha e a justificativa. O prazo é contado pelo sistema, pelo lado seguro. A porcentagem da chance vem da
             jurimetria, calculada por código: a IA não dá número.
           </p>
         </aside>

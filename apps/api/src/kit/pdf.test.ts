@@ -19,6 +19,13 @@ describe('GGVP-136 CA5 · o conversor de PDF', () => {
     await expect(conversorGotenberg('http://gotenberg:3000', buscar)(Buffer.from('x'))).rejects.toThrow('O Gotenberg respondeu 503.')
   })
 
+  it('GGVP-158 I11 · a resposta 200 que não é PDF (vazia, ou uma página de erro) vira erro: quem chama oferece o Word', async () => {
+    for (const corpo of ['', '<html>erro do proxy</html>']) {
+      const buscar = vi.fn(async () => new Response(corpo, { status: 200 }))
+      await expect(conversorGotenberg('http://gotenberg:3000', buscar)(Buffer.from('x'))).rejects.toThrow('O Gotenberg respondeu sem o PDF.')
+    }
+  })
+
   it('só há conversor com GOTENBERG_URL', () => {
     expect(abrirConversor({})).toBeUndefined()
     expect(abrirConversor({ GOTENBERG_URL: '' })).toBeUndefined()

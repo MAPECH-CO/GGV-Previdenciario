@@ -168,7 +168,7 @@ describe('Despachar caso · análise da IA (épico IA, GGVP-54 CA1, CA4)', () =>
     })
     vi.stubGlobal('fetch', fetch)
     render(<DespacharCaso casoId={CASO} />)
-    expect(await screen.findByText('Sugestão da IA · quem despacha é você (G4)')).toBeTruthy()
+    expect(await screen.findByText('Sugestão da IA · quem despacha é você')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Analisar com a IA|Usar a sugestão/ })).toBeNull()
     expect(screen.getByText('Sugere: Documentação: Comprovante de residência do filho · Avaliação social')).toBeTruthy()
     expect(screen.getByText(/Petição aprovada: a renda do filho/)).toBeTruthy()

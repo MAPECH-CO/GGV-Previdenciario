@@ -47,7 +47,7 @@ import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { etapaDaFicha } from '../../../web/src/regras/busca.ts'
 import { recusaDoChat } from '../../../web/src/regras/parecer.ts'
 import { recusaDoChatNaPericia } from '../../../web/src/regras/pericia.ts'
-import { ehAudio } from '../../../web/src/regras/entrevista.ts'
+import { ehAudio, tirarSenhas } from '../../../web/src/regras/entrevista.ts'
 import { lerFormulario } from './formulario.ts'
 import { SETOR } from './processo.ts'
 import { UUID } from './recepcao.ts'
@@ -197,13 +197,13 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
   const doCaso = (sufixo: string, rotulo: string): LinkDoChat[] => (casoId ? [{ rotulo, href: `/casos/${casoId}${sufixo}` }] : [])
   const abrir = principal ? [principal] : []
   const destino = {
-    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo (G17).', links: abrir },
+    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo.', links: abrir },
     'comprovante-inss': {
       texto: 'Para marcar a perícia com o comprovante do INSS, abra a perícia do caso: lá a IA lê a data, a hora e o local, e você confere antes de marcar.',
       links: doCaso('/pericia', 'Abrir a perícia'),
     },
     'comprovante-rpv': {
-      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da Sênior (G8).',
+      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da Sênior.',
       links: doCaso('/prestacao', 'Abrir a prestação de contas'),
     },
     documento: { texto: 'Para enviar o documento, abra o caso e suba pela pasta do cliente: a Documentação confere a leitura.', links: abrir },
@@ -346,7 +346,7 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
     }),
     tool({
       name: 'explicar_portao',
-      description: 'Explica um portão de governança do escritório (G1 a G22).',
+      description: 'Explica um portão de governança do escritório.',
       parameters: z.object({ portao: z.string().regex(/^G\d{1,2}$/) }),
       execute: async ({ portao }) => {
         if (!PORTOES[portao]) return 'Portão desconhecido.'
@@ -354,7 +354,9 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
         return `${portao}: ${PORTOES[portao]}`
       },
     }),
-  ]
+    // GGVP-158 L1 (16/10): o acervo é material jurídico (peças, decisões, pareceres, modelos de petição e a conversa e a
+    // entrevista de outros clientes). Só quem vê as peças recebe a ferramenta; para os outros, ela nem vai ao modelo.
+  ].filter((t) => t.name !== 'buscar_no_acervo' || pode(x.perfil, 'peticao.ver'))
 }
 
 type PessoaDoEscritorio = { id: string; nome: string; perfil: string; setor: string }
@@ -415,7 +417,7 @@ async function pedirPecaPeloChat(x: Ambiente, peca: string) {
   if (!aberta) return falhou(x, MSG_PECA_ANTES_DO_DESPACHO)
   const cliente = await clienteDoCaso(x.banco, casoId)
   await x.evento('peca_pedida_pelo_chat', `caso:${casoId}`, { tarefa: aberta.id, peca, peloChat: true })
-  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, aberta.titulo)}» (${peca}) já está aberta, com a minuta da IA pronta para você conferir e assinar (G6).`
+  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, aberta.titulo)}» (${peca}) já está aberta, com a minuta da IA pronta para você conferir e assinar.`
   x.resultado = { texto, links: [{ rotulo: 'Abrir a petição', href: `/casos/${casoId}/peticao` }] }
   return texto
 }
@@ -443,7 +445,7 @@ function ferramentasDeAcao(x: Ambiente): Tool[] {
     lista.push(
       tool({
         name: 'pedir_peca',
-        description: 'Abre para a pessoa a tarefa "Pedir petição" do caso, com a minuta da IA pronta para ela conferir e assinar (G6). Pede a confirmação antes.',
+        description: 'Abre para a pessoa a tarefa "Pedir petição" do caso, com a minuta da IA pronta para ela conferir e assinar. Pede a confirmação antes.',
         parameters: z.object({ peca: z.string().min(3).max(80) }),
         needsApproval: true,
         execute: ({ peca }) => pedirPecaPeloChat(x, peca),
@@ -479,9 +481,9 @@ async function cartaoDaAprovacao(x: Ambiente, ferramenta: string, argumentos: Re
       passos: ['Abrir a tarefa «Pedir a petição» que o despacho da Sênior abriu, com a minuta da IA pronta', 'Registrar no histórico do caso: feito pelo chat'],
       conferir: ['A peça certa para o caso'],
       travas: [
-        'A IA não assina nem protocola: você confere e assina (G6)',
+        'A IA não assina nem protocola: você confere e assina',
         'Sem o despacho da Sênior, a peça não é pedida',
-        'Sem o parecer médico "Suficiente" confirmado, o pedido não sai (G17)',
+        'Sem o parecer médico "Suficiente" confirmado, o pedido não sai',
       ],
       rotuloConfirmar: 'Abrir a tarefa',
     }
@@ -545,7 +547,11 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
     if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
-    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores: entrada.data.anteriores, hoje: x.hoje }, texto)
+    // GGVP-158 A1 (G9): a senha do gov.br sai da pergunta e do histórico antes da IA, pela regra da entrevista: a mensagem
+    // logo depois da que fala de senha também conta ("qual a senha?" e depois só a senha).
+    const limpas = tirarSenhas([...entrada.data.anteriores, { de: 'pessoa' as const, texto }].map((m, i) => ({ aos: i, quem: m.de, papel: 'cliente' as const, texto: m.texto })))
+    const anteriores = entrada.data.anteriores.map((m, i) => ({ ...m, texto: limpas[i].texto }))
+    const rodada = await conversar({ ia, quem: x.quem, casoId, saude: x.saude, ferramentas: ferramentas(x), fontes: x.fontes, anteriores, hoje: x.hoje }, limpas.at(-1)!.texto)
     if (rodada.tipo === 'aprovacao' && alvo) {
       const cartao = await cartaoDaAprovacao(x, rodada.ferramenta, rodada.argumentos)
       if (cartao) {
@@ -599,6 +605,8 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
       const motivo = !ia.ligada ? MSG_IA_DESLIGADA : sensivel && !ia.saudeAutorizada ? MSG_IA_SEM_SAUDE : MSG_IA_SEM_RESPOSTA
       return negar(resposta, 503, `A transcrição não funcionou: ${motivo}.`)
     }
-    return { texto: feita.falas.map((f) => f.texto.trim()).join(' ').trim() } satisfies TextoDaFala
+    // GGVP-158 A1 (G9): a senha dita no microfone não volta para a caixa de texto (nem, dali, para a IA).
+    const falas = tirarSenhas(feita.falas.map((f) => ({ aos: f.inicio, quem: f.falante, papel: 'cliente' as const, texto: f.texto.trim() })))
+    return { texto: falas.map((f) => f.texto).join(' ').trim() } satisfies TextoDaFala
   })
 }

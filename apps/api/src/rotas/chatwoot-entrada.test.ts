@@ -121,6 +121,20 @@ describe('GGVP-158 P6.5 · a rota de entrada do Chatwoot', () => {
     await isolado.close()
   })
 
+  it('GGVP-158 I6 · o erro ao receber vai ao log do servidor, com o código e o tipo, sem o segredo e sem o texto', async () => {
+    const linhas: string[] = []
+    const isolado = Fastify({ logger: { level: 'info', stream: { write: (linha: string) => void linhas.push(linha) } } })
+    const falha = Object.assign(new Error('Failed query: insert into atendimento params: Oi, tudo bem?'), { code: '57P01' })
+    registrarRotasChatwootEntrada(isolado, { banco, ambiente: AMBIENTE, receber: async () => Promise.reject(falha) })
+    expect((await isolado.inject({ method: 'POST', url: `/api/chatwoot/entrada/${SEGREDO}`, payload: aviso() })).statusCode).toBe(500)
+    const log = linhas.join('\n')
+    expect(log).toContain('a entrada do Chatwoot falhou')
+    expect(log).toContain('57P01')
+    expect(log).not.toContain(SEGREDO)
+    expect(log).not.toContain('tudo bem')
+    await isolado.close()
+  })
+
   it('outra conta, outra caixa, a nota privada, a atividade e o telefone fora da lista de teste: 200, e nada é gravado', async () => {
     montar()
     for (const a of [{ conta: 8 }, { caixa: 10 }, { privada: true }, { tipo: 'activity' }, { telefone: '+5521999990000' }, { content: '   ' }]) {
@@ -160,6 +174,16 @@ describe('GGVP-158 P6.5 · a mensagem vira conversa do WhatsApp', () => {
     await entrar(aviso({ id: 13, content: 'A minha senha do gov.br é Exemplo@2026, pode anotar.' }))
     const g = await gravacaoDa((await conversas())[0].c as { gravacaoId: string })
     expect(g.trechos[0].texto).toContain(SENHA_RETIRADA)
+    expect(JSON.stringify(await banco.select().from(atendimento))).not.toContain('Exemplo@2026')
+  })
+
+  it('GGVP-158 A2 · a pergunta numa mensagem e só a senha na seguinte: a senha sai do texto também (G9)', async () => {
+    montar()
+    await cliente()
+    await entrar(aviso({ id: 21, tipo: 'outgoing', content: 'Para o cofre: qual é a sua senha do gov.br?' }))
+    await entrar(aviso({ id: 22, content: 'Exemplo@2026' }))
+    const g = await gravacaoDa((await conversas())[0].c as { gravacaoId: string })
+    expect(g.trechos.map((t: { texto: string }) => t.texto)).toEqual(['Para o cofre: qual é a sua senha do gov.br?', SENHA_RETIRADA])
     expect(JSON.stringify(await banco.select().from(atendimento))).not.toContain('Exemplo@2026')
   })
 

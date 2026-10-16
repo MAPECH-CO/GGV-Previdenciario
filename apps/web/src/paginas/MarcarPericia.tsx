@@ -187,7 +187,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             {pericia.instancia === 'inss'
-              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação, que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada (G15).`
+              ? `Marque a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre): o INSS já liberou o agendamento. Baixe o comprovante do agendamento (PDF) e suba aqui: o sistema lê data, hora, local e tipo, coloca na agenda e na ficha e agenda o lembrete da véspera. Depois decida: se a perícia pede documento novo, atribua à Documentação, que reúne até ${DIAS_ANTES_DOCUMENTOS} dias antes; se não pede, siga para ligar e orientar ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes. Não deu? Registre a tentativa: a próxima é amanhã. Remarcação tem limite; estourou, sobe para a advogada.`
               : !pericia.marcacao
                 ? `A data da ${tipo} de ${primeiro} ainda não saiu na publicação (ou saiu num formato que o sistema não lê). Quando sair, registre abaixo a data, a hora e o local que o juízo designou: vão para a agenda e a ficha, com o lembrete da véspera. Depois, oriente ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes.`
                 : `A data da ${tipo} de ${primeiro} veio do juízo: ${lidaPeloSistema ? 'o sistema leu na publicação e pôs na agenda' : `${pericia.marcacao.registradaPor} registrou e ela está na agenda`}. Confira abaixo e siga para orientar ${primeiro} até ${DIAS_ANTES_PREPARO} dias antes.`}
@@ -276,7 +276,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
           )}
           {t.situacao === 'na-advogada' && (
             <p className={styles.trava}>
-              Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). A perícia volta para você
+              Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma. A perícia volta para você
               se ela autorizar.
             </p>
           )}
@@ -434,7 +434,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
               </h2>
               <p>
                 A remarcação conta no limite de {LIMITE_DE_REMARCACOES_DA_PERICIA}: já foram {pericia.remarcacoes}. Passou dele, a perícia sobe para a advogada
-                responsável (G15). Depois de remarcar no Meu INSS, suba o comprovante novo: o lembrete é reprogramado.
+                responsável. Depois de remarcar no Meu INSS, suba o comprovante novo: o lembrete é reprogramado.
               </p>
               <label className={proprio.campo}>
                 Motivo da remarcação *
@@ -453,7 +453,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
             </section>
           )}
 
-          {(marcando || t.situacao === 'agendada') && <p className={styles.aviso}>Remarcação tem limite; estourou, sobe para a advogada (G15).</p>}
+          {(marcando || t.situacao === 'agendada') && <p className={styles.aviso}>Remarcação tem limite; estourou, sobe para a advogada.</p>}
 
           {pericia.tentativas.length > 0 && (
             <section className={styles.cartao} aria-labelledby="tentativas">
@@ -490,7 +490,7 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
                     Ligar
                   </button>
                 )}
-                <button type="button" className={cobranca.botao} aria-disabled="true" title="A conversa abre pelo Chatwoot (GGVP-102)">
+                <button type="button" className={cobranca.botao} aria-disabled="true" title="A conversa abre pelo Chatwoot">
                   WhatsApp
                 </button>
               </span>
@@ -583,10 +583,10 @@ export function MarcarPericia({ processoId, remarcar = false }: { processoId: st
             <li>• Se «Sim, marcado»: A perícia pede documento novo?*</li>
             <li>• Se «Não, tentar de novo»: o dia e o que aconteceu*</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
-          <p className={styles.trava}>Remarcação tem limite; passou, sobe para a advogada (G15).</p>
+          <h3 className={styles.ladoSecao}>Regras</h3>
+          <p className={styles.trava}>Remarcação tem limite; passou, sobe para a advogada.</p>
           <p className={styles.ladoSub}>«Registrar a perícia» só habilita com as decisões respondidas e o comprovante anexado.</p>
-          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre (G9): ela só aparece pelo «Ver a senha do gov.br», confirmada com a sua senha do portal, e some sozinha. A IA não escolhe nem sugere o perito.</p>
+          <p className={styles.ladoSub}>A marcação é pelo Meu INSS, com a senha do cofre: ela só aparece pelo «Ver a senha do gov.br», confirmada com a sua senha do portal, e some sozinha. A IA não escolhe nem sugere o perito.</p>
         </aside>
       </main>
       <AbaSuporte />

@@ -18,7 +18,7 @@ const QUEM_VE = ['advogada', 'senior', 'senior-2', 'socio']
 
 const TITULOS: Record<TipoDoItem, string> = {
   obrigatorio: 'Obrigatórios · o que o documento precisa abordar',
-  contradicao: 'Contradições que bloqueiam (G18)',
+  contradicao: 'Contradições que bloqueiam',
   complementar: 'Documentos complementares',
 }
 
@@ -168,7 +168,7 @@ function Detalhe({ id, edita, perfil, nome }: { id: string; edita: boolean; perf
         </div>
 
         <p className={styles.aviso}>
-          O texto de cada item serve para reconhecer no documento se o requisito foi atendido, nunca para ditar ao médico o que escrever (G20). A orientação ao
+          O texto de cada item serve para reconhecer no documento se o requisito foi atendido, nunca para ditar ao médico o que escrever. A orientação ao
           médico usa a pergunta do item.
         </p>
 
@@ -303,7 +303,7 @@ function Lado() {
       <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
         Antes de concluir
       </h2>
-      <p className={styles.ladoSub}>O roteiro é a régua da análise da documentação médica: a IA aplica no laudo, e uma pessoa do Jurídico confere (G17).</p>
+      <p className={styles.ladoSub}>O roteiro é a régua da análise da documentação médica: a IA aplica no laudo, e uma pessoa do Jurídico confere.</p>
       <h3 className={styles.ladoSecao}>Quem mexe</h3>
       <p className={styles.ladoSub}>A sênior edita; o Jurídico e o Sócio veem. Atendimento e Documentação veem só o que falta pedir, no parecer.</p>
       <h3 className={styles.ladoSecao}>Travas</h3>

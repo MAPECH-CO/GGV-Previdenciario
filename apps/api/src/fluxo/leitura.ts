@@ -73,11 +73,12 @@ export function camposDaFicha(lido: FichaLidaPelaIa | null): { campos: Partial<E
 
 /**
  * O `limpar` das fichas em papel (G9): tira a senha do texto da IA antes de qualquer registro e a entrega só a quem chamou,
- * que a leva ao cofre. O que não é um objeto JSON vira "{}": nada do texto cru fica guardado.
+ * que a leva ao cofre. O que não é um objeto JSON vira texto vazio: nada do texto cru fica guardado, e a validação falha
+ * (GGVP-158 A7), em vez de uma leitura vazia "ok", guardada como pronta, que não deixaria ler a ficha de novo.
  */
 const semSenha = (entregar: (senha: string) => void) => (texto: string) => {
   const j = lerJson(texto)
-  if (!j || typeof j !== 'object' || Array.isArray(j)) return '{}'
+  if (!j || typeof j !== 'object' || Array.isArray(j)) return ''
   const { senha, ...resto } = j as Record<string, unknown>
   if (typeof senha === 'string' && senha.trim()) entregar(senha.trim())
   return JSON.stringify(resto)

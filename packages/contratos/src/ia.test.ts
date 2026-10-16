@@ -40,7 +40,7 @@ describe('faltaCompletar (GGVP-22 CA6, GGVP-67 CA12)', () => {
 })
 
 describe('GGVP-158 P5.12 · número de jurimetria fora do texto da peça (G22)', () => {
-  const MOTIVO = 'O texto cita número de jurimetria (G22): tire antes de aprovar.'
+  const MOTIVO = 'O texto cita número de jurimetria: tire antes de aprovar.'
   it('os formatos do portal acusam: a taxa com os casos, a base, a chance e o tempo médio', () => {
     for (const trecho of [
       'Este juízo julga procedentes 71% em 34 processos · base de 07/10.',
@@ -50,6 +50,10 @@ describe('GGVP-158 P5.12 · número de jurimetria fora do texto da peça (G22)',
       'A chance de êxito do autor é de 74%.',
       'com 74% de chance de procedência',
       'o tempo médio até o laudo é de 45 dias',
+      // GGVP-158 E8 (15/10): escrito com "dos/das", e a taxa "dos casos" sem a contagem.
+      'Em 71% dos 34 laudos o juiz aceitou a tese.',
+      'O perito tem 71% · 24 dos 34 processos favoráveis.',
+      'Na base de 07/10, 71% dos casos foram favoráveis.',
     ])
       expect([trecho, numeroDeJurimetriaNoTexto(trecho)]).toEqual([trecho, MOTIVO])
   })
@@ -60,6 +64,7 @@ describe('GGVP-158 P5.12 · número de jurimetria fora do texto da peça (G22)',
       'Este juízo entende que o laudo do assistente técnico deve ser considerado (processo 0001234-56.2025.4.03.6301).',
       'O salário de 100% do benefício, desde a data-base de 01/05.',
       'O autor tem 34 anos e trabalhou por 10 anos.',
+      'Os honorários são de 25% dos valores atrasados, em 3 dos 4 processos.',
     ])
       expect([trecho, numeroDeJurimetriaNoTexto(trecho)]).toEqual([trecho, null])
   })

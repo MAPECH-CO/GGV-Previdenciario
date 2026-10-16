@@ -53,7 +53,7 @@ test('CA6 e CA7 · o laudo novo do Antônio: a comparação, o parecer mantido e
   await expect(page).toHaveURL('/casos/antonio-exemplo-1/laudo-novo')
   const tabela = page.getByRole('table', { name: 'Comparação com o último laudo (18/09)' })
   await expect(tabela.locator('[data-mudou]')).toHaveText(['Raio-X de coluna lombar e ressonância magnética (22/09)', 'Carregar peso, ficar em pé e dirigir'])
-  await expect(page.getByText('A IA só compara: não sugere CID, grau nem conclusão (G20).', { exact: false })).toBeVisible()
+  await expect(page.getByText('A IA só compara: não sugere CID, grau nem conclusão.', { exact: false })).toBeVisible()
   await page.getByRole('link', { name: 'Ir para o parecer' }).click()
 
   await conferirTudo(page)
@@ -87,7 +87,7 @@ test('dado de saúde · na liberação, a janela do parecer mostra à Documenta�
   await page.goto('/casos/sebastiao-exemplo-1/liberar')
   await page.getByRole('button', { name: 'Abrir o parecer médico' }).click()
   const janela = page.getByRole('dialog', { name: 'Parecer médico de suficiência' })
-  await expect(janela.getByRole('status')).toContainText('confirmado por pessoa: Dra. Paula, 15/07 (G17)')
+  await expect(janela.getByRole('status')).toContainText('confirmado por pessoa: Dra. Paula, 15/07')
   await expect(janela.getByRole('list', { name: 'Roteiro aplicado' })).toHaveCount(0)
   await expect(janela).not.toContainText('sequela consolidada')
 })

@@ -25,6 +25,8 @@ const AVISO_DO_DIA: Record<PainelDaVigilia['situacaoDoDia'], string> = {
   sem_publicacao: 'Dia sem publicação: conferir na fonte.',
   ok: 'Rodadas do dia OK.',
   em_andamento: 'Rodadas do dia em andamento.',
+  // GGVP-158 I19: sem fonte ligada, nenhuma rodada roda; o dia nunca parece "em andamento" (G13).
+  sem_fonte: 'Vigília sem fonte ligada: nenhuma publicação chega ao portal. O suporte técnico precisa ligar a fonte.',
 }
 
 const TOM_DO_DIA: Record<PainelDaVigilia['situacaoDoDia'], string> = {
@@ -32,6 +34,7 @@ const TOM_DO_DIA: Record<PainelDaVigilia['situacaoDoDia'], string> = {
   sem_publicacao: g.tomErro,
   ok: g.tomOk,
   em_andamento: g.tomNeutro,
+  sem_fonte: g.tomErro,
 }
 
 /** Hora do dia em Brasília, de 0 a 24, para pôr a rodada na régua. */
@@ -143,8 +146,14 @@ export function PainelVigilia() {
   async function reprocessar(id: string) {
     const r = await chamarApi<{ situacao: string; capturadas?: number; erro?: string }>(`/vigilia/rodadas/${id}/reprocessar`, { method: 'POST' })
     if (!r.ok) return setErro(r.erro)
+    // GGVP-158 I18: a falha de novo é erro, e não sucesso.
+    if (r.dados.situacao !== 'ok') {
+      setFeito('')
+      setErro(`Falhou de novo: ${r.dados.erro}`)
+      return setVersao((v) => v + 1)
+    }
     setErro('')
-    recarregar(r.dados.situacao === 'ok' ? `Reprocessada: ${r.dados.capturadas} publicação(ões) nova(s).` : `Falhou de novo: ${r.dados.erro}`)
+    recarregar(`Reprocessada: ${r.dados.capturadas} publicação(ões) nova(s).`)
   }
 
   return (
@@ -190,7 +199,7 @@ export function PainelVigilia() {
           <div className={g.coluna}>
             <section className={painel.cartao} aria-label="Rodadas do dia">
               <h2 className={painel.cartaoTitulo}>Rodadas do dia</h2>
-              <p className={painel.cartaoSub}>Cada rodada lê as fontes no horário previsto. Falha ou atraso pede reprocessamento antes de fechar o dia (G13).</p>
+              <p className={painel.cartaoSub}>Cada rodada lê as fontes no horário previsto. Falha ou atraso pede reprocessamento antes de fechar o dia.</p>
               <ul className={g.rodadas}>
                 {p.rodadas.map((r) => (
                   <li key={r.id} className={g.rodada} data-situacao={r.situacao}>

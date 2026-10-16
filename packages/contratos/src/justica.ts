@@ -155,7 +155,8 @@ export type VincularPublicacao = z.input<typeof VincularPublicacao>
 /** GET /api/vigilia (GGVP-30 CA2, CA4, CA5, CA12; GGVP-26 CA6). */
 export const PainelDaVigilia = z.object({
   dia: z.string(),
-  situacaoDoDia: z.enum(['ok', 'incompleta', 'sem_publicacao', 'em_andamento']),
+  /** GGVP-158 I19: `sem_fonte` quando a vigília está sem fonte ligada e o dia não tem rodada (G13). */
+  situacaoDoDia: z.enum(['ok', 'incompleta', 'sem_publicacao', 'em_andamento', 'sem_fonte']),
   rodadas: z.array(
     z.object({
       id: z.uuid(),
@@ -368,7 +369,7 @@ export const Manifestacao = z.object({
 export type Manifestacao = z.infer<typeof Manifestacao>
 
 /** POST .../manifestacao/versoes/:n/aprovacao (G6): a advogada aprova o conteúdo daquela versão. */
-export const AprovarVersao = z.object({ aprovei: z.literal(true, { error: 'Marque "Aprovei a versão da manifestação (G6)"' }) })
+export const AprovarVersao = z.object({ aprovei: z.literal(true, { error: 'Marque "Aprovei a versão da manifestação"' }) })
 
 /** POST /api/casos/:id/manifestacao/protocolo (CA3, CA12): data do protocolo; o comprovante vai no mesmo envio. */
 export const ProtocolarManifestacao = z.object({
@@ -599,7 +600,7 @@ export type PedirOutraVersao = z.infer<typeof PedirOutraVersao>
 export const AprovarPeticao = z.object({
   liNaIntegra: z.literal(true, { error: 'Marque "Li a petição na íntegra"' }),
   conferem: z.literal(true, { error: 'Marque "Fundamentos, pedidos e valores conferem com o caso"' }),
-  nadaContradiz: z.literal(true, { error: 'Marque "Nada contradiz o requisito do benefício (G18)"' }),
+  nadaContradiz: z.literal(true, { error: 'Marque "Nada contradiz o requisito do benefício"' }),
 })
 export type AprovarPeticao = z.infer<typeof AprovarPeticao>
 
