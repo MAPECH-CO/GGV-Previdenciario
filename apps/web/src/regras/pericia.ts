@@ -226,15 +226,15 @@ export function escolherOrientacao(p: { instancia: Instancia; peritoId?: string;
 
 /** Instruções que a orientação nunca dá (G11): esconder, mudar, simular a situação real, mentir; e a frase pronta (G20). */
 const REGRAS_G11: [RegExp, string][] = [
-  [/\b(escond|ocult|omit)\w*/i, 'A orientação nunca manda esconder ou omitir a situação real (G11).'],
-  [/\b(simul|fing|finj|disfar[cç])\w*/i, 'A orientação nunca manda simular ou fingir (G11).'],
-  [/\bment(ir|ira)\b|\bmint(a|am)\b|\bmentira/i, 'A orientação nunca manda mentir (G11).'],
+  [/\b(escond|ocult|omit)\w*/i, 'A orientação nunca manda esconder ou omitir a situação real.'],
+  [/\b(simul|fing|finj|disfar[cç])\w*/i, 'A orientação nunca manda simular ou fingir.'],
+  [/\bment(ir|ira)\b|\bmint(a|am)\b|\bmentira/i, 'A orientação nunca manda mentir.'],
   [
     /\b(mud|alter|troqu|tir|retir|empreste|emprest)\w*\s+(\S+\s+){0,3}(a situa[cç][aã]o|da casa|a casa|m[oó]ve|carro|moto|eletro|geladeira|televis|tv\b|renda|quem mora)/i,
-    'A orientação nunca manda mudar a situação real da casa (G11).',
+    'A orientação nunca manda mudar a situação real da casa.',
   ],
-  [/\b(diga|fale|responda|conte|repita)\s+(ao perito\s+|à perita\s+|à assistente social\s+|ao médico\s+)?que\b/i, 'Sem frase pronta para o cliente repetir (G20).'],
-  [/\bexager[ea]\b|\baumente\b|\bpiore\b/i, 'A orientação nunca manda exagerar a situação (G11).'],
+  [/\b(diga|fale|responda|conte|repita)\s+(ao perito\s+|à perita\s+|à assistente social\s+|ao médico\s+)?que\b/i, 'Sem frase pronta para o cliente repetir.'],
+  [/\bexager[ea]\b|\baumente\b|\bpiore\b/i, 'A orientação nunca manda exagerar a situação.'],
 ]
 
 /**
@@ -250,7 +250,7 @@ const PEDIDO_PROIBIDO = /\b(escond|ocult|omit|simul|fing|finj|disfar[cç]|ment(i
 /** O chat recusa pedir orientação para esconder, mudar ou simular a situação real (CA11, G11). Outro pedido, null. */
 export function recusaDoChatNaPericia(texto: string): string | null {
   return PEDIDO_PROIBIDO.test(texto)
-    ? 'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco (G11). O pedido ficou registrado.'
+    ? 'Não posso orientar a esconder, mudar ou simular a situação real: isso é fraude e põe o processo e o escritório em risco. O pedido ficou registrado.'
     : null
 }
 
@@ -289,13 +289,13 @@ export function confirmacaoDaPresenca(data: string, agora: Date): 'ainda-nao' | 
 export const CONFERENCIAS_DO_RESULTADO: Record<TipoDePericia, { id: string; rotulo: string }[]> = {
   medica: [
     { id: 'laudo', rotulo: 'Li o laudo na íntegra' },
-    { id: 'parecer', rotulo: 'Parecer médico "Suficiente" confirmado por pessoa (G17)' },
-    { id: 'dii', rotulo: 'DII compatível com carência e qualidade de segurado — calculado por código (G19)' },
-    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido (G18)' },
+    { id: 'parecer', rotulo: 'Parecer médico "Suficiente" confirmado por pessoa' },
+    { id: 'dii', rotulo: 'DII compatível com carência e qualidade de segurado — calculado por código' },
+    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido' },
   ],
   social: [
     { id: 'laudo', rotulo: 'Li o laudo na íntegra' },
-    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido (G18)' },
+    { id: 'beneficio', rotulo: 'Sem contradição com o benefício pedido' },
   ],
 }
 

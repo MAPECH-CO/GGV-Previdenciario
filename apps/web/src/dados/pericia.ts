@@ -392,7 +392,7 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
   if (t.situacao === 'aguardando-inss') {
     return (
       `O pedido está registrado. Assim que o INSS liberar o agendamento (D2.E1), a tarefa «Marcar a perícia» entra na Central do ` +
-      `Jurídico administrativo, que marca a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre, G9). ${depois}`
+      `Jurídico administrativo, que marca a ${tipo} de ${primeiro} pelo Meu INSS (senha no cofre). ${depois}`
     )
   }
   const r = pericia.resultado?.registrado
@@ -400,7 +400,7 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
     const hoje = hojeIso(agora())
     return (
       `O resultado da ${tipo} de ${primeiro} foi ${r.favoravel ? 'favorável' : 'desfavorável'}, registrado por ${r.quem} em ${dataCurta(hojeIso(new Date(r.quando)), hoje)}: ` +
-      `${COMO_SEGUE[pericia.origem]}${r.manifestarAte ? `, até ${dataCurta(r.manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''}.`
+      `${COMO_SEGUE[pericia.origem]}${r.manifestarAte ? `, até ${dataCurta(r.manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias)` : ''}.`
     )
   }
   if (t.situacao === 'aguardando-resultado') {
@@ -411,11 +411,11 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
     )
   }
   if (t.jaPassou) {
-    return `A ${tipo} de ${primeiro} já passou: o Jurídico administrativo registra se ${primeiro} compareceu. Se faltou, a perícia volta para remarcar e conta no limite (G15).`
+    return `A ${tipo} de ${primeiro} já passou: o Jurídico administrativo registra se ${primeiro} compareceu. Se faltou, a perícia volta para remarcar e conta no limite.`
   }
   if (t.situacao === 'na-advogada') {
     return (
-      `A perícia passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma (G15). ` +
+      `A perícia passou do limite de ${LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a advogada responsável decide se vale mais uma. ` +
       `Se autorizar, a tarefa de marcar volta para o Jurídico administrativo.`
     )
   }
@@ -452,7 +452,7 @@ export function oQueAconteceAgora(t: PericiaNaTela): string {
   }
   const como =
     pericia.instancia === 'inss'
-      ? `pelo Meu INSS (senha no cofre, G9), tentando todo dia até conseguir, e sobe o comprovante: o sistema lê data, hora, local e tipo`
+      ? `pelo Meu INSS (senha no cofre), tentando todo dia até conseguir, e sobe o comprovante: o sistema lê data, hora, local e tipo`
       : `com o juízo, e registra a data e o local que vierem do processo`
   return `O Jurídico administrativo marca a ${tipo} de ${primeiro} ${como}. ${depois}`
 }
@@ -475,7 +475,7 @@ export function periciasParaMarcar(): ItemDoChat[] {
       const p = lerComPericias().pericias!.find((x) => `pericia-marcar-${x.id}` === t.id)!
       const porque =
         p.remarcacoes > 0
-          ? `o cliente faltou · ${p.remarcacoes}ª remarcação (limite G15)`
+          ? `o cliente faltou · ${p.remarcacoes}ª remarcação (limite)`
           : esperaOInss(p.origem)
             ? 'o INSS já liberou o agendamento'
             : ORIGENS[p.origem].rotulo
@@ -493,7 +493,7 @@ export function tarefasDaAdvogadaNaPericia(): Tarefa[] {
   return tarefasDe(/^pericia-(limite|resultado)-/, tarefasDaAdvogadaEm)
 }
 
-const PASSO_NA_AGENDA = { comprovante: 'DP.02 · Marcar a perícia no INSS', juizo: 'DP.04 · Data do juízo, lida da publicação' }
+const PASSO_NA_AGENDA = { comprovante: 'Marcar a perícia no INSS', juizo: 'Data do juízo, lida da publicação' }
 
 /** A perícia marcada na agenda (CA2): categoria "Perícias", com o passo e o caso. Ligado em dados/agenda.ts. */
 export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[] {
@@ -513,7 +513,7 @@ export function eventosDasPericias(banco: Banco, hoje: string): EventoDaAgenda[]
         oQue: tipo.charAt(0).toUpperCase() + tipo.slice(1),
         categoria: 'pericias',
         responsavel: 'Jurídico administrativo',
-        passo: m.origem === 'juizo' && m.registradaPor !== SISTEMA ? 'DP.04 · Data do juízo, registrada pelo Jurídico administrativo' : PASSO_NA_AGENDA[m.origem],
+        passo: m.origem === 'juizo' && m.registradaPor !== SISTEMA ? 'Data do juízo, registrada pelo Jurídico administrativo' : PASSO_NA_AGENDA[m.origem],
         estado: m.comparecimento ? (m.comparecimento.compareceu ? 'realizado' : 'faltou') : m.data < hoje ? 'confirmar' : 'agendado',
         fichaId: achado.ficha.id,
         remarcacoes: p.remarcacoes,
@@ -754,7 +754,7 @@ export function clienteLigou(texto: string): { texto: string; itens?: ItemDoChat
     return {
       texto:
         `A próxima tarefa é sua: orientar ${primeiro} para a perícia de ${dataCurta(m.data, hoje)}. A orientação da IA está pronta com data, local, o que levar e como é a ${NOMES_DO_TIPO[pericia.tipo]}: ` +
-        `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}; levar ${O_QUE_LEVAR[pericia.tipo]}. Nunca oriente a esconder ou mudar a situação real (G11).`,
+        `${diaFalado(m.data)}, às ${m.hora}, em ${m.local}; levar ${O_QUE_LEVAR[pericia.tipo]}. Nunca oriente a esconder ou mudar a situação real.`,
       itens: [{ cliente: ficha.nome, acao: tarefa.acao, sub: `perícia ${dataCurta(m.data, hoje)} · ${pericia.orientacao?.bloqueio ? 'orientação bloqueada: revisar' : 'orientação da IA pronta'}`, href: tarefa.href! }],
     }
   }
@@ -882,7 +882,7 @@ export function comoOPeritoAvalia(texto: string): { texto: string; itens: ItemDo
   const doAssunto = perfil.porAssunto.find((a) => new RegExp(`\\b${a.assunto.split(' ')[0]}`, 'i').test(texto))
   const assunto = !doAssunto
     ? ''
-    : ` Em ${doAssunto.assunto}: ${numerosDaJurimetria(doAssunto.jurimetria, hoje)} (G22).`
+    : ` Em ${doAssunto.assunto}: ${numerosDaJurimetria(doAssunto.jurimetria, hoje)}.`
   const pericias = (banco.pericias ?? []).filter((p) => p.peritoId === perito.id)
   const itens = pericias.map((p): ItemDoChat => {
     const t = naTela(banco, p, agora())

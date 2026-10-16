@@ -36,7 +36,7 @@ import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from '.
 
 export const MSG_GRAVACAO_NAO_ENCONTRADA = 'Gravação não encontrada.'
 export const MSG_ENTREVISTA_NAO_ENCONTRADA = 'Entrevista não encontrada.'
-export const MSG_SEM_AVISO = 'Avise o cliente que a conversa será gravada antes de gravar (G10).'
+export const MSG_SEM_AVISO = 'Avise o cliente que a conversa será gravada antes de gravar.'
 const CANAIS_DA_CONVERSA = ['WhatsApp', 'Telefone', 'Presencial', 'Vídeo']
 
 const ESTADO_DEPOIS: Partial<Record<AcaoNaGravacao['acao'], Gravacao['estado']>> = {
@@ -107,7 +107,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
       codigo: 'D1.12',
       cliente: { id: ficha.id, nome: ficha.nome },
       acao: 'Definir benefício',
-      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', 'benefício sugerido, você decide (G3)'].join(' · '),
+      detalhe: [nomeBeneficio(ficha.beneficioInteresse) || 'benefício a definir', 'benefício sugerido, você decide'].join(' · '),
       prazo: 'hoje',
       href: `/entrevista/${a.id}/beneficio`,
       setor: 'Jurídico',
@@ -150,7 +150,7 @@ export function registrarRotasRecepcaoEntrevista(app: FastifyInstance, { banco, 
     g.avisoEm = agora().toISOString()
     acao(g, 'avisou', 0)
     acao(g, 'gravou', 0)
-    ficha.historico.push(evento(`Avisou o cliente às ${horaEmBrasilia(agora())} que a conversa seria gravada (G10) e começou a gravar a entrevista`, await nomeDe(pedido)))
+    ficha.historico.push(evento(`Avisou o cliente às ${horaEmBrasilia(agora())} que a conversa seria gravada e começou a gravar a entrevista`, await nomeDe(pedido)))
     const { tarefa: _, ...salvo } = await salvar(g, ficha)
     return salvo
   })

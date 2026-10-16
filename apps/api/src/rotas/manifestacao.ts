@@ -42,9 +42,9 @@ import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.t
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
 export const MSG_SEM_EXIGENCIA_JUIZ = 'Este caso não tem exigência do juiz em cumprimento.'
-export const MSG_VERSAO_SEM_LEITURA = 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria (G22).'
+export const MSG_VERSAO_SEM_LEITURA = 'A IA não leu a versão agora: confira à mão que o texto não cita número de jurimetria.'
 export const MSG_ANTES_DA_JUSTIFICATIVA = 'Antes de encerrar sem prova, peça a dilação do prazo (na perícia, o reagendamento). Se nenhum cabe, diga por quê.'
-export const MSG_VERSAO_NAO_APROVADA = 'Só a versão aprovada é protocolada: aprove a última versão antes (G6).'
+export const MSG_VERSAO_NAO_APROVADA = 'Só a versão aprovada é protocolada: aprove a última versão antes.'
 export const MSG_COMPROVANTE = 'Anexe o comprovante do protocolo (PDF ou imagem, até 25 MB).'
 
 type Opcoes = { banco: Banco; armazenamento: Armazenamento; agora?: () => Date; ia?: Ia }
@@ -388,7 +388,7 @@ export function registrarRotasManifestacao(app: FastifyInstance, { banco, armaze
     if (dilacao && !(await dilacaoAutorizada(casoId, s.exigencia.criadoEm))) return negar(resposta, 409, 'O pedido de dilação precisa do OK da Sênior.')
     if (!dilacao && s.faltam.length) {
       await bloqueio(pedido, casoId, 'G21', 'D3a.04', { faltam: s.faltam.length })
-      return negar(resposta, 409, `Sem prova em todos os itens, não se manifesta (G21). Falta: ${s.faltam.join(', ')}.`)
+      return negar(resposta, 409, `Sem prova em todos os itens, não se manifesta. Falta: ${s.faltam.join(', ')}.`)
     }
     const arquivo = formulario.arquivo
     if (!arquivo || !TIPOS_DE_ANEXO.includes(arquivo.mime)) return negar(resposta, 400, MSG_COMPROVANTE)

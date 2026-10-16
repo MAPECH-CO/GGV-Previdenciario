@@ -33,7 +33,7 @@ export function CofreGovbr({ pessoaId, temSenha, aoGuardar }: { pessoaId: string
           Senha do gov.br
         </label>
         <input id={id} className={styles.campo} type="password" autoComplete="off" value={senha} onChange={(e) => setSenha(e.target.value)} />
-        <p className={styles.dica}>A senha vai direto para o cofre, cifrada. Ninguém a vê aqui depois, e o histórico guarda só quem guardou (G9).</p>
+        <p className={styles.dica}>A senha vai direto para o cofre, cifrada. Ninguém a vê aqui depois, e o histórico guarda só quem guardou.</p>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}

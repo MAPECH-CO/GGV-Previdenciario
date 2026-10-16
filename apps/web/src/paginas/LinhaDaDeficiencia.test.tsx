@@ -39,8 +39,8 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
   // Ano de 365 e mês de 30 dias: 2648 dias moderados = 7 anos, 3 meses e 3 dias.
   it('CA4 · o enquadramento calculado por código: grau, fatores, mínimo e o que falta', async () => {
     await abrir()
-    expect(screen.getByText('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código (G19)')).toBeTruthy()
-    const linhas = within(screen.getByRole('table', { name: 'Enquadramento dos períodos PCD (G19)' })).getAllByRole('row').slice(1)
+    expect(screen.getByText('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código')).toBeTruthy()
+    const linhas = within(screen.getByRole('table', { name: 'Enquadramento dos períodos PCD' })).getAllByRole('row').slice(1)
     expect(linhas.map((l) => l.textContent)).toEqual([
       'moderada7 anos, 3 meses e 3 dias1,007 anos, 3 meses e 3 dias',
       'leve4 anos, 8 meses e 25 dias0,864 anos e 24 dias',
@@ -100,7 +100,7 @@ describe('Linha do tempo da deficiência · tela da advogada', () => {
     })
     render(comSessao(<DarParecer processoId="cleide-exemplo-1" />))
     const cartao = (await screen.findByRole('heading', { name: 'Enquadramento dos períodos PCD' })).closest('section')!
-    expect(cartao.textContent).toContain('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código (G19)')
+    expect(cartao.textContent).toContain('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código')
     expect(within(cartao).getByRole('link', { name: 'Linha do tempo da deficiência' }).getAttribute('href')).toBe('/casos/cleide-exemplo-1/deficiencia')
   })
 })

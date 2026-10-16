@@ -13,15 +13,12 @@ function proximaReuniao(agendamentos: Agendamento[], hoje: string): string {
   return `Próxima: ${quando} · ${proxima.oQue}${proxima.com ? ` com ${proxima.com}` : ''}.`
 }
 
-/** "Reuniões" (Figma 73:366): a próxima e o botão de reunião com transcrição. */
+/** "Reuniões" (Figma 73:366): a próxima reunião marcada. */
 export function Reunioes({ agendamentos, hoje }: { agendamentos: Agendamento[]; hoje: string }) {
   return (
     <Cartao titulo="Reuniões">
       <p className={styles.proxima}>{proximaReuniao(agendamentos, hoje)}</p>
-      {/* Reunião com transcrição é de outra história: avisa que está indisponível. */}
-      <button type="button" className={styles.botao} aria-disabled="true">
-        Marcar e iniciar reunião (com transcrição)
-      </button>
+      {/* A reunião com transcrição ainda não existe: o botão desligado parecia ação e não fazia nada. Volta com a história dela. */}
     </Cartao>
   )
 }

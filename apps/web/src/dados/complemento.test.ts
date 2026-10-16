@@ -51,7 +51,7 @@ describe('Complemento ao médico · servidor de exemplo', () => {
     agora = new Date(2026, 9, 9, 10, 0)
     const depois = await registrarTentativaDoComplemento('rita-exemplo-1', { canal: 'ligacao', resultado: 'sem-resposta' })
     expect(depois.situacao).toBe('na-senior')
-    expect(tarefasDeComplemento()[0]).toMatchObject({ prazo: 'na sênior', detalhe: expect.stringContaining('passou do limite: na sênior (G15)') })
+    expect(tarefasDeComplemento()[0]).toMatchObject({ prazo: 'na sênior', detalhe: expect.stringContaining('passou do limite: na sênior') })
     expect(tarefasDeDecidirComplemento()).toEqual([
       expect.objectContaining({ acao: 'Decidir complemento', href: '/casos/rita-exemplo-1/complemento', cliente: { id: 'rita-exemplo', nome: 'Rita Exemplo' } }),
     ])

@@ -24,7 +24,7 @@ describe('Central da Advogada', () => {
     expect(laudo.closest('li')?.textContent).toContain('enviado pelo Atendimento em 29/09 · resumo e comparação da IA prontos')
     const parecer = screen.getByRole('link', { name: 'Rita Exemplo · Dar parecer médico' })
     expect(parecer.getAttribute('href')).toBe('/casos/rita-exemplo-1/parecer')
-    expect(parecer.closest('li')?.textContent).toContain('LOAS Deficiente · a IA sugere Insuficiente · confira item a item (G17)')
+    expect(parecer.closest('li')?.textContent).toContain('LOAS Deficiente · a IA sugere Insuficiente · confira item a item')
   })
 
   it('GGVP-29 CA3 · o pedido de complemento que passou do limite chega à sênior como "Decidir complemento", fora da fila da advogada', async () => {

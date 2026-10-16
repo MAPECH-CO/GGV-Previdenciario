@@ -41,7 +41,7 @@ test('CA3, CA13, CA14 e CA16 · do balcão ao novo cliente e à ficha, com uma f
   await pastas.getByRole('button', { name: 'Usar esta pasta' }).click()
 
   await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/)
-  await expect(page.getByRole('heading', { level: 2, name: 'Rosa Exemplo' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Rosa Exemplo' })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Últimos contatos' })).toContainText(PRETENDE)
   await expect(page.getByRole('list', { name: 'Histórico' })).toContainText('Ligou à pasta que já existia no Drive: Clientes/2024/Rosa Exemplo')
 

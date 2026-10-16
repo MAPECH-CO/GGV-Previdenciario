@@ -55,7 +55,7 @@ describe('GGVP-82 · CA4 · o pedido que atravessa um portão', () => {
   it('protocolar no INSS sem o OK do sênior: G2; na Justiça: G7; com o OK, segue', () => {
     expect(portaoDoPedido('protocolar', 'protocola a Nair', { fase: 'administrativa', aprovadoPelaSenior: false })).toEqual({
       portao: 'G2',
-      texto: 'Não dá para protocolar: falta o OK do sênior (G2). Nada vai ao INSS sem ele.',
+      texto: 'Não dá para protocolar: falta o OK do sênior. Nada vai ao INSS sem ele.',
     })
     expect(portaoDoPedido('protocolar', 'protocola na justiça', {})!.portao).toBe('G7')
     expect(portaoDoPedido('protocolar', 'protocola o Antônio', { fase: 'judicial', aprovadoPelaSenior: true })!.portao).toBe('G7')

@@ -134,7 +134,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
         </p>
       ) : m.faltam.length > 0 ? (
         <section className={styles.cartao} aria-label="Bloqueado">
-          <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')} (G21).</p>
+          <p className={styles.erro}>Manifestar bloqueado: falta {m.faltam.join(', ')}.</p>
           <ul className={styles.lista} aria-label="Pendentes">
             {m.pendentes.map((p) => (
               <LinhaPendente key={p.id} casoId={casoId} p={p} podeEncerrar={m.podeEncerrarSemProva} aoPedirDilacao={() => setTipo('dilacao')} />
@@ -185,7 +185,7 @@ export function Manifestar({ casoId }: { casoId: string }) {
             <>
               <label className={styles.escolha} htmlFor={ids.aprovei}>
                 <input id={ids.aprovei} type="checkbox" checked={aprovei} onChange={(e) => setAprovei(e.target.checked)} />
-                Aprovei a versão da manifestação (G6)
+                Aprovei a versão da manifestação
               </label>
               <div className={styles.acoes}>
                 <button type="button" className={styles.botao} disabled={!aprovei} onClick={() => void aprovar(ultima.numero)}>

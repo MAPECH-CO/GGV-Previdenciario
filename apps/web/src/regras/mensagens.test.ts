@@ -35,15 +35,15 @@ describe('Mensagens ao cliente (GGVP-102)', () => {
   })
 
   it('CA9 · na perícia, nunca orientar a esconder a situação (G11) nem sugerir diagnóstico ou CID (G20)', () => {
-    expect(problemasDaMensagem('Não conte ao perito que você voltou a trabalhar.').bloqueia).toEqual(['Nunca oriente a esconder ou mudar a situação real (G11).'])
-    expect(problemasDaMensagem('Exagere a dor na hora da perícia.').bloqueia).toEqual(['Nunca oriente a esconder ou mudar a situação real (G11).'])
-    expect(problemasDaMensagem('Diga ao perito que tem M54.5.').bloqueia).toEqual(['Tire o código de doença (CID): a orientação não sugere diagnóstico (G20).'])
-    expect(problemasDaMensagem('Fale do seu diagnóstico.').bloqueia).toEqual(['Não sugira diagnóstico: a orientação diz só o que o documento deve abordar (G20).'])
+    expect(problemasDaMensagem('Não conte ao perito que você voltou a trabalhar.').bloqueia).toEqual(['Nunca oriente a esconder ou mudar a situação real.'])
+    expect(problemasDaMensagem('Exagere a dor na hora da perícia.').bloqueia).toEqual(['Nunca oriente a esconder ou mudar a situação real.'])
+    expect(problemasDaMensagem('Diga ao perito que tem M54.5.').bloqueia).toEqual(['Tire o código de doença (CID): a orientação não sugere diagnóstico.'])
+    expect(problemasDaMensagem('Fale do seu diagnóstico.').bloqueia).toEqual(['Não sugira diagnóstico: a orientação diz só o que o documento deve abordar.'])
     expect(problemasDaMensagem('Conte ao perito, com a verdade, o que você sente no dia a dia.').bloqueia).toEqual([])
   })
 
   it('G9 · a mensagem nunca pede a senha do gov.br; dizer que nunca pede, pode', () => {
-    expect(problemasDaMensagem('Mande a sua senha do gov.br por aqui.').bloqueia).toEqual(['O escritório nunca pede a senha do gov.br por mensagem (G9).'])
+    expect(problemasDaMensagem('Mande a sua senha do gov.br por aqui.').bloqueia).toEqual(['O escritório nunca pede a senha do gov.br por mensagem.'])
     expect(problemasDaMensagem('Qual é a senha do gov.br?').bloqueia).toHaveLength(1)
     expect(problemasDaMensagem('O escritório nunca pede a sua senha do gov.br por mensagem.').bloqueia).toEqual([])
   })

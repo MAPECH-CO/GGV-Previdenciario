@@ -21,12 +21,12 @@ function servidor(recusar = false, doLaudo = false) {
   return fetch
 }
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
-it('mostra o status do laudo e a estratégia indisponível sem criar conteúdo (o juízo fica no cartão "Juízo e perícia")', async () => {
+it('mostra o status do laudo sem criar conteúdo e sem caixa de estratégia (o juízo fica no cartão "Juízo e perícia")', async () => {
   servidor()
   tela()
   expect(await screen.findByText(/Há laudo novo desde 02\/10\/2030/)).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Analisar o laudo novo' }).getAttribute('href')).toBe('/casos/' + casoId + '/laudo-novo')
-  expect(screen.getByLabelText('Estratégia do processo').textContent).toContain('ainda não estão disponíveis')
+  expect(screen.queryByLabelText('Estratégia do processo')).toBeNull()
   expect(screen.queryByText(/Conteúdo médico inventado/)).toBeNull()
 })
 it.each(['atendimento', 'documentacao', 'financeiro'])('%s vê a existência do laudo sem conteúdo nem ação jurídica', async perfil => {
@@ -40,7 +40,7 @@ it.each(['atendimento', 'documentacao', 'financeiro'])('%s vê a existência do 
 it.each(['advogada', 'senior', 'socio'])('%s pode consultar os complementos jurídicos', async perfil => {
   servidor()
   tela(perfil)
-  expect(await screen.findByLabelText('Estratégia do processo')).toBeTruthy()
+  expect(await screen.findByLabelText('Identificação do perito')).toBeTruthy()
 })
 it('confirma o perito pela API e só informa sucesso após a resposta', async () => {
   const fetch = servidor()

@@ -168,7 +168,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
           Prazo do processo: {dia(x.prazo.inicio)} a {dia(x.prazo.fim)}
         </span>
         <p className={styles.dica}>
-          Contado pelo sistema, pelo lado seguro (G12): {x.prazo.regra} · regra versão {x.prazo.versao}.
+          Contado pelo sistema, pelo lado seguro: {x.prazo.regra} · regra versão {x.prazo.versao}.
         </p>
       </section>
 
@@ -236,7 +236,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
           {sugestao?.aviso && <p className={styles.dica}>{sugestao.aviso}</p>}
           {sugestao?.sugestao && sugestao.leitura && (
             <>
-              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem decide é você (G5)</span>
+              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem decide é você</span>
               {sugestao.sugestao.alerta && (
                 <p className={styles.erroCampo} role="alert">
                   Atenção: {sugestao.sugestao.alerta}.
@@ -323,7 +323,7 @@ export function AnalisarExigenciaJuiz({ casoId }: { casoId: string }) {
               Confirmar
             </button>
           </div>
-          <p className={styles.dica}>Quem decide é você; nenhuma tarefa nasce sem a sua confirmação (G5).</p>
+          <p className={styles.dica}>Quem decide é você; nenhuma tarefa nasce sem a sua confirmação.</p>
         </form>
       )}
     </TelaDePasso>

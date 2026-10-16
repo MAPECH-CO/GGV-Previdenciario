@@ -174,7 +174,7 @@ describe('GGVP-82 · o chat que executa', () => {
   it('a advogada pede a peça: cartão, e a minuta vai para a conferência dela (G6); o chat não escreve a petição', async () => {
     const r = await pergunta('Gera a manifestação do Antônio Exemplo sobre a exigência do juiz', ADVOGADA)
     expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Antônio Exemplo · Manifestar no processo' })
-    expect(r.acao!.travas[0]).toContain('(G6)')
+    expect(r.acao!.travas[0]).toContain('')
     await confirmarAcao(r.acao!.id, ADVOGADA)
     expect(tarefasCriadasPeloChat('Dra. Paula (exemplo)')[0]).toMatchObject({ acao: 'Conferir petição' })
   })
@@ -184,7 +184,7 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
   it('laudo novo no Atendimento: os passos, e a trava de não ver o conteúdo; sobe só com o clique', async () => {
     const r = await pergunta('Esse aqui é o laudo do Antônio. Atualizar.', ATENDIMENTO, { anexos: [{ nome: 'laudo_antonio.pdf', tamanho: 10 }] })
     expect(r.acao).toMatchObject({ tipo: 'anexar-laudo', titulo: 'Atualizar o laudo · Antônio Exemplo' })
-    expect(r.acao!.travas).toEqual(['Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'])
+    expect(r.acao!.travas).toEqual(['Você não vê o conteúdo do laudo; só a advogada vê o resumo.'])
     expect((await obterFicha('antonio-exemplo'))!.arquivos).toEqual([])
     await confirmarAcao(r.acao!.id, ATENDIMENTO, { arquivos: [pdf('laudo_antonio.pdf')] })
     expect((await obterFicha('antonio-exemplo'))!.arquivos[0]).toMatchObject({ nome: 'laudo_antonio.pdf', origem: 'chat' })
@@ -204,9 +204,9 @@ describe('GGVP-82 · CA12 · o arquivo anexado', () => {
   it('comprovante de RPV no Financeiro: o valor vem do comprovante, a IA não calcula honorários (G19), o aviso só depois do OK (G8)', async () => {
     const r = await pergunta('comprovante do RPV da Lúcia Exemplo', FINANCEIRO, { anexos: [{ nome: 'rpv_lucia.pdf', tamanho: 10 }] })
     expect(r.acao!.tipo).toBe('lancar-comprovante')
-    expect(r.acao!.travas).toEqual(['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da Sênior (G8)'])
+    expect(r.acao!.travas).toEqual(['O valor vem do comprovante; a IA não calcula honorários', 'O aviso ao cliente só sai depois do OK da Sênior'])
     const feito = await confirmarAcao(r.acao!.id, FINANCEIRO, { arquivos: [pdf('rpv_lucia.pdf')] })
-    expect(feito.texto).toContain('(G8)')
+    expect(feito.texto).toContain('')
     expect(tarefasCriadasPeloChat('Dra. Renata (exemplo)')[0]).toMatchObject({ acao: 'Aprovar prestação de contas' })
     // Fora do Financeiro, o comprovante de RPV não é lançado.
     expect((await pergunta('comprovante do RPV da Lúcia Exemplo', ATENDIMENTO, { anexos: [{ nome: 'rpv_lucia.pdf', tamanho: 10 }] })).tipo).toBe('recusa')

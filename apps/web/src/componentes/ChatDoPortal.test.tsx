@@ -117,7 +117,7 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
   it('CA4 · protocolar sem o OK do sênior: recusa e mostra o portão', async () => {
     chat()
     enviar('Protocola o pedido da Nair Exemplo no INSS')
-    expect(await screen.findByText('Não dá para protocolar: falta o OK do sênior (G2). Nada vai ao INSS sem ele.')).toBeTruthy()
+    expect(await screen.findByText('Não dá para protocolar: falta o OK do sênior. Nada vai ao INSS sem ele.')).toBeTruthy()
     expect(screen.getByText('Portão G2')).toBeTruthy()
     expect(screen.queryByRole('group', { name: /Ação para confirmar/ })).toBeNull()
   })
@@ -146,8 +146,8 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
       '2 Lançar na prestação de contas o valor que está no comprovante: você confere',
       '3 Pedir o OK da Sênior na prestação de contas (tarefa «Lúcia Exemplo · Aprovar prestação de contas»)',
     ])
-    expect(cartao.textContent).toContain('O valor vem do comprovante; a IA não calcula honorários (G19)')
-    expect(cartao.textContent).toContain('O aviso ao cliente só sai depois do OK da Sênior (G8)')
+    expect(cartao.textContent).toContain('O valor vem do comprovante; a IA não calcula honorários')
+    expect(cartao.textContent).toContain('O aviso ao cliente só sai depois do OK da Sênior')
     fireEvent.click(within(cartao).getByRole('button', { name: 'Confirmar e lançar' }))
     expect(await screen.findByText(/✓ Feito: o comprovante está na pasta/)).toBeTruthy()
   })
@@ -165,7 +165,7 @@ describe('GGVP-82 · o chat que executa (Figma 2176:388, 2186:405, 2186:211)', (
     chat()
     enviar('Gera a manifestação do Antônio Exemplo sobre a exigência do juiz')
     const cartao = await screen.findByRole('group', { name: 'Ação para confirmar · Antônio Exemplo · Manifestar no processo' })
-    expect(cartao.textContent).toContain('Você confere e assina (G6)')
+    expect(cartao.textContent).toContain('Você confere e assina')
     expect(within(cartao).getByRole('button', { name: 'Confirmar e pedir a minuta' })).toBeTruthy()
   })
 })

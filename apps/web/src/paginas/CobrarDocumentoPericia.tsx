@@ -98,8 +98,8 @@ export function CobrarDocumentoPericia({ processoId }: { processoId: string }) {
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Documentação">
             Cobre de {primeiro} o que a perícia pede e ainda falta. A cobrança é uma por dia{ate ? `, até ${dataCurta(ate, hoje)} (${DIAS_ANTES_DOCUMENTOS} dias antes da perícia)` : ''}
-            : depois, sobe para a advogada responsável, por ser perícia (G15).
-            {laudo && ' Se falta o laudo, o pedido ao médico diz só o que o documento deve abordar: nunca sugira ao médico o que escrever (G20).'}
+            : depois, sobe para a advogada responsável, por ser perícia.
+            {laudo && ' Se falta o laudo, o pedido ao médico diz só o que o documento deve abordar: nunca sugira ao médico o que escrever.'}
           </InstrucoesPasso>
 
           {aviso && (
@@ -109,7 +109,7 @@ export function CobrarDocumentoPericia({ processoId }: { processoId: string }) {
           )}
 
           <p className={proprio.quadro}>Enviar a mensagem de cobrança do que falta ao cliente.</p>
-          <p className={styles.aviso}>A cobrança tem limite; passou dele, sobe para a advogada responsável, por ser perícia (G15).</p>
+          <p className={styles.aviso}>A cobrança tem limite; passou dele, sobe para a advogada responsável, por ser perícia.</p>
           {documentos.passouDoLimite && <p className={styles.trava}>Passou do limite: a advogada responsável decide. A cobrança para aqui.</p>}
 
           <section className={styles.cartao} aria-labelledby="contato">
@@ -149,7 +149,7 @@ export function CobrarDocumentoPericia({ processoId }: { processoId: string }) {
               </label>
               <p className={cobranca.detalhe}>
                 Sugerido pela IA com as perguntas do roteiro do benefício. Diz só o que o documento deve abordar, sem diagnóstico, CID, grau, conclusão nem frase
-                pronta (G20).
+                pronta.
               </p>
               {problema && <p className={styles.trava}>{problema}</p>}
               <button

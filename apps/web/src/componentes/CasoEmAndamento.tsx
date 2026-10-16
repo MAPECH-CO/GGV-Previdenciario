@@ -8,13 +8,15 @@ import type { Ficha, Processo } from '../dados/tipos.ts'
 import { calculoPendente } from '../regras/calculo.ts'
 import { juntar } from '../regras/checklist.ts'
 import { precisaDeParecer } from '../regras/liberacao.ts'
-import { usePode } from '../sessao.ts'
+import { podeAbrir } from '../regras/acesso.ts'
+import { usePode, useSessao } from '../sessao.ts'
 import { Cartao } from './Cartao.tsx'
 import styles from './CasoEmAndamento.module.css'
 
-/** "Caso em andamento" (Figma 73:351): um cartão por processo. A visão do Atendimento nunca traz petição nem valores. */
+/** "Caso em andamento" (Figma 73:351): um cartão por processo. */
 export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
   const { processos } = ficha
+  const perfil = useSessao()?.perfilAtivo
   // GGVP-162: a página do processo é do Jurídico e do Sócio; o Atendimento e a Documentação leem o caso aqui, sem link.
   const abreProcesso = usePode('processo.abrir')
   return (
@@ -59,7 +61,7 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
           </>
         )
         return [
-          destino ? (
+          destino && podeAbrir(perfil, destino) ? (
             <a key={p.id} className={styles.caso} href={destino}>
               {conteudo}
             </a>
@@ -71,7 +73,6 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
           <AtalhosDoCaso key={`${p.id}-atalhos`} processo={p} />,
         ]
       })}
-      <p className={styles.nota}>Petição, estratégia e valores não aparecem para o Atendimento.</p>
     </Cartao>
   )
 }
@@ -81,19 +82,23 @@ export function CasoEmAndamento({ ficha }: { ficha: Ficha }) {
  * processo é do servidor; a linha do tempo da deficiência e a dispensa do parecer, pelo perfil, no caso da semente e no do
  * servidor (GGVP-137: as rotas existem nos dois; o parecer do caso do servidor vem da sincronização da documentação médica).
  */
+type Atalho = { rotulo: string; href: string }
+
 function AtalhosDoCaso({ processo: p }: { processo: Processo }) {
   const perfil = usePerfil()?.id
+  const perfilDaSessao = useSessao()?.perfilAtivo
   // O histórico do processo é de quem abre o processo (GGVP-162).
   const abreProcesso = usePode('processo.abrir')
   const semente = !doServidor(p.id)
   const senior = perfil?.startsWith('senior') === true
   // Só a sênior dispensa (GGVP-33); com o parecer suficiente ou já dispensado, não há o que dispensar.
   const situacao = senior && precisaDeParecer(p.beneficio) ? (parecerParaOPortao(ler(), p.id)?.situacao ?? 'sem-parecer') : undefined
+  // Só o atalho que o perfil abre: nada de link que acaba em "Sem permissão".
   const atalhos = [
     abreProcesso && !semente && { rotulo: 'Histórico do processo', href: `/casos/${p.id}/historico` },
     doJuridico(perfil) && p.beneficio.startsWith('aposentadoria-pcd') && { rotulo: 'Linha do tempo da deficiência', href: `/casos/${p.id}/deficiencia` },
     situacao && situacao !== 'suficiente' && situacao !== 'dispensado' && { rotulo: 'Dispensar o parecer', href: `/casos/${p.id}/parecer/dispensa` },
-  ].filter((a) => !!a)
+  ].filter((a): a is Atalho => !!a && podeAbrir(perfilDaSessao, a.href))
   if (!atalhos.length) return null
   return (
     <ul className={styles.atalhos} aria-label={`Atalhos do caso ${p.numero ?? nomeBeneficio(p.beneficio)}`}>

@@ -63,31 +63,31 @@ export function portaoDoPedido(
   const t = semAcento(texto)
   switch (intencao) {
     case 'senha':
-      return { portao: 'G9', texto: 'A senha do gov.br fica só no cofre e o chat nunca a devolve (G9). Quem precisa usa pelo cofre, no passo do Meu INSS.' }
+      return { portao: 'G9', texto: 'A senha do gov.br fica só no cofre e o chat nunca a devolve. Quem precisa usa pelo cofre, no passo do Meu INSS.' }
     case 'honorarios':
       return {
         portao: 'G19',
-        texto: 'Não calculo valor nem honorários: o valor vem do comprovante, e regra numérica é código com teste, nunca resposta da IA (G19). O percentual de honorários está no contrato.',
+        texto: 'Não calculo valor nem honorários: o valor vem do comprovante, e regra numérica é código com teste, nunca resposta da IA. O percentual de honorários está no contrato.',
       }
     case 'escolher-perito':
       return { texto: 'A IA não escolhe nem sugere o perito: quem nomeia é o INSS ou o juízo. Quando o nome chegar, identifique o perito na página do processo, em um clique.' }
     case 'avisar-cliente':
       return {
         portao: 'G8',
-        texto: 'O chat não fala com o cliente. O aviso do resultado só sai depois do OK da Sênior na prestação de contas (G8), pela tela de mensagens ao cliente.',
+        texto: 'O chat não fala com o cliente. O aviso do resultado só sai depois do OK da Sênior na prestação de contas, pela tela de mensagens ao cliente.',
       }
     case 'aprovar': {
-      if (/parecer/.test(t)) return { portao: 'G17', texto: 'A IA nunca aprova parecer: o parecer médico só vale confirmado por uma pessoa do Jurídico (G17).' }
-      if (/despach/.test(t)) return { portao: 'G4', texto: 'A IA nunca despacha: quem despacha o caso é a sênior (G4).' }
-      if (/exigencia/.test(t)) return { portao: 'G5', texto: 'A IA nunca decide a exigência: quem analisa e define o setor são os advogados (G5).' }
-      if (/pedido/.test(t)) return { portao: 'G2', texto: 'A IA nunca aprova o pedido: falta o OK do sênior (G2).' }
-      return { portao: 'G6', texto: 'A IA nunca aprova nem assina petição: a advogada assina o conteúdo (G6).' }
+      if (/parecer/.test(t)) return { portao: 'G17', texto: 'A IA nunca aprova parecer: o parecer médico só vale confirmado por uma pessoa do Jurídico.' }
+      if (/despach/.test(t)) return { portao: 'G4', texto: 'A IA nunca despacha: quem despacha o caso é a sênior.' }
+      if (/exigencia/.test(t)) return { portao: 'G5', texto: 'A IA nunca decide a exigência: quem analisa e define o setor são os advogados.' }
+      if (/pedido/.test(t)) return { portao: 'G2', texto: 'A IA nunca aprova o pedido: falta o OK do sênior.' }
+      return { portao: 'G6', texto: 'A IA nunca aprova nem assina petição: a advogada assina o conteúdo.' }
     }
     case 'protocolar':
       if (caso?.fase === 'judicial' || /justica|juizo|vara/.test(t)) {
-        return { portao: 'G7', texto: 'Não protocolo na Justiça pelo chat: faltam as três travas conferidas por uma pessoa: Tema 350, pacote completo e CPF (G7).' }
+        return { portao: 'G7', texto: 'Não protocolo na Justiça pelo chat: faltam as três travas conferidas por uma pessoa: Tema 350, pacote completo e CPF.' }
       }
-      if (!caso?.aprovadoPelaSenior) return { portao: 'G2', texto: 'Não dá para protocolar: falta o OK do sênior (G2). Nada vai ao INSS sem ele.' }
+      if (!caso?.aprovadoPelaSenior) return { portao: 'G2', texto: 'Não dá para protocolar: falta o OK do sênior. Nada vai ao INSS sem ele.' }
       return null
     default:
       return null

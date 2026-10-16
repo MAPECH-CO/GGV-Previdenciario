@@ -21,6 +21,7 @@ async function fichaDoLead(page: Page, nome: string, telefone: string) {
 // (Pedro, 08/10). O banco de teste não tem cliente com telefone para o navegador.
 test('CA1 · o lead, ainda sem contrato, muda o telefone sem a verificação, e a mudança fica no histórico', async ({ page }) => {
   await fichaDoLead(page, 'Rosa Telefone Teste', '11922221111')
+  await page.getByRole('button', { name: 'Editar dados' }).click()
   await page.getByLabel('Telefone / WhatsApp *').fill('(11) 90000-0044')
   await expect(page.getByRole('group', { name: 'Mudou o telefone: como você confirmou que é o cliente?' })).toHaveCount(0)
   await page.getByRole('button', { name: 'Salvar alterações' }).click()

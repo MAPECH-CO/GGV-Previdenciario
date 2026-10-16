@@ -89,7 +89,7 @@ function sugestao(texto: string, fontes: FonteDaIa[] = []): SugestaoDaIa {
 const resposta = (texto: string, links: LinkDoChat[] = [], fontes: FonteDaIa[] = []): RespostaDoChat => ({ tipo: 'resposta', sugestao: sugestao(texto, fontes), links })
 const recusa = (texto: string, portao?: string, extra: Partial<RespostaDoChat> = {}): RespostaDoChat => ({
   tipo: 'recusa',
-  sugestao: sugestao(texto, portao ? [{ tipo: 'regra', referencia: portao }] : []),
+  sugestao: sugestao(texto, portao ? [{ tipo: 'regra', referencia: PORTOES[portao] ?? portao }] : []),
   links: [],
   ...(portao ? { portao } : {}),
   ...extra,
@@ -220,7 +220,7 @@ async function consultarValor(texto: string, quem: QuemPergunta, processoId?: st
   if (!achado || 'erro' in achado || !achado.processoId) return resposta('De qual cliente? Escreva o nome completo.')
   const valor = (c?.valores ?? []).find((v) => v.tipo === tipo)
   if (!valor) return resposta(`${achado.ficha.nome} ainda não tem ${tipo === 'causa' ? 'valor da causa' : tipo === 'renda-por-pessoa' ? 'renda por pessoa' : 'prestação de contas'} lançado no caso.`)
-  return resposta(`${valor.rotulo} de ${achado.ficha.nome}: ${valor.valor}. O valor vem do documento do caso; não calculo valor nem honorários (G19).`, [
+  return resposta(`${valor.rotulo} de ${achado.ficha.nome}: ${valor.valor}. O valor vem do documento do caso; não calculo valor nem honorários.`, [
     { rotulo: `${achado.ficha.nome} · Abrir o caso`, href: `/casos/${achado.processoId}` },
   ], [{ tipo: 'documento', referencia: `${achado.processoId} · ${valor.rotulo}` }])
 }
@@ -384,7 +384,7 @@ async function pedirPeca(texto: string, quem: QuemPergunta, processoId?: string)
       processoId: achado.processoId,
       passos: ['Pedir à IA a minuta, com o modelo da casa e as decisões parecidas do acervo (fontes citadas na minuta)', `A minuta entra na sua tarefa «${tituloDaTarefa(achado.ficha.nome, 'Conferir petição')}»`],
       conferir: ['O cliente e o tipo de peça'],
-      travas: ['Você confere e assina (G6): a IA não assina nem protocola', 'Petição só com o parecer médico "Suficiente" confirmado por pessoa (G17)'],
+      travas: ['Você confere e assina: a IA não assina nem protocola', 'Petição só com o parecer médico "Suficiente" confirmado por pessoa'],
       rotuloConfirmar: 'Confirmar e pedir a minuta',
     },
     quem,
@@ -461,7 +461,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
         processoId: caso?.id,
         passos: [`Subir ${arquivo.nome} na pasta do processo`, 'Lançar na prestação de contas o valor que está no comprovante: você confere', `Pedir o OK da Sênior na prestação de contas (tarefa «${tituloDaTarefa(cliente.nome, 'Aprovar prestação de contas')}»)`],
         conferir: ['O cliente e o processo do comprovante', 'O valor e a data, no próprio comprovante'],
-        travas: ['O valor vem do comprovante; a IA não calcula honorários (G19)', 'O aviso ao cliente só sai depois do OK da Sênior (G8)'],
+        travas: ['O valor vem do comprovante; a IA não calcula honorários', 'O aviso ao cliente só sai depois do OK da Sênior'],
         rotuloConfirmar: 'Confirmar e lançar',
       },
       quem,
@@ -480,7 +480,7 @@ async function anexos(texto: string, arquivos: AnexoNaPergunta[], quem: QuemPerg
         processoId: caso?.id,
         passos: [`Subir ${arquivo.nome} na pasta do cliente`, 'Marcar «Laudo novo» na ficha e no processo', 'Avisar a advogada responsável, com o resumo e a comparação da IA'],
         conferir: ['O cliente do laudo'],
-        travas: [visaoDoPerfil(quem.id) === 'juridico' ? 'Você confere o resumo e a comparação da IA na análise do laudo.' : 'Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'],
+        travas: [visaoDoPerfil(quem.id) === 'juridico' ? 'Você confere o resumo e a comparação da IA na análise do laudo.' : 'Você não vê o conteúdo do laudo; só a advogada vê o resumo.'],
         rotuloConfirmar: 'Confirmar e enviar ao Jurídico',
       },
       quem,
@@ -530,7 +530,9 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
   await esperar()
   const texto = p.texto.trim()
   const imediata = recusaImediata(texto, quem.usuario)
-  if (imediata) return recusa(imediata, /\(G(\d+)\)/.exec(imediata)?.[0].slice(1, -1))
+  // O portão sai de qual recusa foi (pular o parecer é o G17; orientar a esconder a situação real, o G11), não do texto:
+  // o texto da tela não leva mais o código.
+  if (imediata) return recusa(imediata, recusaDoChat(texto) ? 'G17' : 'G11')
   if (p.anexos?.length) return anexos(texto, p.anexos, quem, p.processoId)
 
   // "O que é o G8?": o Suporte explica o portão (Figma 60:2).
@@ -603,19 +605,19 @@ export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; 
       const casos = (banco.casos ?? []).filter((c) => c.naPrestacaoDeContas)
       const links = casos.map((c) => {
         const ficha = banco.fichas.find((f) => f.processos.some((x) => x.id === c.processoId))!
-        return { rotulo: tituloDaTarefa(ficha.nome, 'Lançar prestação de contas'), sub: 'aguardando o OK da Sênior (G8)', href: `/casos/${c.processoId}` }
+        return { rotulo: tituloDaTarefa(ficha.nome, 'Lançar prestação de contas'), sub: 'aguardando o OK da Sênior', href: `/casos/${c.processoId}` }
       })
       return resposta(
-        casos.length ? `${casos.length === 1 ? 'Uma prestação espera' : `${casos.length} prestações esperam`} o OK da Sênior antes do lançamento (G8).` : 'Nenhuma prestação de contas chegou.',
+        casos.length ? `${casos.length === 1 ? 'Uma prestação espera' : `${casos.length} prestações esperam`} o OK da Sênior antes do lançamento.` : 'Nenhuma prestação de contas chegou.',
         links,
       )
     }
     case 'limite': {
       const itens = tarefasDeDecidirCobranca()
       return resposta(
-        itens.length ? `${itens.length === 1 ? 'Um caso passou' : `${itens.length} casos passaram`} do limite de cobranças (G15).` : 'Nenhum caso passou do limite hoje.',
+        itens.length ? `${itens.length === 1 ? 'Um caso passou' : `${itens.length} casos passaram`} do limite de cobranças.` : 'Nenhum caso passou do limite hoje.',
         itens.map((t: Tarefa) => ({ rotulo: `${t.cliente?.nome ?? t.contexto} · ${t.acao}`, sub: t.detalhe, href: t.href ?? '/' })),
-        [{ tipo: 'regra', referencia: 'G15' }],
+        [{ tipo: 'regra', referencia: PORTOES.G15 }],
       )
     }
     case 'subir-acervo':
@@ -689,7 +691,7 @@ export async function confirmarAcao(
       const titulo = tituloDaTarefa(acao.cliente!.nome, 'Conferir petição')
       criarTarefa({ processoId: acao.processoId, cliente: acao.cliente, acao: 'Conferir petição', titulo, detalhe: `minuta pedida pelo chat: ${acao.titulo.split(' · ')[1].toLowerCase()}`, responsavel: quem.usuario, setor: 'Jurídico', criadaPor: quem.usuario })
       registrarNoCaso(acao.processoId, quem.usuario, `Pediu a minuta (${acao.titulo.split(' · ')[1].toLowerCase()}) à IA`, 'D3.05')
-      r = { estado: 'feito', texto: `✓ Feito: a minuta foi pedida e entra na sua tarefa «${titulo}» para conferir e assinar (G6).`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
+      r = { estado: 'feito', texto: `✓ Feito: a minuta foi pedida e entra na sua tarefa «${titulo}» para conferir e assinar.`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
       break
     }
     case 'anexar-laudo': {
@@ -722,9 +724,9 @@ export async function confirmarAcao(
       // GGVP-44 CA13 (Mateus, 14/10): o OK da prestação é da Sênior.
       const senior = PESSOAS_POR_PERFIL.find((p) => p.id === 'senior')!.usuario
       const titulo = tituloDaTarefa(acao.cliente!.nome, 'Aprovar prestação de contas')
-      criarTarefa({ processoId: acao.processoId, cliente: acao.cliente, acao: 'Aprovar prestação de contas', titulo, detalhe: 'comprovante lançado pelo Financeiro · o aviso ao cliente só depois do OK (G8)', responsavel: senior, setor: 'Jurídico', criadaPor: quem.usuario })
-      registrarNoCaso(acao.processoId, quem.usuario, 'Lançou o comprovante na prestação de contas; pediu o OK da Sênior (G8)', 'D3b.02')
-      r = { estado: 'feito', texto: `✓ Feito: o comprovante está na pasta e a Sênior recebeu «${titulo}». O aviso ao cliente só sai depois do OK dela (G8).`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
+      criarTarefa({ processoId: acao.processoId, cliente: acao.cliente, acao: 'Aprovar prestação de contas', titulo, detalhe: 'comprovante lançado pelo Financeiro · o aviso ao cliente só depois do OK', responsavel: senior, setor: 'Jurídico', criadaPor: quem.usuario })
+      registrarNoCaso(acao.processoId, quem.usuario, 'Lançou o comprovante na prestação de contas; pediu o OK da Sênior', 'D3b.02')
+      r = { estado: 'feito', texto: `✓ Feito: o comprovante está na pasta e a Sênior recebeu «${titulo}». O aviso ao cliente só sai depois do OK dela.`, links: [{ rotulo: 'Abrir o caso', href: `/casos/${acao.processoId}` }] }
       break
     }
     case 'enviar-documento': {

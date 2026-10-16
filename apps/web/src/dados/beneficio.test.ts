@@ -37,8 +37,8 @@ describe('Definir o benefício · servidor de exemplo', () => {
     expect(sugestao!.base.map((c) => c.id)).toEqual(['acervo-0118', 'acervo-0342', 'acervo-0455'])
     expect(sugestao!.porque).toMatch(/^Parecido com 2 casos deferidos de Auxílio por Incapacidade Temporária na casa: parou de trabalhar, laudos/)
     expect(sugestao!.requisitos).toEqual([
-      { texto: 'Carência: 147 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: true },
-      { texto: 'Afastamento: 126 dias desde 06/2026; precisa de mais de 15 (calculado por código, G19)', atende: true },
+      { texto: 'Carência: 147 contribuições no CNIS; o mínimo é 12 (calculado por código)', atende: true },
+      { texto: 'Afastamento: 126 dias desde 06/2026; precisa de mais de 15 (calculado por código)', atende: true },
     ])
   })
 
@@ -49,8 +49,8 @@ describe('Definir o benefício · servidor de exemplo', () => {
     await definirBeneficio('natalia-entrevista', { beneficio: 'incapacidade-permanente', conferi: true })
     const ficha = (await obterFicha('natalia-exemplo'))!
     expect(ficha.historico.slice(-2).map((e) => e.oQue)).toEqual([
-      'Definiu o benefício do caso: Aposentadoria por Incapacidade Permanente · o que citou na entrevista (G3)',
-      'Manteve o que citou na entrevista; a IA sugeria Auxílio por Incapacidade Temporária (G3)',
+      'Definiu o benefício do caso: Aposentadoria por Incapacidade Permanente · o que citou na entrevista',
+      'Manteve o que citou na entrevista; a IA sugeria Auxílio por Incapacidade Temporária',
     ])
   })
 

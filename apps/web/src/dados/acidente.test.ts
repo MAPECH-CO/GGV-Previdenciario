@@ -131,7 +131,7 @@ describe('Auxílio-Acidente: prova do acidente · servidor de exemplo', () => {
       contradicoes: [{ id: 'nao-consolidada', texto: 'Lesão ainda não consolidada' }],
     })
     await expect(liberarAoJuridico('sebastiao-exemplo-1', tudoConferido)).rejects.toThrow(
-      'Não dá para liberar ao Jurídico: a análise da IA achou documento que contradiz o requisito do benefício (lesão ainda não consolidada). O caso fica parado até o Jurídico conferir o parecer (G18). Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.',
+      'Não dá para liberar ao Jurídico: a análise da IA achou documento que contradiz o requisito do benefício (lesão ainda não consolidada). O caso fica parado até o Jurídico conferir o parecer. Sugestão: trocar para Auxílio por Incapacidade Temporária; o caso muda de porta.',
     )
   })
 

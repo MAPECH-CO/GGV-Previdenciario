@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { UsuarioDaSessao } from '@ggv/contratos'
 import { CHAVE } from '../dados/servidor.ts'
 import { SessaoContexto } from '../sessao.ts'
-import { ITENS_DA_GESTAO, ITENS_DAS_BASES, ITENS_DE_CONSULTA_DO_SOCIO, itensDoPerfil } from './itensDaGestao.ts'
-import { Topbar, type ItemNavegacao } from './Topbar.tsx'
+import { menuDoPerfil } from './menuDoPerfil.ts'
+import { Topbar } from './Topbar.tsx'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -66,63 +66,64 @@ describe('Topbar', () => {
   })
 })
 
-describe('GGVP-78 · os itens do topo pelo perfil da sessão (Figma 1927:605, 1927:14, 1931:130)', () => {
-  const ids = (perfil: string | null, lista: ItemNavegacao[] = itens) => itensDoPerfil(lista, perfil).map((i) => i.id)
+describe('GGVP-78 · o topo pelo perfil da sessão, igual em toda tela', () => {
+  const ids = (perfil: string | null) => {
+    const { principais, gestao } = menuDoPerfil(perfil)
+    return { principais: principais.map((i) => i.id), gestao: gestao.map((i) => i.id) }
+  }
 
-  it('Clientes e Processos depois do Início e da Agenda para a Advogada e a Sênior; a líder só com Clientes (GGVP-162); a Gestão no fim, para quem tem', () => {
-    expect(ids('atendimento_lider')).toEqual(['inicio', 'agenda', 'clientes', 'tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'])
-    expect(ids('advogada')).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
-    expect(ids('senior', [...itens, { id: 'estudos', rotulo: 'Estudos de caso', href: '/estudos' }])).toEqual([
-      'inicio',
-      'agenda',
-      'clientes',
-      'processos',
-      'estudos',
-      'tentativas',
-      'prazos',
-      'cofre',
-      'resultados',
-      'configuracao',
-    ])
+  it('Clientes e Processos depois do Início e da Agenda; a líder só com Clientes (GGVP-162); a Gestão à parte', () => {
+    expect(ids('atendimento_lider')).toEqual({ principais: ['inicio', 'agenda', 'clientes'], gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'] })
+    expect(ids('advogada')).toEqual({ principais: ['inicio', 'agenda', 'clientes', 'processos'], gestao: [] })
+    expect(ids('senior')).toEqual({
+      principais: ['inicio', 'agenda', 'clientes', 'processos', 'estudos', 'roteiros'],
+      gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao', 'importar'],
+    })
   })
 
-  it('o Atendimento só tem a Agenda; o Financeiro, sem ver o caso, fica com os Resultados (GGVP-96) e o painel Financeiro; sem sessão, nada muda', () => {
-    expect(ids('atendimento')).toEqual(['inicio', 'agenda'])
-    expect(ids('financeiro')).toEqual(['inicio', 'agenda', 'resultados', 'financeiro'])
-    expect(ids(null)).toEqual(['inicio', 'agenda'])
+  it('o Atendimento tem a Agenda; o Financeiro, que não vê o caso, fica sem ela e com os Resultados e o painel Financeiro', () => {
+    expect(ids('atendimento')).toEqual({ principais: ['inicio', 'agenda'], gestao: [] })
+    expect(ids('financeiro')).toEqual({ principais: ['inicio', 'financeiro'], gestao: ['resultados'] })
+    expect(ids(null)).toEqual({ principais: ['inicio'], gestao: [] })
   })
 
-  it('GGVP-162 CA8 · o Sócio tem Clientes e Processos no topo, logo depois do Início e da Agenda', () => {
-    expect(ids('socio').slice(0, 4)).toEqual(['inicio', 'agenda', 'clientes', 'processos'])
+  it('GGVP-162 CA8 e CA9 · o Sócio tem as bases e as telas de consulta; a vigília no topo é só dele', () => {
+    expect(ids('socio')).toEqual({
+      principais: ['inicio', 'agenda', 'clientes', 'processos', 'estudos', 'roteiros', 'vigilia', 'financeiro'],
+      gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao', 'importar'],
+    })
+    for (const perfil of ['advogada', 'senior', 'juridico_adm', 'atendimento_lider']) expect(ids(perfil).principais).not.toContain('vigilia')
   })
 
-  it('GGVP-162 CA9 · o Sócio chega a todas as telas de consulta pelo topo, em toda tela; os outros perfis não mudam', () => {
-    expect(ids('socio')).toEqual([
-      'inicio',
-      'agenda',
-      'clientes',
-      'processos',
-      'estudos',
-      'roteiros',
-      'vigilia',
-      'tentativas',
-      'prazos',
-      'cofre',
-      'resultados',
-      'configuracao',
-      'financeiro',
-    ])
-    expect(ids('socio', [...itens, ...ITENS_DE_CONSULTA_DO_SOCIO])).toEqual(ids('socio'))
-    for (const perfil of ['advogada', 'senior', 'juridico_adm', 'atendimento_lider']) expect(ids(perfil)).not.toContain('vigilia')
+  it('com sessão, o topo ignora a lista da tela: o mesmo menu em qualquer página; a Gestão abre num menu só', () => {
+    const helena = { ...ana, nome: 'Helena', perfis: ['senior'], perfilAtivo: 'senior' }
+    render(
+      <SessaoContexto value={helena}>
+        <Topbar itens={[{ id: 'qualquer', rotulo: 'Qualquer', href: '/x' }]} ativo="prazos" funcao="" />
+      </SessaoContexto>,
+    )
+    const nav = screen.getByRole('navigation', { name: 'Principal' })
+    expect(screen.queryByRole('link', { name: 'Qualquer' })).toBeNull()
+    expect(nav.textContent).toContain('Roteiros de laudos')
+    const gestao = screen.getByRole('button', { name: 'Gestão · Prazos' })
+    expect(screen.queryByRole('link', { name: 'Tentativas bloqueadas' })).toBeNull()
+    fireEvent.click(gestao)
+    expect(gestao.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByRole('link', { name: 'Prazos' }).getAttribute('aria-current')).toBe('page')
+    fireEvent.keyDown(screen.getByRole('link', { name: 'Tentativas bloqueadas' }), { key: 'Escape' })
+    expect(screen.queryByRole('link', { name: 'Tentativas bloqueadas' })).toBeNull()
+    expect(document.activeElement).toBe(gestao)
   })
 
-  it('o painel Financeiro no topo de quem vê os totais em dinheiro: o Financeiro e o Sócio; a Sênior, não', () => {
-    expect(ids('socio').at(-1)).toBe('financeiro')
-    expect(ids('senior')).not.toContain('financeiro')
-    expect(ids('advogada')).not.toContain('financeiro')
-  })
-
-  it('o que a tela já trouxe não se repete', () => {
-    expect(ids('senior', [...itens, ...ITENS_DAS_BASES, ...ITENS_DA_GESTAO])).toEqual(ids('senior'))
+  it('o Financeiro, com um item só de gestão, tem os Resultados soltos, sem o menu', () => {
+    const julia = { ...ana, nome: 'Júlia', perfis: ['financeiro'], perfilAtivo: 'financeiro' }
+    render(
+      <SessaoContexto value={julia}>
+        <Topbar itens={[]} ativo="inicio" funcao="" />
+      </SessaoContexto>,
+    )
+    expect(screen.getByRole('link', { name: 'Resultados' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Gestão/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Agenda' })).toBeNull()
   })
 })
