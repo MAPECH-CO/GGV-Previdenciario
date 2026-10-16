@@ -39,6 +39,8 @@ O escritório quer medir se o portal melhora o resultado e o rendimento. Os épi
 7. **GGVP-156** · Quem vê a jurimetria (decisão do Mateus, 13/10): o Jurídico (advogada, Sênior e Jurídico administrativo) e o Sócio; a chance também para o Jurídico administrativo; fora do Jurídico, a perícia sem os números do perito e a Gestão sem os recortes da jurimetria.
 8. **GGVP-161** · "Vale recorrer?" (decisão do Mateus, 13/10): a chance do recurso pelos casos parecidos com recurso julgado, que o acervo passa a guardar, e a avaliação da IA, pronta e sem porcentagem.
 
+9. **GGVP-163** · A jurimetria do acervo histórico no portal e a chance por etapa do caso (Lucas, 16/10; Mateus pediu em 16/10, fora do "Refinada" porque a regra já está decidida no cartão): o portal lê a base dos 979 processos só pelas vistas `conhecimento.portal_*`; o perito, o juízo, a busca do acervo, a IA das etapas e a página de cada benefício ganham a base; a chance vira por etapa do caso (acordo é ganho, extinção fica fora, depois do laudo só entre os mesmos laudos, no LOAS idoso pelo estudo social); o Raio-X aceita `estudo_social`.
+
 Um ponto de "Agora ok?" no fim de cada história.
 
 ## Travadas

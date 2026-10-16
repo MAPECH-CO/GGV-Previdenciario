@@ -360,3 +360,104 @@ Nenhuma tela nova. A tela de leitura da publicação ganha a opção "Nomeação
 
 - **Nome do perito no texto:** o reconhecimento é pelo nome e pelas grafias da base. Perito novo, ou grafia diferente, fica como não reconhecido, e a pessoa liga pela pergunta de um clique.
 - **Perícia judicial:** nesta parte, o perito não é ligado direto na perícia judicial a partir da publicação; isso mexe no modelo da Perícia do Pedro e fica para a parte 2.
+
+## GGVP-163 · A jurimetria do acervo histórico no portal e a chance por etapa do caso (16/10)
+
+### Context
+
+O Lucas carregou no banco da homologação (projeto "PrevGGVLucas") o schema `conhecimento`, separado do `public`, com a
+leitura dos 979 processos do escritório (679 página a página): `processo`, `pericia`, `pessoa` (juízes, relatores e
+peritos), `trecho`, `indicador`, `tag` e as cinco vistas `portal_*`, todas `security_invoker` e sem GRANT para `anon` e
+`authenticated`. A data da base fica em `conhecimento.base` (`data_da_base`). Hoje o portal não lê nada disso: a chance,
+a IA das etapas, o perfil do perito e o entendimento do juízo leem só as tabelas do portal, quase vazias.
+
+O que a base traz, conferido em 16/10:
+- `portal_perito` (126): `nome`, `registro`, `tipo` (medico ou social), `grafias` (um objeto grafia → vezes) e `perfil`
+  (`tipo`, `onde`, `laudos`), em que cada laudo tem `processo`, `beneficio`, `desfecho`, `resultado`, `conclusao` e
+  `o_que_pesou`, sem data e sem o assunto do portal.
+- `portal_juizo_fundamento` (3.771): `juizo` no formato de `juizoDoCnj` ("TRF3 · 6301"), `tipo` (fundamento ou acórdão),
+  `beneficio`, `processo`, `desfecho`, `texto` (170 caracteres em média) e `pagina`. O 6301 tem 552 processos.
+- `portal_trecho` (13.572): `hash`, `origem`, `referencia` (o CNJ, ou a matéria na síntese), `beneficio`, `texto`,
+  `so_juridico` (12.893 só do Jurídico), `tipo`, `pagina` e `pessoa_id`. É a forma de `acervo_trecho` sem `caso_id` e
+  sem `embedding`.
+- `portal_indicador` (3.556): `indicador`, `beneficio`, `recorte` (geral, ano, juiz, vara, relator, perito médico ou
+  social, condição), `chave`, `nome`, `n`, `sim`, `valor` e `base_em`. O geral do LOAS deficiente: êxito no mérito 63 de
+  192, êxito com laudo desfavorável 4 de 115, com laudo favorável 55 de 72, extinção 159 de 351.
+- `portal_sintese` (126): `beneficio`, `materia`, `ordem` e `texto` em Markdown.
+
+### Goals / Non-Goals
+
+**Goals:** ler a base só pelas vistas (R1); o perito, o juízo, a busca do acervo, a IA das etapas e a página do benefício
+com a base (R2 a R5); a chance por etapa com a regra do Lucas (R6); a coluna `estudo_social` no Raio-X (R7); os números
+dos critérios CA1 a CA9 saindo do código com teste.
+
+**Non-Goals:** carregar a base (é do Lucas, recarregada inteira a cada leitura nova); o vetor dos trechos com a chave
+da OpenAI (segue a regra da GGVP-141: sem a chave, a busca é só por palavra); a importação do CSV do Raio-X (é a
+Sênior, pela tela, depois do deploy); o recorte por CID (GGVP-152 12.7); a página do benefício para fora do Jurídico.
+
+### Decisions
+
+1. **As vistas no Drizzle, fora do `esquema.ts`** (`apps/api/src/banco/conhecimento.ts`): `pgSchema('conhecimento')`
+   com `.view(...).existing()` para as cinco vistas e `.table('base')` só para leitura. O `drizzle.config.ts` ganha
+   `schemaFilter: ['public']`, então o drizzle-kit nunca gera nem apaga nada no `conhecimento`. O módulo de leitura
+   (`apps/api/src/fluxo/conhecimento.ts`) confere `to_regclass('conhecimento.portal_trecho')` a cada pedido: sem o schema,
+   devolve "sem base" e nada quebra. Nenhum cache: a data da base vem da tabela a cada leitura (CA4).
+2. **A base nos testes** (`apps/api/src/banco/conhecimento-de-teste.ts`): o PGlite ganha o schema com tabelas de mesma
+   forma das vistas, carregadas com dados inventados (um perito de registro 190895 com 38 laudos e 11 favoráveis, o juízo
+   "TRF3 · 6301" com fundamentos, trechos, indicadores e sínteses). Os números dos critérios saem desses dados.
+3. **O perito** (R2): em `rotas/pericia.ts`, onde os peritos do banco viram o mundo da perícia, cada perito ganha os laudos
+   históricos de `portal_perito` cujo nome, nome normalizado ou grafia bate (a comparação de `vigilia/perito.ts`, sem
+   título). O laudo histórico vira `LaudoDoPerfil` com `id` "conhecimento:<CNJ>", `caso` o CNJ (referência, não o
+   cliente), `beneficio`, `resultado`, `assunto` o rótulo do benefício e a marca `historico: true`; `juntarLaudos` não
+   duplica, e `jurimetria()` conta laudos e favoráveis com os históricos, mas calcula o tempo até o laudo só com os do
+   portal, que têm data. O `registro` da base sai no perfil quando existe. Nenhum perito da base é gravado no portal: o
+   casamento é na leitura.
+4. **O juízo** (R3): `jurimetriaDoJuizo` ganha `fundamentos` (`JurimetriaDoJuizo.fundamentos`): o total de processos
+   distintos do juízo na base e os grupos por tipo e benefício, cada um com o número de processos e até três exemplos
+   (processo e texto). `entendimentosDoJuizo` manda à IA, além das decisões do portal, até 40 fundamentos da base do
+   juízo, e aceita os processos deles como exemplo; `juizosParaLer` inclui o juízo com fundamentos e sem entendimentos.
+5. **Os trechos** (R4): `FONTES` de `ia/acervo.ts` ganha, quando a base existe, os trechos de `portal_trecho` com `de`
+   "Base histórica · <tipo>", `beneficio` da vista e `caso_id` nulo; o filtro do benefício passa a usar
+   `coalesce(f.beneficio, c.beneficio)` e aceita `caso_id` nulo. `alimentarAcervo` grava esses trechos em `acervo_trecho`
+   com o `hash` da vista (o `onConflictDoNothing` já impede duplicar) e os vetores seguem a rodada de sempre. A busca
+   pelo sentido aceita `caso_id` nulo também.
+6. **A página do benefício** (R5): rota `GET /api/base-historica/:beneficio` (`estudo.ver`) em `rotas/conhecimento.ts`,
+   com o contrato `BaseHistoricaDoBeneficio` (`packages/contratos/src/conhecimento.ts`): a data da base, a síntese em
+   ordem e os indicadores do recorte geral e por ano, cada um com `n`, `sim`, `valor` e `baseEm`. Tela
+   `/beneficios/<id>` (`BaseDoBeneficio.tsx`), com o Markdown da síntese renderizado em parágrafos e listas simples (sem
+   dependência nova) e a tabela das taxas "4 de 115 · base de 16/10"; o link entra na tela de Estudos, por benefício.
+   `regras/acesso.ts` gateia `/beneficios/` com `estudo.ver`.
+7. **A chance por etapa** (R6), em `fluxo/chance.ts`: `calcularChancePorEtapa(acervo, etapa)`. Ganho = procedente total,
+   procedente em parte, deferido e acordo; perda = improcedente; o resto fica fora. A etapa vem do caso: o resultado da
+   perícia médica mais nova do caso (favorável ou desfavorável) e, no LOAS idoso, o do estudo social; sem resultado, é
+   "antes da perícia". Na etapa do laudo, só os processos do acervo com `laudo_favoravel` igual (no LOAS idoso,
+   `estudo_social_favoravel`). Recorte vazio: a taxa da etapa anterior, com `aviso`. Benefício "outro": sem porcentagem.
+   O contrato `ChanceDeExito` ganha `etapa` e `aviso`; `REGRA_DA_CHANCE` diz a regra nova; a tela mostra os dois. Os
+   números de CA6 a CA9 estão no teste da regra, com o acervo montado pelas contagens da base.
+8. **A coluna `estudo_social`** (R7): `COLUNAS_DO_RAIO_X` ganha `estudo_social`; `analisarRaioX` lê sim ou não como o
+   laudo; `processo_acervo` ganha `estudo_social_favoravel` (migração 0037, gerada pelo drizzle-kit); a carga grava; os
+   indicadores do Raio-X ganham "Estudo social favorável".
+9. **O que fica para a Sênior**: o CSV do Raio-X de 16/10, gerado da base (uma linha por processo, com `laudo` e
+   `estudo_social` pelas tags únicas da base), entra pela tela depois do deploy. Até lá, a chance segue com o acervo
+   que existir, e o perito, o juízo, a busca e a página do benefício já leem a base.
+
+### Campos de formulário
+
+Nenhum campo novo de tela. A coluna `estudo_social` do CSV passa pela mesma leitura sim/não do laudo, no servidor.
+
+### Telas
+
+- `/beneficios/<id>`: "Base histórica · <benefício>", só para quem tem `estudo.ver`; link em Estudos.
+- O perfil do perito (sobreposição da perícia) e a jurimetria do juízo (página do processo) ganham os blocos históricos.
+- O cartão da chance mostra a etapa e o aviso do recorte vazio.
+
+### Risks / Trade-offs
+
+- **A base muda de forma:** as vistas são o contrato com o Lucas; se uma coluna mudar, a leitura falha alto no teste da
+  homologação, não em silêncio. O módulo lê só as colunas que usa.
+- **Grafias com ruído:** a base tem grafias com CRM e observações no meio; a comparação sem título e sem pontuação casa
+  as limpas, e a suja fica sem par, sem quebrar.
+- **Texto da base na IA:** os fundamentos e trechos já vêm sem dado pessoal do cliente (a base é anonimizada); o
+  portal ainda passa cada texto pelo `anonimizar` antes de gravar no acervo, por garantia.
+- **CA7 e CA8 dependem do CSV:** o laudo e o estudo social de cada processo entram no acervo pelo Raio-X; a regra está
+  testada com as contagens da base, e os números reais aparecem depois da carga da Sênior.
