@@ -15,8 +15,8 @@ a conversa registrou não é: quem vê o caso vê a conversa inteira. Quem confi
 ## ADDED Requirements
 
 ### Requirement: A conversa fica no banco do portal (CA1, CA5)
-Abrir, gravar (depois do aviso), pausar, finalizar, anexar a ligação, transcrever, conferir, a pendência e as versões
-SHALL ir ao servidor pela API, com o perfil da sessão, e nunca ficar só no navegador. A conversa SHALL abrir em
+Abrir, gravar (depois do aviso), pausar, finalizar, anexar a ligação, transcrever, conferir, a pendência e as versões SHALL
+ir ao servidor pela API, com o perfil da sessão, e nunca ficar só no navegador. A conversa SHALL abrir em
 `POST /api/conversas`, com a ficha no corpo (`POST /api/fichas/:id/conversas` é a conversa sem áudio da Recepção). A
 conferida SHALL atualizar a ficha da Recepção e a pessoa, com o valor de antes nas versões.
 

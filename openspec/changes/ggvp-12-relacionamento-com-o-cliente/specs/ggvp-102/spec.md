@@ -93,11 +93,12 @@ O convite e o lembrete da entrevista marcada SHALL sair pelo Chatwoot com o mode
 - **Então** o convite e o lembrete saem pelo Chatwoot com o modelo desta história
 
 ### Requirement: CA11 · Nenhum dado em aberto no texto ao cliente
-Teste do Pedro (14/10): no lead sem caso, o modelo "Boas-vindas" saía como "Seu caso de Não sei ainda começou".
 - O nome do benefício SHALL entrar no texto só quando o benefício é conhecido. "Não sei ainda", ou nenhum benefício, MUST NOT aparecer: a frase segue sem o nome.
 - Sem caso aberto, o modelo "Boas-vindas" SHALL ficar travado, com o motivo, como o convite sem entrevista.
 - O envio MUST recusar o texto com o benefício em aberto ("de Não sei ainda"), venha ele do modelo ou de uma edição.
 - O selo da janela SHALL dizer que o portal preencheu o texto, porque esses modelos são montados pelo código, sem IA.
+
+Teste do Pedro (14/10): no lead sem caso, o modelo "Boas-vindas" saía como "Seu caso de Não sei ainda começou".
 
 #### Scenario: CA11 · Boas-vindas para o lead sem caso
 - **Dado** o lead sem caso, com o benefício de interesse "Não sei ainda"
