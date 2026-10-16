@@ -3,6 +3,7 @@ import { mesAntes, type TotaisDasCustas, type VisaoDasCustas } from '@ggv/contra
 import { chamarApi } from '../api.ts'
 import { formatarDecimal, isoParaData } from '../campos.ts'
 import { CustasDoProcesso, DecisaoDoCusto } from '../componentes/CustasDoProcesso.tsx'
+import { NovoCusto } from '../componentes/NovoCusto.tsx'
 import { agora } from '../dados/servidor.ts'
 import { hojeIso, nomeDoMes, rotuloDoMes } from '../regras/datas.ts'
 import { usePode } from '../sessao.ts'
@@ -47,6 +48,9 @@ function VisaoDasCustasTela() {
   const [aviso, setAviso] = useState('')
   const [rodada, setRodada] = useState(0)
   const aprova = usePode('custas.aprovar')
+  // Pedro, 16/10: quem lança custo (o Financeiro; a Sênior lança pelo processo) lança daqui, de qualquer processo.
+  const lanca = usePode('custas.lancar')
+  const [novo, setNovo] = useState(false)
   const abreProcesso = usePode('processo.abrir')
 
   useEffect(() => {
@@ -71,16 +75,23 @@ function VisaoDasCustasTela() {
       titulo="Custas dos processos"
       subtitulo={SUBTITULO}
       acoes={
-        <label className={bases.filtro}>
-          Mês:
-          <select aria-label="Mês" value={mes} onChange={(e) => setMes(e.target.value)}>
-            {Array.from({ length: 12 }, (_, i) => mesAntes(atual, i)).map((m) => (
-              <option key={m} value={m}>
-                {rotuloDoMes(m)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <>
+          <label className={bases.filtro}>
+            Mês:
+            <select aria-label="Mês" value={mes} onChange={(e) => setMes(e.target.value)}>
+              {Array.from({ length: 12 }, (_, i) => mesAntes(atual, i)).map((m) => (
+                <option key={m} value={m}>
+                  {rotuloDoMes(m)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {lanca && (
+            <button type="button" className={bases.novo} onClick={() => setNovo(true)}>
+              + Novo custo
+            </button>
+          )}
+        </>
       }
     >
       {erro && (
@@ -89,6 +100,17 @@ function VisaoDasCustasTela() {
         </p>
       )}
       {aviso && <p role="status">{aviso}</p>}
+      {novo && (
+        <NovoCusto
+          podeAprovar={aprova}
+          aoFechar={() => setNovo(false)}
+          aoLancar={(texto) => {
+            setNovo(false)
+            setAviso(texto)
+            setRodada((n) => n + 1)
+          }}
+        />
+      )}
 
       {visao && (
         <>

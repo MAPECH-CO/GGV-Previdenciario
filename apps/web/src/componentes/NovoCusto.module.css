@@ -1,0 +1,94 @@
+/* "Novo custo" (Pedro, 16/10): a janela de atribuir tarefa (AtribuirTarefa.module.css), mais larga para o formulário. */
+.janela {
+  width: min(560px, calc(100vw / var(--zoom) - 32px));
+}
+
+.processo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.processo input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: var(--fonte-13);
+}
+
+.rotulo {
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.lista {
+  max-height: 220px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-8);
+  list-style: none;
+}
+
+.opcao {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--raio-6);
+  background: none;
+  color: var(--cor-texto);
+  font: inherit;
+  font-size: var(--fonte-13);
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcao:hover,
+.opcao:focus-visible {
+  background: var(--cor-acento-suave);
+}
+
+.escolhido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--cor-acento);
+  border-radius: var(--raio-8);
+  background: var(--cor-acento-suave);
+  font-size: var(--fonte-13);
+}
+
+.escolhido > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sub {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.trocar {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cor-acento);
+  font: inherit;
+  font-size: var(--fonte-12);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.aviso {
+  margin: 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}

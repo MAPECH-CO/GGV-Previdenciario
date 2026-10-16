@@ -11,8 +11,10 @@ import {
   LancarCusto,
   MSG_SEM_COMPROVANTE,
   Mes,
+  ProcessoParaCusto,
   RecusarCusto,
   ROTULO_BENEFICIO,
+  ROTULO_FASE_DA_LISTA,
   VisaoDasCustas,
   custasDoMes,
   pode,
@@ -25,6 +27,7 @@ import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
 import { caso, custoProcesso, eventoAuditoria, pessoa, prestacaoContas, usuario } from '../banco/esquema.ts'
 import { exigir } from '../sessao/rotas.ts'
+import { bateNaBusca } from '../../../web/src/regras/busca.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
 
@@ -244,5 +247,28 @@ export function registrarRotasCustas(app: FastifyInstance, { banco, agora = () =
       porProcesso: doMes.porProcesso.map((p) => ({ ...p, cliente: cliente(p.casoId) })).sort((a, b) => a.cliente.localeCompare(b.cliente, 'pt-BR')),
       totalDoMes: doMes.totalDoMes,
     })
+  })
+
+  // "Novo custo" na visão das custas (Pedro, 16/10): quem lança acha o processo pelo nome, CPF ou telefone do cliente, pela
+  // regra da busca do balcão. ponytail: lê todos os casos e filtra aqui, como a base de Clientes; buscar no SQL quando forem milhares.
+  app.get<{ Querystring: { busca?: string } }>('/api/custas/processos', { preHandler: exigir(banco, 'custas.lancar', agora) }, async (pedido) => {
+    const termo = (pedido.query.busca ?? '').trim()
+    if (termo.length < 2) return []
+    const casos = await banco
+      .select({ casoId: caso.id, cliente: pessoa.nome, cpf: pessoa.cpf, telefone: pessoa.telefone, beneficio: caso.beneficio, fase: caso.fase })
+      .from(caso)
+      .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
+    return casos
+      .filter((c) => bateNaBusca({ nome: c.cliente, cpf: c.cpf ?? undefined, telefone: c.telefone ?? '' }, termo))
+      .sort((a, b) => a.cliente.localeCompare(b.cliente, 'pt-BR'))
+      .slice(0, 20)
+      .map((c) =>
+        ProcessoParaCusto.parse({
+          casoId: c.casoId,
+          cliente: c.cliente,
+          beneficio: c.beneficio ? (ROTULO_BENEFICIO[c.beneficio as Beneficio] ?? c.beneficio) : null,
+          fase: ROTULO_FASE_DA_LISTA[c.fase as keyof typeof ROTULO_FASE_DA_LISTA] ?? c.fase,
+        }),
+      )
   })
 }
