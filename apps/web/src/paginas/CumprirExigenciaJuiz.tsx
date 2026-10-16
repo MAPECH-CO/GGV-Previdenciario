@@ -15,7 +15,7 @@ const MSG_DOCUMENTO = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 const MSG_INFORMACAO = 'Escreva a informação que conseguiu com o cliente ou anexe um documento (PDF ou imagem, até 25 MB).'
 /** A exigência do juiz (GGVP-83) e a pendência do despacho da Sênior (GGVP-58) usam o mesmo laço, em endereços próprios. */
 const DA_ORIGEM = {
-  juizo: { rota: 'exigencia-juiz', titulo: 'Cumprir exigência do juiz', dica: 'O documento fica como a prova do item: sem ele, a advogada não manifesta (G21).' },
+  juizo: { rota: 'exigencia-juiz', titulo: 'Cumprir exigência do juiz', dica: 'O documento fica como a prova do item: sem ele, a advogada não manifesta.' },
   despacho: { rota: 'pendencias', titulo: 'Cumprir pendência', dica: 'Sem o card de todos os setores, a advogada não pede a petição.' },
 } as const
 

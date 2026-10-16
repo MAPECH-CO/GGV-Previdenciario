@@ -1,0 +1,190 @@
+/* A busca única do topo: o campo e, por cima da tela, o resultado. */
+.busca {
+  position: relative;
+  width: 100%;
+}
+
+.campo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border: 1px solid var(--cor-borda-controle);
+  border-radius: var(--raio-10);
+  background: var(--cor-fundo);
+  transition-property: border-color, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--curva);
+}
+
+.campo:hover {
+  border-color: var(--cor-texto-suave-2);
+}
+
+.campo:focus-within {
+  border-color: var(--cor-acento);
+  background: var(--cor-superficie);
+  outline: 3px solid var(--cor-acento-suave);
+}
+
+.lupa {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-16);
+}
+
+.entrada {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+}
+
+.entrada::placeholder {
+  color: var(--cor-texto-suave);
+}
+
+/* O "×" do navegador sai: o nosso tem área de toque e nome. */
+.entrada::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.limpar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: transparent;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-18);
+}
+
+.limpar:hover {
+  background: var(--cor-painel-neutro-3);
+  color: var(--cor-texto);
+}
+
+.limpar:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 1px;
+}
+
+.resultado {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(70vh, 520px);
+  padding: 10px 8px;
+  overflow-y: auto;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-12);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-3);
+  animation: surgir 140ms var(--curva);
+}
+
+.resultado[hidden] {
+  display: none;
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resultado {
+    animation-name: aparecer;
+  }
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+    }
+  }
+}
+
+.grupo {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 8px 2px;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.grupo:first-child {
+  margin-top: 0;
+}
+
+.contagem {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--raio-8);
+  color: var(--cor-texto);
+}
+
+a.item:hover {
+  background: var(--cor-fundo);
+}
+
+a.item:focus-visible {
+  background: var(--cor-acento-suave);
+  outline: 2px solid var(--cor-acento);
+  outline-offset: -2px;
+}
+
+.titulo {
+  font-size: var(--fonte-14);
+  font-weight: 500;
+}
+
+.detalhe {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.nota,
+.erro {
+  margin: 4px 10px;
+  font-size: var(--fonte-13);
+}
+
+.nota {
+  color: var(--cor-texto-suave);
+}
+
+.erro {
+  color: var(--cor-erro);
+}

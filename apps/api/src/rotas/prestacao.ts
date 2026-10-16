@@ -27,7 +27,7 @@ import { desfechoNoAcervo } from '../fluxo/ficha-do-desfecho.ts'
 
 export const MSG_SEM_DEFERIDO = 'A prestação de contas nasce do deferimento registrado na vigília.'
 export const MSG_ANTES_DA_PRESTACAO = 'A ida ao banco é agendada depois da prestação de contas concluída.'
-export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da Sênior na prestação de contas (G8).'
+export const MSG_G8 = 'O aviso ao cliente só sai depois do OK da Sênior na prestação de contas.'
 export const MODELO_IDA_AO_BANCO = 'Confirmação da ida ao banco'
 /** O texto padrão do modelo (o da semente, sem a marca de exemplo). A Sênior ajusta na Configuração (GGVP-158 P6.4). */
 export const TEXTO_PADRAO_IDA_AO_BANCO =

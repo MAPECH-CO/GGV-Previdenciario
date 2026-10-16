@@ -44,7 +44,7 @@ describe('Liberar ao Jurídico · tela do passo', () => {
   it('CA2 e CA7 · o Sebastião do Figma: parecer Suficiente registrado, mas o checklist sem a circunstância do acidente trava a liberação', async () => {
     await abrir('sebastiao-exemplo-1')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sebastião Exemplo · Liberar ao Jurídico')
-    const parecer = screen.getByRole('checkbox', { name: /Parecer médico Suficiente \(G17\) · confirmado por Dra\. Paula, 15\/07/ }) as HTMLInputElement
+    const parecer = screen.getByRole('checkbox', { name: /Parecer médico Suficiente · confirmado por Dra\. Paula, 15\/07/ }) as HTMLInputElement
     expect(parecer.checked).toBe(true)
     expect(parecer.disabled).toBe(true)
     expect((screen.getByRole('checkbox', { name: /Checklist do Auxílio Acidentário/ }) as HTMLInputElement).disabled).toBe(true)
@@ -112,11 +112,11 @@ describe('Liberar ao Jurídico · tela do passo', () => {
       { perfil: 'advogada', nome: 'Dra. Paula (exemplo)' },
     )
     await abrir('rita-exemplo-1')
-    expect(screen.getByText(/Parecer médico Insuficiente \(G17\) · confirmado por Dra\. Paula \(exemplo\), 05\/10: falta o complemento do médico/)).toBeTruthy()
+    expect(screen.getByText(/Parecer médico Insuficiente · confirmado por Dra\. Paula \(exemplo\), 05\/10: falta o complemento do médico/)).toBeTruthy()
     fireEvent.click(screen.getByRole('checkbox', { name: /Checklist do LOAS Deficiente/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }))
     expect(liberar().disabled).toBe(true)
-    expect(screen.getByText('Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito (G17).')).toBeTruthy()
+    expect(screen.getByText('Não dá para liberar ao Jurídico: o parecer médico está Insuficiente. Falta o complemento do médico e o parecer refeito.')).toBeTruthy()
   })
 
   it('GGVP-33 CA2 · a dispensa de duas sêniores aparece no item do parecer e libera', async () => {
@@ -132,7 +132,7 @@ describe('Liberar ao Jurídico · tela do passo', () => {
     await pedirDispensa('rita-exemplo-1', 'Prazo do juiz vence e o médico só atende em novembro.', { perfil: 'senior', nome: 'Dra. Renata (exemplo)' })
     await responderDispensa('rita-exemplo-1', true, { perfil: 'senior-2', nome: 'Dr. Otávio (exemplo)' })
     await abrir('rita-exemplo-1')
-    const parecer = screen.getByRole('checkbox', { name: /Parecer médico dispensado por duas sêniores \(G17\) · Dra\. Renata \(exemplo\) e Dr\. Otávio \(exemplo\), 05\/10/ }) as HTMLInputElement
+    const parecer = screen.getByRole('checkbox', { name: /Parecer médico dispensado por duas sêniores · Dra\. Renata \(exemplo\) e Dr\. Otávio \(exemplo\), 05\/10/ }) as HTMLInputElement
     expect(parecer.checked).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: /Checklist do LOAS Deficiente/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }))
@@ -148,7 +148,7 @@ describe('G18 no Auxílio-Acidente · tela da liberação (GGVP-47, CA4)', () =>
     })
     await arquivarTudo('sebastiao-exemplo')
     await abrir('sebastiao-exemplo-1')
-    const parecer = screen.getByRole('checkbox', { name: /Parecer médico \(G18\): a IA achou contradição num documento que o Jurídico ainda não conferiu/ }) as HTMLInputElement
+    const parecer = screen.getByRole('checkbox', { name: /Parecer médico: a IA achou contradição num documento que o Jurídico ainda não conferiu/ }) as HTMLInputElement
     expect(parecer.checked).toBe(false)
     expect(liberar().disabled).toBe(true)
   })

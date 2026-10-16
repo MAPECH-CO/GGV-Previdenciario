@@ -101,10 +101,10 @@
 
 .atual a {
   border-color: var(--cor-acento);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
   font-weight: 600;
-  box-shadow: var(--sombra-acento);
+  box-shadow: none;
 }
 
 .nao-chegou span {

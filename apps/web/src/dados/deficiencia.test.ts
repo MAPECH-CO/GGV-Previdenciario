@@ -33,7 +33,7 @@ describe('Linha do tempo da deficiência · servidor de exemplo', () => {
       ['sem', 2260, 0.8, 1808],
     ])
     expect([e.preponderante, e.convertido, e.minimo, e.falta]).toEqual(['moderada', 5940, 24, 2820])
-    expect(enquadramentoDoCaso('cleide-exemplo-1')).toBe('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código (G19)')
+    expect(enquadramentoDoCaso('cleide-exemplo-1')).toBe('grau moderada · 16 anos, 3 meses e 10 dias convertidos · mínimo de 24 anos · calculado por código')
   })
 
   it('CA2 · a advogada registra um agravamento novo: o grau muda a partir da data; o histórico não leva o dado de saúde', async () => {

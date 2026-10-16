@@ -237,7 +237,7 @@ describe('GGVP-72 · assinatura digital pelo ZapSign · servidor de exemplo', ()
     expect(ler().tarefas.find((t) => t.processoId === 'nair-exemplo-1')).toMatchObject({
       setor: 'Jurídico',
       acao: 'Colher assinatura · limite de tentativas',
-      detalhe: 'Aposentadoria por Idade · 2 tentativas sem assinatura (G15) · o Atendimento tentou em 26/09 e 05/10',
+      detalhe: 'Aposentadoria por Idade · 2 tentativas sem assinatura · o Atendimento tentou em 26/09 e 05/10',
     })
     await expect(registrarTentativaDeAssinatura('nair-exemplo-1', 'ligacao')).rejects.toThrow('Ainda não é dia')
   })
@@ -436,7 +436,7 @@ describe('GGVP-89 · cópia do contrato para o cliente levar · servidor de exem
     const visita = await marcarVisitaDaCopia('cleide-exemplo-2', '08/10/2026', '10:30')
     expect(visita).toMatchObject({ data: '2026-10-08', hora: '10:30', oQue: 'Entregar cópia do contrato', tipo: 'presencial', duracao: 30 })
     const agenda = await eventosDaAgenda('2026-10-05', '2026-10-09')
-    expect(agenda.find((e) => e.id === visita.id)).toMatchObject({ titulo: 'Cleide Exemplo', oQue: 'Entregar cópia do contrato', passo: 'D1.20 · Entregar a cópia do contrato' })
+    expect(agenda.find((e) => e.id === visita.id)).toMatchObject({ titulo: 'Cleide Exemplo', oQue: 'Entregar cópia do contrato', passo: 'Entregar a cópia do contrato' })
     expect(agenda.some((e) => e.id === 'cleide-retirada')).toBe(false)
     expect(tarefasDoContrato().find((t) => t.processoId === 'cleide-exemplo-2')).toMatchObject({
       detalhe: 'Aposentadoria Especial · contrato assinado em 12/07 · retirada 08/10 às 10:30',

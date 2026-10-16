@@ -51,7 +51,7 @@ test('GGVP-96 · o Financeiro vê só os Resultados da Gestão; o Sócio acha o 
   await busca.fill('Rita')
   await busca.press('Enter')
   await page.getByRole('region', { name: 'Resultado da busca' }).getByRole('link', { name: 'Rita Exemplo' }).click()
-  await expect(page.getByRole('heading', { level: 2, name: 'Rita Exemplo' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Rita Exemplo' })).toBeVisible()
   // O Sócio lê tudo (Pedro, 09/10), inclusive os dados bancários do repasse.
   await expect(page.getByRole('heading', { name: 'Dados bancários para o repasse' })).toBeVisible()
 })

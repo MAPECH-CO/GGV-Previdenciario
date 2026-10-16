@@ -24,7 +24,7 @@ describe('Parecer médico de suficiência · janela', () => {
     const resultado = screen.getByRole('status')
     expect(resultado.textContent).toContain('SUFICIENTE')
     expect(resultado.textContent).toContain('A documentação médica cobre o que o Auxílio Acidentário exige.')
-    expect(resultado.textContent).toContain('Sugerido pela IA em 14/07 · confirmado por pessoa: Dra. Paula, 15/07 (G17). Só a sênior dispensa o parecer, com justificativa.')
+    expect(resultado.textContent).toContain('Sugerido pela IA em 14/07 · confirmado por pessoa: Dra. Paula, 15/07. Só a sênior dispensa o parecer, com justificativa.')
     const docs = within(screen.getByRole('list', { name: 'Documentos analisados' })).getAllByRole('listitem')
     expect(docs.map((d) => d.textContent)).toContain('PDFLaudo médico · 09/2025Dr. Ortopedista Exemplo · sequela consolidada, redução da capacidade')
     const roteiro = screen.getByRole('list', { name: 'Roteiro aplicado' })
@@ -55,7 +55,7 @@ describe('Parecer médico de suficiência · janela', () => {
 
   it('antes da conferência da advogada, o Atendimento vê que o Jurídico ainda confere', async () => {
     await abrir('rita-exemplo-1', 'Atendimento')
-    expect(screen.getByRole('status').textContent).toContain('A IA analisou os documentos; falta a conferência do Jurídico (G17).')
+    expect(screen.getByRole('status').textContent).toContain('A IA analisou os documentos; falta a conferência do Jurídico.')
     expect(screen.getByText('Nada por enquanto: o Jurídico ainda confere.')).toBeTruthy()
   })
 
@@ -70,7 +70,7 @@ describe('Parecer médico de suficiência · janela', () => {
     await responderDispensa('rita-exemplo-1', true, { perfil: 'senior-2', nome: 'Dr. Otávio (exemplo)' })
     await abrir('rita-exemplo-1', 'Atendimento')
     expect(screen.getByRole('status').textContent).toContain('DISPENSADO')
-    expect(screen.getByRole('heading', { name: 'Dispensa do parecer (G17)' }).closest('section')!.textContent).toContain(
+    expect(screen.getByRole('heading', { name: 'Dispensa do parecer' }).closest('section')!.textContent).toContain(
       'Pedida por Dra. Renata (exemplo) em 06/10 · aprovada por Dr. Otávio (exemplo) em 06/10. Justificativa: Prazo do juiz vence e o médico só atende em novembro.',
     )
     expect(screen.queryByRole('link', { name: 'Dispensar o parecer' })).toBeNull()

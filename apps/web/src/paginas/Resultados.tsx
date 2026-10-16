@@ -8,7 +8,7 @@ import styles from './Passo.module.css'
 import r from './Resultados.module.css'
 
 const SUBTITULO =
-  'Cada número vem dos desfechos gravados no portal, com o número de casos e a data da base. Não há amostra mínima: toda amostra conta (G22).'
+  'Cada número vem dos desfechos gravados no portal, com o número de casos e a data da base. Não há amostra mínima: toda amostra conta.'
 
 const casos = (n: number) => `${n} ${n === 1 ? 'caso' : 'casos'}`
 type Base = Extract<PainelDeResultados['baseDoAcervo'], { situacao: 'com_dados' }>

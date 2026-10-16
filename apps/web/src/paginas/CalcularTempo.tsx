@@ -142,7 +142,7 @@ function CalculoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
             <>
               {!cnis && (
                 <p className={proprio.alerta} role="alert">
-                  Sem CNIS no caso: peça o impresso ao cliente ou baixe do Meu INSS (a senha fica no cofre, G9).
+                  Sem CNIS no caso: peça o impresso ao cliente ou baixe do Meu INSS (a senha fica no cofre).
                 </p>
               )}
               {cnis && (
@@ -232,7 +232,7 @@ function CalculoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
                       </div>
                       <div className={proprio.item}>
                         <dt>Regra</dt>
-                        <dd>informada pelo advogado, conferida com o CNIS; nunca pela IA (G19)</dd>
+                        <dd>informada pelo advogado, conferida com o CNIS; nunca pela IA</dd>
                       </div>
                     </dl>
                     {v.podeAposentar === 'nao' && (
@@ -323,7 +323,7 @@ function CalculoDaEntrevista({ agendamentoId }: { agendamentoId: string }) {
               </button>
             </div>
           </div>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p>Conferir: Conferi o cálculo com o CNIS</p>
           <p className={styles.ladoSub}>«Concluir» só habilita com as decisões respondidas e as conferências marcadas.</p>
           <h3 className={styles.ladoSecao}>Como segue</h3>

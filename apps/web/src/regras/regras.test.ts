@@ -776,7 +776,7 @@ describe('GGVP-40 · Entrevistar com gravação', () => {
     expect(minutos(2292)).toBe('38 min')
     expect(minutos(20)).toBe('1 min')
     const roteiro = roteiroDaEntrevista({ ...lead, analise: { acidentario: false, quem: '', quando: '' } })
-    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista: não · sem senha no cofre (G9)')
+    expect(roteiro[1]).toBe('Acidentário já decidido antes da entrevista: não · sem senha no cofre')
     expect(roteiro.at(-1)).toBe('Quem mora na casa e a renda de cada um')
     expect(roteiroDaEntrevista({ ...lead, beneficioInteresse: 'incapacidade-temporaria' })).toHaveLength(5)
   })
@@ -790,7 +790,7 @@ describe('GGVP-40 · Entrevistar com gravação', () => {
     ]
     expect(extraidas.map((e) => situacaoDaInformacao(e, lead))).toEqual(['confirmado', 'detectado', 'pedir', 'cofre'])
     expect(pendenciasDaEntrevista(lead, extraidas)).toEqual([
-      'Pedir 2 laudos do ortopedista (kit, G1).',
+      'Pedir 2 laudos do ortopedista (kit).',
       'Perguntar se houve acidente de trabalho (muda o benefício).',
       'Confirmar o CEP e o contato de apoio.',
     ])
@@ -934,12 +934,12 @@ describe('GGVP-51 · Definir o benefício com apoio do acervo', () => {
     expect(diasDesde('junho', '2026-10-05')).toBeNull()
     const vinculos = [{ empresa: 'Exemplo Ltda', inicio: '2025-11', fim: '2026-05' }]
     expect(requisitosDoBeneficio('incapacidade-temporaria', { vinculos, semTrabalharDesde: '09/2026' }, '2026-10-05')).toEqual([
-      { texto: 'Carência: 7 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)', atende: false },
-      { texto: 'Afastamento: 34 dias desde 09/2026; precisa de mais de 15 (calculado por código, G19)', atende: true },
+      { texto: 'Carência: 7 contribuições no CNIS; o mínimo é 12 (calculado por código)', atende: false },
+      { texto: 'Afastamento: 34 dias desde 09/2026; precisa de mais de 15 (calculado por código)', atende: true },
     ])
     expect(requisitosDoBeneficio('incapacidade-permanente', {}, '2026-10-05')).toEqual([{ texto: 'Carência: sem CNIS no caso para contar as contribuições', atende: null }])
     expect(requisitosDoBeneficio('loas-idoso', { nascimento: '1960-12-01' }, '2026-10-05')).toEqual([
-      { texto: 'Idade: 65 anos; o LOAS Idoso pede 65 (calculado por código, G19)', atende: true },
+      { texto: 'Idade: 65 anos; o LOAS Idoso pede 65 (calculado por código)', atende: true },
     ])
     expect(requisitosDoBeneficio('pensao-morte', {}, '2026-10-05')).toEqual([])
   })

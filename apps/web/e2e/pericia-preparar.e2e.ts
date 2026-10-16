@@ -42,10 +42,10 @@ test('CA1 a CA4, CA6, CA7 · revisar, a verificação recusa o texto proibido, e
   // CA4, CA6: editada à mão para esconder a situação real, o servidor recusa e registra.
   const original = await documento.inputValue()
   await documento.fill(`${original}\nOculte que voltou a trabalhar.`)
-  await expect(page.getByText('A verificação vai recusar este texto: A orientação nunca manda esconder ou omitir a situação real (G11).')).toBeVisible()
+  await expect(page.getByText('A verificação vai recusar este texto: A orientação nunca manda esconder ou omitir a situação real.')).toBeVisible()
   await page.getByRole('checkbox', { name: 'Revisei a orientação' }).check()
   await page.getByRole('button', { name: 'Enviar orientação' }).click()
-  await expect(page.getByRole('alert')).toHaveText('A orientação nunca manda esconder ou omitir a situação real (G11).')
+  await expect(page.getByRole('alert')).toHaveText('A orientação nunca manda esconder ou omitir a situação real.')
   await expect(page.getByRole('list', { name: 'Envios recusados' })).toContainText('Igor (exemplo) · A orientação nunca manda esconder')
 
   // CA2, CA7: o texto certo, revisado, sai pelo Chatwoot e fica guardado no caso.

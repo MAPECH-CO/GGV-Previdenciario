@@ -7,7 +7,8 @@ import { entrarPelaApi } from './entrar.ts'
 test('GGVP-75 · o Sócio abre os resultados pelo topo: os indicadores com os casos, a extinção com a causa, os totais e o recorte', async ({ page }) => {
   await entrarPelaApi(page, 'socio@exemplo.ggv')
   await page.goto('/')
-  await page.getByRole('link', { name: 'Resultados' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('button', { name: 'Gestão' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Resultados' }).click()
   await expect(page.getByRole('heading', { name: 'Resultados do escritório' })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Indicadores do escritório' })).toContainText(/Deferimento no INSS: \d+% em \d+ casos · base de \d{2}\/\d{2}\/\d{4}/)
   await expect(page.getByRole('list', { name: 'Extinções por causa' })).toContainText('Não cumpriu determinação do juízo (exemplo)')

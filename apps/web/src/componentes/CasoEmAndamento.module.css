@@ -22,10 +22,10 @@
 .beneficio {
   padding: 4px 10px;
   border-radius: var(--raio-6);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
+  background: var(--cor-beneficio-suave);
+  color: var(--cor-beneficio);
   font-size: var(--fonte-13);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .etapa {
@@ -58,11 +58,6 @@
 
 .vazio {
   font-size: var(--fonte-12);
-}
-
-.nota {
-  color: var(--cor-texto-suave-2);
-  font-size: var(--fonte-11);
 }
 
 .atalhos {

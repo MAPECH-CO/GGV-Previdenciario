@@ -210,7 +210,7 @@ export async function abrirConversa(fichaId: string, pedido: NovaConversa, por: 
     Object.assign(conversa, { gravacaoId: g.id, registro: g.registro, finalizadaEm: conversa.abertaEm })
     ficha.historico.push(evento(`Registrou a conversa sem áudio (${comQuemFalado(conversa)}): só registro`, por.quem))
   } else {
-    const falta = pedido.modo === 'arquivo' ? 'falta subir a gravação da ligação' : 'grava depois do aviso (G10)'
+    const falta = pedido.modo === 'arquivo' ? 'falta subir a gravação da ligação' : 'grava depois do aviso'
     ficha.historico.push(evento(`Abriu a conversa (${comQuemFalado(conversa)}): ${falta}`, por.quem))
   }
   gravar(banco)
@@ -220,7 +220,7 @@ export async function abrirConversa(fichaId: string, pedido: NovaConversa, por: 
 /** POST /api/conversas/:id/gravacao. Só grava com o aviso registrado, com a hora (CA1, CA5, G10). */
 export async function gravarConversa(conversaId: string, inicio: { avisei: true }): Promise<Gravacao> {
   await esperar()
-  if (inicio.avisei !== true) throw new Error('Avise que a conversa será gravada antes de gravar (G10).')
+  if (inicio.avisei !== true) throw new Error('Avise que a conversa será gravada antes de gravar.')
   const banco = ler()
   const { conversa, ficha, gravacao } = acharConversa(banco, conversaId)
   if (conversa.modo !== 'tempo-real') throw new Error('Esta conversa não é gravada agora.')
@@ -231,7 +231,7 @@ export async function gravarConversa(conversaId: string, inicio: { avisei: true 
   g.acoes.push({ acao: 'avisou', quando: g.avisoEm, aos: 0 }, { acao: 'gravou', quando: g.avisoEm, aos: 0 })
   banco.gravacoes.push(g)
   conversa.gravacaoId = g.id
-  ficha.historico.push(evento(`Avisou às ${hora(g.avisoEm)} que a conversa seria gravada (G10) e começou a gravar`, conversa.quem))
+  ficha.historico.push(evento(`Avisou às ${hora(g.avisoEm)} que a conversa seria gravada e começou a gravar`, conversa.quem))
   gravar(banco)
   return g
 }
@@ -278,7 +278,7 @@ export async function registrarSemAudio(conversaId: string, notas: string): Prom
 /** POST /api/conversas/:id/audio. A ligação já feita sobe gravada, de qualquer formato e tamanho, com o aviso nela (CA2, G10). */
 export async function anexarAudio(conversaId: string, arquivo: AudioDaLigacao): Promise<ConversaAberta> {
   await esperar()
-  if (arquivo.avisoNaGravacao !== true) throw new Error('Confirme que a ligação começou com o aviso de gravação (G10).')
+  if (arquivo.avisoNaGravacao !== true) throw new Error('Confirme que a ligação começou com o aviso de gravação.')
   if (!ehAudio(arquivo) || arquivo.tamanho < 1) throw new Error('Esse arquivo não é de áudio.')
   const banco = ler()
   const { conversa, ficha, gravacao } = acharConversa(banco, conversaId)
@@ -307,12 +307,12 @@ function analisar(banco: Banco, c: Conversa, ficha: Ficha, g: Gravacao, ditas: F
   const saude = mudancas.some((m) => m.saude)
   const senhaDita = ditas.some((f) => f.senha)
   const pendencia = ditas.find((f) => f.combinado)?.combinado
-  if (senhaDita) ficha.historico.push(evento('A senha do gov.br foi dita na conversa: saiu da transcrição e não ficou guardada; para o cofre, o cliente digita (G9)', 'Sistema (IA)'))
+  if (senhaDita) ficha.historico.push(evento('A senha do gov.br foi dita na conversa: saiu da transcrição e não ficou guardada; para o cofre, o cliente digita', 'Sistema (IA)'))
   const cofre = senhaDita || g.acoes.some((a) => a.acao === 'guardou-senha')
   g.extraidas = [
     ...mudancas.map((m) => ({ id: m.id, rotulo: comMaiuscula(m.rotulo), valor: valorLido(m.campo, m.depois), destino: m.onde })),
     ...(cofre
-      ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: `${senhaDita ? 'dita na conversa' : 'digitada no cofre'}: não consta na transcrição (G9)`, destino: 'cofre' as const }]
+      ? [{ id: 'senha', rotulo: 'Senha do gov.br', valor: `${senhaDita ? 'dita na conversa' : 'digitada no cofre'}: não consta na transcrição`, destino: 'cofre' as const }]
       : []),
   ]
   const oQue = mudancas.map((m) => m.rotulo)
@@ -320,7 +320,7 @@ function analisar(banco: Banco, c: Conversa, ficha: Ficha, g: Gravacao, ditas: F
   // Tudo fica no histórico do contato (GGVP-76, CA9).
   ficha.contatos.push({ data: hojeIso(agora()), canal: `${CANAIS_DO_REGISTRO[c.canal].rotulo} (gravada, G10)`, texto: g.resumo })
   const observacao = [
-    senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição (G9). Para o cofre, o cliente digita.',
+    senhaDita && 'A senha do gov.br foi dita em voz alta: saiu da transcrição. Para o cofre, o cliente digita.',
     saude && 'Tem fato novo de saúde: quem confirma é o Jurídico.',
     c.comQuem !== 'cliente' && 'Quem falou não foi o cliente: confira antes de mudar dado de contato.',
   ]
@@ -357,7 +357,7 @@ export async function transcreverConversa(conversaId: string, opcoes: { falhar?:
 /** O que falta na conversa aberta, para a Central; nulo quando não falta nada nesta etapa. */
 function faltaNaConversa(c: Conversa, g: Gravacao | undefined): string | null {
   if (c.modo === 'arquivo' && !g) return 'subir a gravação da ligação'
-  if (c.modo === 'tempo-real' && !g) return 'gravar depois do aviso (G10)'
+  if (c.modo === 'tempo-real' && !g) return 'gravar depois do aviso'
   if (g && g.estado !== 'encerrada') return 'finalizar a conversa'
   if (!c.conferidaEm) return 'conferir a conversa (D5.04)'
   return null

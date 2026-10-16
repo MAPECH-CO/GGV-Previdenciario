@@ -96,7 +96,7 @@ export function ConferirContrato({ processoId }: { processoId: string }) {
             instrucoes={
               'A IA leu o contrato assinado e comparou com a ficha. Confira nome, CPF, datas e se a página da assinatura está inteira. ' +
               'Se a assinatura estiver cortada ou faltar rubrica, anexe a página e peça nova assinatura. Só siga quando tudo estiver certo: ' +
-              'é item do checklist antes do INSS (G1).'
+              'é item do checklist antes do INSS.'
             }
           />
 
@@ -270,7 +270,7 @@ export function ConferirContrato({ processoId }: { processoId: string }) {
             <li>• Se «Não, corrigir e reenviar»: O que corrigir*</li>
             <li>• Se «Não, corrigir e reenviar»: Anexo: Anexar a página corrigida (opcional)</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.ladoSub}>«Está certo — seguir» só habilita com as decisões respondidas e os campos com * preenchidos.</p>
         </aside>
       </main>

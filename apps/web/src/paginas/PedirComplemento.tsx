@@ -102,8 +102,8 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
 
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Atendimento">
             Peça a {primeiro} que leve ao médico dele a orientação abaixo: o relatório novo precisa responder às perguntas, com as palavras do próprio
-            médico, sem que o escritório sugira diagnóstico, CID ou conclusão (G20). São {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias
-            entre elas{ultima ? ': esta é a última' : ''}; sem o relatório, sobe para a sênior decidir (G15). Quando o relatório chegar, anexe aqui: ele sobe como
+            médico, sem que o escritório sugira diagnóstico, CID ou conclusão. São {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias
+            entre elas{ultima ? ': esta é a última' : ''}; sem o relatório, sobe para a sênior decidir. Quando o relatório chegar, anexe aqui: ele sobe como
             laudo novo e o Jurídico confere.
             {complemento.prazo && ` O prazo do ${complemento.prazo.de} vence em ${dataCurta(complemento.prazo.data, hoje)}: o pedido é urgente e se ajusta para caber nele.`}
           </InstrucoesPasso>
@@ -131,7 +131,7 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
             </h2>
             <p>
               <span className={parecer[complemento.parecer]}>{nomeDoParecer.toUpperCase()}</span> confirmado por {complemento.quem} em{' '}
-              {dataCurta(hojeIso(new Date(complemento.abertaEm)), hoje)} (G17).
+              {dataCurta(hojeIso(new Date(complemento.abertaEm)), hoje)}.
             </p>
             <p className={proprio.detalhe}>O conteúdo clínico (CID, texto dos laudos) fica com o Jurídico. Aqui está só o que falta pedir.</p>
           </section>
@@ -150,7 +150,7 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
             <pre className={parecer.orientacao} aria-label="Orientação completa">
               {c.orientacao}
             </pre>
-            <p className={proprio.detalhe}>Escrita pela IA e confirmada pela advogada. Diz só o que o relatório precisa abordar, sem diagnóstico, CID, grau, conclusão nem frase pronta (G20).</p>
+            <p className={proprio.detalhe}>Escrita pela IA e confirmada pela advogada. Diz só o que o relatório precisa abordar, sem diagnóstico, CID, grau, conclusão nem frase pronta.</p>
             <button type="button" className={styles.atalho} onClick={() => window.print()}>
               Imprimir a orientação
             </button>
@@ -174,13 +174,13 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
                   ))}
                 </ul>
               )}
-              <p className={proprio.detalhe}>A palavra final é da advogada (G17).</p>
+              <p className={proprio.detalhe}>A palavra final é da advogada.</p>
             </section>
           )}
 
           {situacao !== 'encerrado' && (
             <p className={styles.aviso}>
-              O pedido tem limite de {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias entre elas; passou dele, sobe para a sênior decidir (G15).
+              O pedido tem limite de {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias entre elas; passou dele, sobe para a sênior decidir.
             </p>
           )}
           {situacao === 'na-senior' && <p className={styles.trava}>Passou do limite: a sênior decide. O pedido continua à vista aqui.</p>}
@@ -315,8 +315,8 @@ export function PedirComplemento({ processoId }: { processoId: string }) {
           <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <ul className={styles.ladoLista}>
-            <li>• A orientação não sugere diagnóstico, CID, grau nem conclusão (G20)</li>
-            <li>• {TENTATIVAS_DE_COBRANCA} tentativas, {DIAS_ENTRE_COBRANCAS} dias entre elas; depois, a sênior (G15)</li>
+            <li>• A orientação não sugere diagnóstico, CID, grau nem conclusão</li>
+            <li>• {TENTATIVAS_DE_COBRANCA} tentativas, {DIAS_ENTRE_COBRANCAS} dias entre elas; depois, a sênior</li>
           </ul>
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>O relatório sobe como laudo novo; a IA compara e a advogada refaz o parecer. Com o Suficiente, o pedido se encerra.</p>

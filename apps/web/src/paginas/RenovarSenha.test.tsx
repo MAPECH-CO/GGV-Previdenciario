@@ -25,7 +25,7 @@ describe('Renovar senha do gov.br · tela do passo', () => {
     expect(screen.getByText('antes da entrevista de hoje às 15:30')).toBeTruthy()
     expect(screen.getByText(/O código de verificação chega no celular do próprio cliente \(ou no e-mail dele\)/)).toBeTruthy()
     expect(screen.getByText('Renovar a senha do Meu INSS e guardar no cofre.')).toBeTruthy()
-    expect(screen.getByText('Senha só no cofre; nunca em texto transcrito (G9).')).toBeTruthy()
+    expect(screen.getByText('Senha só no cofre; nunca em texto transcrito.')).toBeTruthy()
     expect(botao('Guardar no cofre').disabled).toBe(true)
     expect(screen.getByText('Responda se conseguiu renovar.')).toBeTruthy()
   })
@@ -33,7 +33,7 @@ describe('Renovar senha do gov.br · tela do passo', () => {
   it('CA2, CA5 e CA9 · "Sim": senha mascarada, a conferência do Meu INSS e só a situação depois de guardar', async () => {
     await abrir()
     fireEvent.click(screen.getByRole('radio', { name: 'Sim' }))
-    const caixa = screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre, G9)') as HTMLInputElement
+    const caixa = screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre)') as HTMLInputElement
     expect(caixa.type).toBe('password')
     fireEvent.change(caixa, { target: { value: SENHA_DE_TESTE } })
     expect(botao('Guardar no cofre').disabled).toBe(true)
@@ -63,9 +63,9 @@ describe('Renovar senha do gov.br · tela do passo', () => {
   it('trocar de "Sim" para "Não" apaga a senha digitada', async () => {
     await abrir()
     fireEvent.click(screen.getByRole('radio', { name: 'Sim' }))
-    fireEvent.change(screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre, G9)'), { target: { value: SENHA_DE_TESTE } })
+    fireEvent.change(screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre)'), { target: { value: SENHA_DE_TESTE } })
     fireEvent.click(screen.getByRole('radio', { name: 'Não' }))
     fireEvent.click(screen.getByRole('radio', { name: 'Sim' }))
-    expect((screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre, G9)') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Nova senha do gov.br (vai direto ao cofre)') as HTMLInputElement).value).toBe('')
   })
 })

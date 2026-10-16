@@ -206,7 +206,7 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
           {analise?.aviso && <p className={styles.dica}>{analise.aviso}</p>}
           {analise?.sugestao && analise.leitura && (
             <>
-              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem despacha é você (G4)</span>
+              <span className={`${styles.selo} ${styles.seloAlerta}`}>Sugestão da IA · quem despacha é você</span>
               {analise.sugestao.alerta && (
                 <p className={styles.erroCampo} role="alert">
                   Atenção: {analise.sugestao.alerta}.
@@ -273,7 +273,7 @@ export function DespacharCaso({ casoId }: { casoId: string }) {
               Despachar
             </button>
           </div>
-          <p className={styles.dica}>Quem despacha é você; nenhuma tarefa nasce sem a sua confirmação (G4).</p>
+          <p className={styles.dica}>Quem despacha é você; nenhuma tarefa nasce sem a sua confirmação.</p>
         </form>
       )}
 

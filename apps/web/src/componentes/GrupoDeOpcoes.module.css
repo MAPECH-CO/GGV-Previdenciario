@@ -56,11 +56,8 @@
 .pilula[aria-checked='true'],
 .dia[aria-checked='true'] {
   border-color: var(--cor-acento);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
-}
-
-.dia[aria-checked='true'] .sub,
-.dia[aria-checked='true'] .subAlerta {
-  color: var(--cor-superficie);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-weight: 600;
+  box-shadow: none;
 }

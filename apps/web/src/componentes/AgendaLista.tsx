@@ -1,6 +1,7 @@
 import { CATEGORIAS_DA_AGENDA } from '../dados/catalogos.ts'
 import type { EventoDaAgenda } from '../dados/tipos.ts'
 import { detalheDoEvento, diaCurto } from '../regras/agenda.ts'
+import { ComPreviaDoEvento } from './CartaoEvento.tsx'
 import styles from './AgendaLista.module.css'
 import cat from './Categorias.module.css'
 
@@ -34,22 +35,24 @@ export function AgendaLista({ desde, eventos, hoje, aoAbrir }: Props) {
           <ul className={styles.cartao}>
             {g.itens.map((e) => (
               <li key={e.id}>
-                <button
-                  type="button"
-                  className={`${styles.linha} ${cat[e.estado === 'confirmar' ? 'confirmar' : e.categoria]}`}
-                  data-estado={e.estado}
-                  onClick={() => aoAbrir(e)}
-                >
-                  <span className={styles.hora}>{e.estado === 'confirmar' ? `${diaCurto(e.data)} ${e.hora}` : e.hora}</span>
-                  <span className={styles.categoria}>● {CATEGORIAS_DA_AGENDA.find((c) => c.id === e.categoria)?.nome}</span>
-                  <span className={styles.textos}>
-                    <span>
-                      <strong>{e.titulo}</strong> · {e.oQue}
+                <ComPreviaDoEvento evento={e}>
+                  <button
+                    type="button"
+                    className={`${styles.linha} ${cat[e.estado === 'confirmar' ? 'confirmar' : e.categoria]}`}
+                    data-estado={e.estado}
+                    onClick={() => aoAbrir(e)}
+                  >
+                    <span className={styles.hora}>{e.estado === 'confirmar' ? `${diaCurto(e.data)} ${e.hora}` : e.hora}</span>
+                    <span className={styles.categoria}>● {CATEGORIAS_DA_AGENDA.find((c) => c.id === e.categoria)?.nome}</span>
+                    <span className={styles.textos}>
+                      <span>
+                        <strong>{e.titulo}</strong> · {e.oQue}
+                      </span>
+                      <span className={styles.detalhe}>{detalheDoEvento(e)}</span>
                     </span>
-                    <span className={styles.detalhe}>{detalheDoEvento(e)}</span>
-                  </span>
-                  <span className={styles.estado}>{ESTADO[e.estado]}</span>
-                </button>
+                    <span className={styles.estado}>{ESTADO[e.estado]}</span>
+                  </button>
+                </ComPreviaDoEvento>
               </li>
             ))}
           </ul>

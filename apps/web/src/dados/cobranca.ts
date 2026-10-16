@@ -127,7 +127,7 @@ export async function registrarTentativa(processoId: string, registro: RegistroD
     evento(`Cobrança: ${cobranca.tentativas.length}ª tentativa por ${CANAIS[registro.canal]} (${RESULTADOS[registro.resultado]}); falta: ${juntar(faltam)}`),
   )
   if (registro.canal === 'chatwoot') ficha.contatos.push({ data: hoje, canal: 'Chatwoot', texto: 'Cobrança dos documentos pendentes.' })
-  if (naSenior(cobranca, hoje)) ficha.historico.push(evento(`A cobrança passou do limite de ${TENTATIVAS_DE_COBRANCA} tentativas: foi para a advogada sênior decidir (G15)`))
+  if (naSenior(cobranca, hoje)) ficha.historico.push(evento(`A cobrança passou do limite de ${TENTATIVAS_DE_COBRANCA} tentativas: foi para a advogada sênior decidir`))
   gravar(banco)
   return montar(banco, cobranca)!
 }
@@ -189,7 +189,7 @@ export function tarefasDeCobrar(): Tarefa[] {
     const detalhe = [
       atual.beneficio,
       `${resumo(atual.faltam)} ${atual.faltam.length === 1 ? 'pendente' : 'pendentes'}`,
-      atual.situacao === 'na-senior' ? 'na sênior: decidir (G15)' : `${atual.tentativa}ª tentativa`,
+      atual.situacao === 'na-senior' ? 'na sênior: decidir' : `${atual.tentativa}ª tentativa`,
       decisao && atual.situacao === 'aberta' ? `decisão da sênior: ${OPCOES_DA_SENIOR[decisao.opcao].toLowerCase()}` : '',
       c.prazo ? `prazo do ${c.prazo.de} ${dataCurta(c.prazo.data, hoje)}` : '',
     ]
@@ -235,7 +235,7 @@ export function tarefasDeDecidirCobranca(): Tarefa[] {
         codigo: 'D1.23',
         cliente: { id: atual.ficha.id, nome: atual.ficha.nome },
         acao: 'Decidir cobrança',
-        detalhe: `${atual.beneficio} · ${semResposta === 1 ? '1 tentativa' : `${semResposta} tentativas`} sem resposta · limite (G15)`,
+        detalhe: `${atual.beneficio} · ${semResposta === 1 ? '1 tentativa' : `${semResposta} tentativas`} sem resposta · passou do limite`,
         prazo: 'hoje',
         urgente: true,
         href: `/casos/${c.processoId}/cobranca/decidir`,

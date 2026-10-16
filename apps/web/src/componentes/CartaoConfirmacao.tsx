@@ -58,7 +58,7 @@ export function CartaoConfirmacao({ cliente, arquivo, estado, aoConfirmar, aoCan
         <li>Marcar «Laudo novo» na ficha e no processo</li>
         <li>Avisar a advogada responsável, com o resumo e a comparação da IA</li>
       </ol>
-      <p className={styles.nota}>{nota ?? 'Você não vê o conteúdo do laudo (G17); só a advogada vê o resumo.'}</p>
+      <p className={styles.nota}>{nota ?? 'Você não vê o conteúdo do laudo; só a advogada vê o resumo.'}</p>
       <div className={styles.botoes}>
         <button type="button" className={styles.confirmar} disabled={enviando} onClick={confirmar}>
           {enviando ? 'enviando…' : 'Confirmar e enviar ao Jurídico'}

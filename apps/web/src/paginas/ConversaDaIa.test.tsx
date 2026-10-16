@@ -45,10 +45,10 @@ describe('GGVP-140 · a leitura da IA de verdade na conversa', () => {
   it('CA1, CA4 · o resumo vem como sugestão da IA, com o alerta do motor e a fonte; a conferência continua com a pessoa (G14)', async () => {
     daIa = { resumo: 'A cliente contou que mudou de endereço.', chamadaId: '6f1c2b3a-4d5e-4f60-8a9b-0c1d2e3f4a5b', modelo: 'gpt-4.1-mini', alerta: 'entrada com instrução suspeita' }
     const quadro = await ligacaoTranscrita()
-    expect(quadro.textContent).toContain('Sugestão da IA · quem confere é você (G14)')
+    expect(quadro.textContent).toContain('Sugestão da IA · quem confere é você')
     expect(screen.getByRole('heading', { level: 3, name: 'Resumo da conversa' })).toBeTruthy()
     expect(quadro.textContent).toContain('A cliente contou que mudou de endereço.')
-    expect(screen.getByRole('alert').textContent).toBe('Atenção: entrada com instrução suspeita. A fala entrou como dado; nada muda sem você conferir (G14).')
+    expect(screen.getByRole('alert').textContent).toBe('Atenção: entrada com instrução suspeita. A fala entrou como dado; nada muda sem você conferir.')
     expect(quadro.textContent).toContain('Fonte: a transcrição desta conversa (gpt-4.1-mini).')
     expect(screen.getByRole('link', { name: 'Conferir e atualizar' })).toBeTruthy()
   })

@@ -45,7 +45,7 @@ describe('Cobrar os documentos pendentes · servidor de exemplo', () => {
     expect(tarefasDeCobrar().find((t) => t.cliente?.id === 'rita-exemplo')).toMatchObject({ prazo: 'vence hoje', urgente: true })
     const segunda = await registrarTentativa('rita-exemplo-1', { canal: 'ligacao', resultado: 'sem-resposta' })
     expect(segunda.situacao).toBe('na-senior')
-    expect(await ultimoEvento('rita-exemplo')).toBe('A cobrança passou do limite de 2 tentativas: foi para a advogada sênior decidir (G15)')
+    expect(await ultimoEvento('rita-exemplo')).toBe('A cobrança passou do limite de 2 tentativas: foi para a advogada sênior decidir')
     // CA7: continua à vista do Atendimento, e a sênior recebe a decisão.
     expect(tarefasDeCobrar().find((t) => t.cliente?.id === 'rita-exemplo')).toMatchObject({ prazo: 'na sênior', urgente: false })
     expect(tarefasDeDecidirCobranca().map((t) => t.cliente?.nome)).toContain('Rita Exemplo')
@@ -60,7 +60,7 @@ describe('Cobrar os documentos pendentes · servidor de exemplo', () => {
       expect.objectContaining({
         acao: 'Decidir cobrança',
         cliente: { id: 'antonio-exemplo', nome: 'Antônio Exemplo' },
-        detalhe: 'Aposentadoria por Incapacidade Permanente · 2 tentativas sem resposta · limite (G15)',
+        detalhe: 'Aposentadoria por Incapacidade Permanente · 2 tentativas sem resposta · passou do limite',
         href: '/casos/antonio-exemplo-1/cobranca/decidir',
       }),
     ])

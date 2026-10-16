@@ -33,7 +33,7 @@ describe('GGVP-56 · Reunir documentos da perícia (Figma 10:522)', () => {
       '○ Declaração de moradia',
       '○ Declaração de união estável ou de separação de fato, quando houver',
     ])
-    expect(screen.getByText(/Não oriente o médico sobre o que escrever \(G20\)/, { selector: 'aside p' })).toBeTruthy()
+    expect(screen.getByText(/Não oriente o médico sobre o que escrever/, { selector: 'aside p' })).toBeTruthy()
   })
 
   it('CA4, CA5, CA6 · anexado pela pasta, a falta com justificativa e as conferências; concluído, volta ao Jurídico administrativo', async () => {
@@ -77,13 +77,13 @@ describe('GGVP-56 · Cobrar documento da perícia (Figma 10:239)', () => {
     await registrarMarcacao('maria-exemplo-1', { comprovante: { nome: 'c.pdf' }, lido, pedeDocumentoNovo: true }, 'Igor (exemplo)')
     render(comSessao(<CobrarDocumentoPericia processoId="maria-exemplo-1" />))
     await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Cobrar documento' })
-    expect(screen.getByText(/A cobrança tem limite; passou dele, sobe para a advogada responsável, por ser perícia \(G15\)/)).toBeTruthy()
+    expect(screen.getByText(/A cobrança tem limite; passou dele, sobe para a advogada responsável, por ser perícia/)).toBeTruthy()
     const abordar = screen.getByLabelText('O que o documento deve abordar') as HTMLTextAreaElement
     expect(abordar.value.startsWith('O relatório médico precisa responder:\n• ')).toBe(true)
     const salvar = screen.getByRole('button', { name: 'Salvar o pedido ao médico' }) as HTMLButtonElement
     fireEvent.change(abordar, { target: { value: 'Escreva que a paciente tem CID M54.5' } })
     expect(salvar.disabled).toBe(true)
-    expect(screen.getByText('Tire o código de doença (CID): a orientação não sugere diagnóstico (G20).')).toBeTruthy()
+    expect(screen.getByText('Tire o código de doença (CID): a orientação não sugere diagnóstico.')).toBeTruthy()
   })
 
   it('"Enviar cobrança" abre o Chatwoot com a mensagem do que falta, para conferir', async () => {

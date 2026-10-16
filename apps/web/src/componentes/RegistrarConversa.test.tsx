@@ -41,7 +41,7 @@ describe('Registrar conversa · janela (GGVP-76)', () => {
   it('CA4 e CA9 · presencial sugere a transcrição em tempo real; abre a conversa e vai para a tela do passo', async () => {
     const aoAbrir = await abrir('maria-exemplo')
     fireEvent.click(radio('Canal', 'Presencial'))
-    expect((screen.getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar (G10)' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar' }) as HTMLInputElement).checked).toBe(true)
     expect(screen.getByRole('radio', { name: 'Anexar arquivo · o áudio de uma ligação já feita' })).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Sem áudio · só o registro escrito' })).toBeTruthy()
     fireEvent.click(botao('Iniciar conversa'))

@@ -87,11 +87,11 @@ describe('travaDoParecer (G17, G18; GGVP-109 e GGVP-33)', () => {
   })
 
   it('cada motivo diz a ação e o que falta', () => {
-    expect(travaDoParecer('aprovar-inss', LOAS, null)).toBe('Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa (G17).')
+    expect(travaDoParecer('aprovar-inss', LOAS, null)).toBe('Não dá para aprovar para o INSS: falta o parecer médico "Suficiente", confirmado por pessoa.')
     expect(travaDoParecer('liberar', LOAS, { situacao: 'insuficiente' })).toMatch(/^Não dá para liberar ao Jurídico: o parecer médico está Insuficiente/)
-    expect(travaDoParecer('pedir-peticao', LOAS, { situacao: 'contraditorio' })).toMatch(/^Não dá para pedir a petição: .*Contraditório \(G18\)/)
-    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'pendente' })).toMatch(/não foi confirmado por pessoa do Jurídico \(G17\)/)
-    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'suficiente', contradicoes: [{ id: 'x', texto: 'Menos de 24 meses' }] })).toMatch(/\(menos de 24 meses\).*\(G18\)/)
+    expect(travaDoParecer('pedir-peticao', LOAS, { situacao: 'contraditorio' })).toMatch(/^Não dá para pedir a petição: .*Contraditório/)
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'pendente' })).toMatch(/não foi confirmado por pessoa do Jurídico/)
+    expect(travaDoParecer('aprovar-inss', LOAS, { situacao: 'suficiente', contradicoes: [{ id: 'x', texto: 'Menos de 24 meses' }] })).toMatch(/\(menos de 24 meses\)\. O caso fica parado até o Jurídico conferir o parecer/)
   })
 
   it('laudo novo esperando trava mesmo com o parecer em ordem; dispensa pedida espera a segunda Sênior', () => {

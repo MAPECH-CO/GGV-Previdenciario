@@ -48,13 +48,9 @@ describe('GGVP-78 · a Central da Sênior, como no Figma (59:609)', () => {
       'Processos',
       'Estudos de caso',
       'Roteiros de laudos',
-      'Tentativas bloqueadas',
-      'Prazos',
-      'Uso do cofre',
-      'Resultados',
-      'Configuração',
-      'Importar planilha',
     ])
+    // A Gestão num menu só, no fim do topo.
+    expect(screen.getByRole('button', { name: 'Gestão' })).toBeTruthy()
     expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
     expect(sugestoes()).toEqual(expect.arrayContaining(['O que estourou o limite?', 'Criar tarefa', 'Casos para conferir', 'Subir no acervo']))
     expect(screen.getByRole('button', { name: '✦ Suporte' })).toBeTruthy()

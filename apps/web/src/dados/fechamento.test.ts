@@ -53,8 +53,8 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar · servid
   })
 
   it('CA1 e CA6 · "Não fechou" sem motivo não grava (G16)', async () => {
-    await expect(registrarFechamento('natalia-exemplo', naoFechou(null, ''))).rejects.toThrow('G16')
-    await expect(registrarFechamento('natalia-exemplo', naoFechou(null, 'inventado'))).rejects.toThrow('G16')
+    await expect(registrarFechamento('natalia-exemplo', naoFechou(null, ''))).rejects.toThrow('motivo')
+    await expect(registrarFechamento('natalia-exemplo', naoFechou(null, 'inventado'))).rejects.toThrow('motivo')
     expect((await obterFicha('natalia-exemplo'))?.fechamento).toBeUndefined()
   })
 
@@ -63,7 +63,7 @@ describe('GGVP-60 · registrar por que não virou cliente e recontatar · servid
     expect(ficha.fechamento).toMatchObject({ situacao: 'recontatar', motivo: 'preco', detalhe: 'achou o valor alto', espera: 'pensar', recontatarEm: '2026-10-20' })
     expect(ficha.historico.at(-1)?.oQue).toBe('Não fechou: Preço (achou o valor alto). Recontatar em 20/10')
     const agenda = await eventosDaAgenda('2026-10-20', '2026-10-20')
-    expect(agenda).toMatchObject([{ titulo: 'Natália Exemplo', oQue: 'Recontatar lead', categoria: 'retornos', passo: 'D1.14 · Recontatar lead' }])
+    expect(agenda).toMatchObject([{ titulo: 'Natália Exemplo', oQue: 'Recontatar lead', categoria: 'retornos', passo: 'Recontatar lead' }])
     expect(tarefasDeFechamento()).toEqual([])
     agora = new Date(2026, 9, 20, 9, 0)
     expect(tarefasDeFechamento()).toMatchObject([

@@ -46,10 +46,10 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     await abrir('maria-exemplo', 'pericia-orientacao')
     fireEvent.change(texto(), { target: { value: 'O pedido foi indeferido. Não conte ao perito que voltou a trabalhar.' } })
     expect(within(screen.getByRole('list', { name: 'A IA aponta' })).getByText('• Termo jurídico "indeferido": diga "negado".')).toBeTruthy()
-    expect(screen.getByText('Nunca oriente a esconder ou mudar a situação real (G11).')).toBeTruthy()
+    expect(screen.getByText('Nunca oriente a esconder ou mudar a situação real.')).toBeTruthy()
     expect(enviar().disabled).toBe(true)
     fireEvent.change(texto(), { target: { value: 'Mande a sua senha do gov.br por aqui.' } })
-    expect(screen.getByText('O escritório nunca pede a senha do gov.br por mensagem (G9).')).toBeTruthy()
+    expect(screen.getByText('O escritório nunca pede a senha do gov.br por mensagem.')).toBeTruthy()
     expect(enviar().disabled).toBe(true)
   })
 
@@ -61,7 +61,7 @@ describe('Mensagem ao cliente · janela (GGVP-102)', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Modelo' }), { target: { value: 'resultado-desfavoravel' } })
     expect(await screen.findByText('Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.')).toBeTruthy()
     render(comSessao(<MensagemAoCliente ficha={(await obterFicha('antonio-exemplo'))!} modeloInicial="resultado-favoravel" aoFechar={() => {}} />))
-    expect(await screen.findByText('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele (G8).')).toBeTruthy()
+    expect(await screen.findByText('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele.')).toBeTruthy()
   })
 
   it('CA6 · com mais de uma conversa, a de mais mensagens primeiro; escolher outra muda o "Abrir a conversa"', async () => {

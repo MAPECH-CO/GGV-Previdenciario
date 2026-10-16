@@ -133,7 +133,7 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
 
   it('CA12, CA13 · só os prazos da fase e a identificação pela fase', async () => {
     render(comSessao(<PaginaDoCaso processoId="pedro-exemplo-1" />))
-    expect(await screen.findByRole('heading', { level: 1, name: /^NB\s*456\.123\.789-6$/ })).toBeTruthy()
+    expect(await screen.findByText(/^NB\s*456\.123\.789-6$/)).toBeTruthy()
     const prazos = screen.getByRole('heading', { name: 'Prazos' }).closest('section')!.textContent
     expect(prazos).toContain('Vigília do Meu INSS')
     expect(prazos).not.toContain('Vigília das publicações')
@@ -141,7 +141,7 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
 
   it('CA12, CA13 · judicial: CNJ e a vigília das publicações', async () => {
     render(comSessao(<PaginaDoCaso processoId="lucia-exemplo-1" />))
-    expect(await screen.findByRole('heading', { level: 1, name: /^Processo \(CNJ\)\s*0000002-70\.2026\.4\.03\.6100$/ })).toBeTruthy()
+    expect(await screen.findByText(/^Processo \(CNJ\)\s*0000002-70\.2026\.4\.03\.6100$/)).toBeTruthy()
     const prazos = screen.getByRole('heading', { name: 'Prazos' }).closest('section')!.textContent
     expect(prazos).toContain('Vigília das publicações')
     expect(prazos).not.toContain('Vigília do Meu INSS')
@@ -153,7 +153,7 @@ describe('GGVP-86 · o caso numa linha só (Figma 72:2)', () => {
     await screen.findByRole('heading', { name: 'Linha do processo · completa' })
     const tudo = document.body.textContent!
     expect(tudo).not.toMatch(/R\$|Petição inicial|Estratégia|Saúde \(Jurídico\)/)
-    expect(screen.getByText('Petição, estratégia e valores não aparecem para o Atendimento.')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/não aparecem para o Atendimento|Valores: só/)
     expect(screen.queryByRole('button', { name: 'Vara Federal de Santo Amaro (exemplo)' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Laudo médico' }))
     expect(screen.getByRole('dialog', { name: 'Laudo médico' }).textContent).toContain('O conteúdo do laudo é só do Jurídico')
@@ -291,7 +291,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       ligar()
       entrarComo(perfil)
       render(comSessao(<PaginaDoCaso processoId={CASO} />))
-      await screen.findByRole('heading', { level: 1, name: /^NB/ })
+      await screen.findByRole('heading', { level: 1, name: /^Vera Teste/ })
       expect(screen.queryByRole('region', { name: 'Custas do processo' }), perfil).toBeNull()
       expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0])), perfil).not.toContain(`/api/casos/${CASO}/custas`)
       cleanup()
@@ -323,13 +323,13 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     comPrestacao([])
     entrarComo('advogada')
     render(comSessao(<PaginaDoCaso processoId={CASO} />))
-    await screen.findByRole('heading', { level: 1, name: /^NB/ })
+    await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('link', { name: 'Prestação de contas' })).toBeNull()
     cleanup()
     comPrestacao([versao])
     entrarComo('atendimento')
     render(comSessao(<PaginaDoCaso processoId={CASO} />))
-    await screen.findByRole('heading', { level: 1, name: /^NB/ })
+    await screen.findByRole('heading', { level: 1 })
     expect(screen.queryByRole('link', { name: 'Prestação de contas' })).toBeNull()
     expect(vi.mocked(fetch).mock.calls.map((c) => String(c[0]))).not.toContain(`/api/casos/${CASO}/prestacao`)
   })
@@ -338,7 +338,7 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     const fetch = ligarServidor(doBanco())
     entrarComo('advogada')
     render(comSessao(<PaginaDoCaso processoId={CASO} />))
-    expect(await screen.findByRole('heading', { level: 1, name: /^NB\s*456\.123\.789-5$/ })).toBeTruthy()
+    expect(await screen.findByText(/^NB\s*456\.123\.789-5$/)).toBeTruthy()
     expect(fetch.mock.calls.map((c) => c[0])).toContain(`/api/casos/${CASO}/processo`)
     expect(etapas()[0].textContent).toBe('✓ Entrevista (feita)')
     expect(etapas()[1].textContent).toContain('▶ INSSDecidir perícia (agora)')
@@ -361,7 +361,8 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       'DocumentaçãoFicha do grupo familiar assinadaainda não subiu o card',
       'DocumentaçãoCadÚnico atualizadoainda não subiu o card',
     ])
-    expect(secao('Prazos').textContent).toContain('15/10Exigência do INSS: Ficha do grupo familiar (G12)')
+    expect(secao('Prazos').textContent).toContain('15/10Exigência do INSS: Ficha do grupo familiar')
+    expect(secao('Prazos').textContent).not.toContain('(G12)')
     // O evento sem passo do BPMN fica na etapa do anterior.
     expect(screen.getByRole('list', { name: 'Linha · INSS' }).textContent).toContain('sistema Sistema: Vigília do Meu INSS rodou')
     const dados = secao('Dados do processo').textContent
@@ -370,7 +371,8 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     expect(dados).toContain('PeritoDr. Perito')
     expect(dados).toContain('Prestação de contasrecebido R$ 18.900,00 · honorários R$ 5.670,00 · cliente R$ 13.230,00 (versão 2)')
     expect(dados).toContain('Saúde (Jurídico)1 documento médico · CID M54.5 · parecer suficiente')
-    expect(dados).toContain('senha no cofre (G9)')
+    expect(dados).toContain('senha no cofre')
+    expect(dados).not.toContain('(G9)')
     // O perito do servidor ainda não tem a jurimetria aqui: só o nome, sem a janela.
     expect(screen.queryByRole('button', { name: 'Dr. Perito' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Laudo médico' }))
@@ -390,14 +392,16 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     render(comSessao(<PaginaDoCaso processoId={CASO} />))
     await screen.findByRole('heading', { name: 'Linha do processo · completa' })
     expect(secao('Onde o caso está').textContent).toContain('INSS · ainda não há próximo passo.')
-    expect(secao('Tarefas em andamento').textContent).toContain('Nenhuma tarefa aberta no caso.')
-    expect(secao('Prazos').textContent).toContain('Nenhum prazo nesta fase.')
+    // Sem tarefas nem prazos, as caixas não aparecem; ficam os documentos.
+    expect(screen.queryByRole('heading', { name: 'Tarefas em andamento' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Prazos' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Documentos (abrir cada um)' })).toBeTruthy()
     expect(screen.queryByRole('heading', { name: 'Esperando alguém de fora' })).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Esperando os setores' })).toBeNull()
     const dados = secao('Dados do processo').textContent
     expect(dados).not.toContain('Prestação de contas')
     expect(dados).not.toContain('Saúde (Jurídico)')
-    expect(dados).toContain('Perito—')
+    expect(dados).toContain('PeritoNão informado')
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Laudo médico' }))
     const doc = screen.getByRole('dialog', { name: 'Laudo médico' })
     expect(doc.textContent).toContain('Arquivo: Documento de saúde')
@@ -406,6 +410,23 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
     fireEvent.click(within(doc).getByRole('button', { name: 'Fechar' }))
     fireEvent.click(screen.getByRole('button', { name: 'Abrir rg-e-cpf.pdf' }))
     expect(within(screen.getByRole('dialog', { name: 'rg-e-cpf.pdf' })).getByRole('link', { name: 'Abrir o arquivo' }).getAttribute('href')).toBe(`/api/casos/${CASO}/documentos/${RG}`)
+  })
+
+  it('o desfecho aparece no topo com a palavra da lista de Processos, e "ainda não há próximo passo" aparece uma vez só', async () => {
+    ligarServidor(doBanco({ desfecho: 'improcedente', proximoPasso: null }))
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    expect(await screen.findByText('Desfecho · Perdido')).toBeTruthy()
+    expect(document.body.textContent!.match(/ainda não há próximo passo/g)).toHaveLength(1)
+  })
+
+  it('sem tarefas nem documentos, as caixas deles não aparecem; a vigília da fase segue em Prazos', async () => {
+    ligarServidor(doBanco({ tarefas: [], prazos: [], documentos: [], proximoPasso: null }))
+    entrarComo('advogada')
+    render(comSessao(<PaginaDoCaso processoId={CASO} />))
+    expect(await screen.findByRole('heading', { name: 'Prazos' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Documentos (abrir cada um)' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Tarefas em andamento' })).toBeNull()
   })
 
   it('perfil que não abre o caso (o servidor recusa): processo não encontrado', async () => {
