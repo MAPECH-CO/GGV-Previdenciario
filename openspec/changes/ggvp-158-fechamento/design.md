@@ -584,6 +584,49 @@ Os cartões de fechamento de 11/10 dizem que o portal fica pronto "pela definiç
     - Só junta o que já está decidido: os perfis, os portões, o BPMN, o roteiro, os cartões e as respostas do Lucas. Decisão nova não entra; muda primeiro no cartão.
     - Sem andamento: ele fica no Jira e no roteiro.
 
+### Parte 12 · As lacunas da homologação (pedido do Mateus, 16/10)
+
+A lista de lacunas de 16/10 junta a conferência dos critérios (#102), o #103 e o #105, e tem 17 itens. O Mateus pediu só o que importa para a homologação: o que o Lucas vai testar e hoje falha no servidor.
+
+Ficam fora:
+- o que é da produção, que vem depois do aceite: a semente misturada, o scanner simulado, a infra da produção e o motor de fluxo parado;
+- as provas de código que já funciona;
+- o que espera decisão:
+  - a prestação de contas, o "Criar tarefa para" do chat e as peças do recurso, com o Lucas;
+  - o acervo no chat do Atendimento, com o revisor do #103;
+  - as boas-vindas, com o Mateus;
+  - o setor "Jurídico" na exigência do juiz: a revisão de 06/10 fez dele o Jurídico administrativo (`SETORES_DA_EXIGENCIA`), e mudar é com o Lucas;
+- o enquadramento PCD na exigência do INSS, que depende do CNIS de verdade (tarefa 6.6 da documentação médica).
+
+Só o servidor, e na tela só o que nenhum pedido aberto mexe. A página do processo na tela (`dados/caso.ts` e a página) está no #104: ela lê os campos novos depois que ele for mesclado. Sem migração e sem matriz nova.
+
+87. **O laudo novo na página do processo** (P12.1).
+    - É a mesma conta do parecer: há parecer registrado e há documento médico do caso, ou da pessoa sem caso, ainda não conferido. A data é a do mais antigo.
+    - A conta vira uma função só, usada pelo parecer e pela página, e não chama a IA.
+    - Vai para todo perfil que abre o processo: é só a data, sem conteúdo.
+88. **A espera com o prazo ou o lembrete** (P12.2). Cada etapa que espera alguém de fora leva:
+    - o prazo: o mais perto entre as tarefas abertas do mesmo passo e as exigências abertas, quando a espera é delas;
+    - o lembrete, de uma tabela fixa no servidor, pelo tipo de espera:
+      - o INSS: "a vigília confere o Meu INSS todo dia útil" (GGVP-35 e GGVP-116);
+      - o cliente: "cobrança: 2 tentativas, com 3 dias entre elas; depois, a Sênior" (G15; Lucas, GGVP-122);
+      - a Justiça: "a vigília lê as publicações 3 vezes por dia" (G13).
+
+    O tipo segue a regra que a tela já usa: começa por "cliente", é o cliente; diagrama D3, a Justiça; o resto, o INSS. Sem migração: o prazo sai do que já está no banco.
+89. **As perícias abertas, com responsável e prazo** (P12.3).
+    - A página traz todas as perícias sem resultado e a última com resultado.
+    - O responsável de cada uma é quem tem a tarefa aberta da perícia no caso. Quando há duas, vale a tarefa que cita o tipo; sem pessoa, vai o setor.
+    - O prazo é a data marcada e, antes dela, o prazo da tarefa.
+    - A `pericia` de hoje, a mais recente, continua, para a tela não quebrar até ler a lista.
+90. **O documento ilegível vira "Pedir documento legível" no servidor** (P12.4).
+    - A regra é a da conferência (`ilegivelEmAberto`): a leitura é ilegível e não chegou um legível do mesmo tipo depois.
+    - Vira linha da tabela de tarefas do Atendimento (D1.18), como as outras da Recepção (P7.2): uma por pessoa, com o prazo na leitura mais antiga e os tipos no detalhe. Fecha quando chega o legível.
+    - A tela deixa de calcular essa tarefa para a ficha do servidor, como já faz com as outras (`dados/leitura.ts`).
+    - O laudo ilegível continua abrindo "Analisar laudo novo" para o Jurídico até o Lucas decidir (lacuna 7).
+91. **O médico e o CRM gravados na conferência** (P12.5).
+    - Quando a Documentação confere a leitura de um documento médico, o emitente e o registro que a IA leu vão para `documento_medico` (`profissional` e `registro_profissional`).
+    - O que já estava preenchido fica.
+    - O parecer e a página do processo já leem o médico.
+
 ## Campos de formulário
 
 Partes 1 a 4: nenhum.

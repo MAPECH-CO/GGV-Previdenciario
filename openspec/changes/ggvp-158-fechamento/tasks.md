@@ -835,3 +835,20 @@ Numeradas 11.x ao juntar com a Parte 10 (15/10), que já usava 10.1 a 10.3.
   - Verifica com teste: abre na virada do dia (rodada), fecha ao marcar realizado, não abre para o remarcado; aparece em `/api/tarefas` do Atendimento como atrasada; `pnpm --filter @ggv/api test`.
 - [x] 11.2 P7.2 · A tela: `tarefasDeConfirmar` deixa de calcular a ficha do servidor, para a Central não repetir a linha. Teste Vitest; verifica com `pnpm --filter @ggv/web test`.
 - [x] 11.3 Rodar typecheck, lint, testes e Playwright; colar a saída.
+
+## GGVP-158 · Parte 12 · As lacunas da homologação (16/10)
+
+Pedido do Mateus em 16/10, sobre a lista de lacunas da mesma data: só o que o Lucas vai testar e hoje falha no servidor. Branch `fix/GGVP-158-lacunas-da-homologacao`, da main `e49d5100`. Sem migração e sem matriz nova.
+
+- [ ] 12.1 O laudo novo na página do processo (P12.1, decisão 87): a conta numa função só, usada pelo parecer e pela rota do processo; o contrato ganha `laudoNovoEm`.
+  - Verifica com teste da rota: com parecer e laudo não conferido, vem a data; conferido, não vem.
+- [ ] 12.2 A espera com o prazo ou o lembrete (P12.2, decisão 88): `etapas[].prazo` e `etapas[].lembrete` no contrato e na rota.
+  - Verifica com teste da rota: a espera do INSS com o lembrete; a do cliente com o prazo da exigência.
+- [ ] 12.3 As perícias abertas (P12.3, decisão 89): `pericias` no contrato e na rota, cada uma com o responsável e o prazo.
+  - Verifica com teste da rota: a médica marcada e a social a marcar, cada uma com o responsável e o prazo; a `pericia` de hoje segue igual.
+- [ ] 12.4 O ilegível no servidor (P12.4, decisão 90): a linha "Pedir documento legível" em `sincronizarRecepcao`, e a tela deixa de calculá-la para a ficha do servidor.
+  - Verifica com teste: a leitura ilegível abre a linha; o legível do mesmo tipo depois a fecha; a tela não repete.
+- [ ] 12.5 O médico e o CRM (P12.5, decisão 91): gravados na conferência da leitura.
+  - Verifica com teste da rota: conferido o laudo lido com médico e CRM, o documento médico guarda os dois, e o parecer traz o médico.
+- [ ] 12.6 Rodar typecheck, lint e testes; colar a saída; pedido para a main.
+- [ ] 12.7 Depois do merge do #104: a tela da página do processo lê o laudo novo, a espera com o prazo ou o lembrete e a lista de perícias (`dados/caso.ts` e a página), com o Playwright.
