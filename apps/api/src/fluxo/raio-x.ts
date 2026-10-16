@@ -32,6 +32,8 @@ export type ProcessoDoRaioX = {
   juiz: string | null
   falhaNossa: boolean | null
   laudoFavoravel: boolean | null
+  /** GGVP-163 R7: a coluna `estudo_social`, sim ou não. */
+  estudoSocialFavoravel: boolean | null
   extintoPorDeterminacao: boolean | null
   faltouPericia: boolean | null
   resultadoRecurso: ResultadoDoRecurso | null
@@ -110,6 +112,7 @@ export function analisarRaioX(arquivo: string, noAcervo: Set<string>): AnaliseDo
     if (data && !validarData(normalizarData(data))) motivos.push('data da decisão inválida (use dd/mm/aaaa)')
     const falhaNossa = simOuNao('falha_nossa', 'falha nossa')
     const laudoFavoravel = simOuNao('laudo', 'laudo favorável')
+    const estudoSocialFavoravel = simOuNao('estudo_social', 'estudo social')
     const extintoPorDeterminacao = simOuNao('extinto_por_determinacao', 'extinto por determinação')
     const faltouPericia = simOuNao('faltou_pericia', 'faltou à perícia')
     const numero = cnj && validarCnj(cnj) ? normalizarCnj(cnj) : null
@@ -136,6 +139,7 @@ export function analisarRaioX(arquivo: string, noAcervo: Set<string>): AnaliseDo
       juiz: texto(valor('juiz')),
       falhaNossa,
       laudoFavoravel,
+      estudoSocialFavoravel,
       extintoPorDeterminacao,
       faltouPericia,
       resultadoRecurso,
@@ -169,7 +173,7 @@ const decidido = (desfecho: string | null) => desfecho !== null && desfecho !== 
 const safra = (cnj: string) => cnj.replace(/\D/g, '').slice(9, 13)
 
 /** Um processo da base importada, como o banco devolve. */
-type Registro = Pick<ProcessoDoRaioX, 'numeroCnj' | 'dataDecisao' | 'falhaNossa' | 'laudoFavoravel' | 'extintoPorDeterminacao' | 'faltouPericia' | 'cartorioCobrou'> & {
+type Registro = Pick<ProcessoDoRaioX, 'numeroCnj' | 'dataDecisao' | 'falhaNossa' | 'laudoFavoravel' | 'estudoSocialFavoravel' | 'extintoPorDeterminacao' | 'faltouPericia' | 'cartorioCobrou'> & {
   desfecho: string | null
   resultadoRecurso: string | null
 }
@@ -207,6 +211,7 @@ export function indicadoresDoRaioX(base: Registro[]): RaioXDaBase {
       taxa('exito', 'Êxito nos decididos', base, (r) => (decidido(r.desfecho) ? EXITO.has(r.desfecho!) : null)),
       taxa('falha_nossa', 'Falha nossa provada', base, (r) => r.falhaNossa),
       taxa('laudo_favoravel', 'Laudo médico favorável', base, (r) => r.laudoFavoravel),
+      taxa('estudo_favoravel', 'Estudo social favorável', base, (r) => r.estudoSocialFavoravel),
       taxa('extinto_por_determinacao', 'Extinção por não cumprir determinação', base, (r) => r.extintoPorDeterminacao),
       taxa('faltou_pericia', 'Cliente que faltou à perícia', base, (r) => r.faltouPericia),
       taxa('recurso_provido', 'Recurso provido', base, (r) => (r.resultadoRecurso ? r.resultadoRecurso !== 'nao_provido' : null)),

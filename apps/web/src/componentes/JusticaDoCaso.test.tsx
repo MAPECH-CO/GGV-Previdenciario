@@ -7,6 +7,7 @@ const juizo = {
   entendimentos: [], porBeneficio: [{ beneficio: 'teste', nome: 'Benefício fictício', procedentes: 1, decididos: 2, texto: '50% · 1 de 2' }],
   tempoAteASentenca: { meses: 8, processos: 2 },
   processos: [{ numeroCnj: 'processo-ficticio-a', desfecho: 'procedente' }, { numeroCnj: 'processo-ficticio-b', desfecho: 'improcedente' }],
+  fundamentos: { processos: 552, grupos: [{ tipo: 'fundamento', beneficio: 'bpc_loas_deficiente', nome: 'Benefício fictício', processos: 184, exemplos: [{ processo: 'processo-ficticio-c', texto: 'Fundamento fictício' }] }] },
 }
 const pericia = (registradaPor = 'Sistema') => ({
   pericia: { tipo: 'medica', marcacao: { origem: 'juizo', registradaPor, data: '2026-10-20', hora: '10:30', local: 'Local Inventado' } },
@@ -28,6 +29,9 @@ describe('Juízo e perícia do servidor', () => {
     render(<JusticaDoCaso processoId={CASO} veJurimetria />)
     fireEvent.click(await screen.findByRole('button', { name: /Vara Inventada.*2 casos · base de 09\/10/ }))
     expect(screen.getByRole('region', { name: 'Jurimetria do juízo' }).textContent).toContain('50% · 1 de 2 · 2 casos · base de 09/10')
+    // GGVP-163 R3: os fundamentos históricos, contados em código, com o processo de exemplo.
+    expect(screen.getByRole('heading', { name: 'Fundamentos da base histórica · 552 processos' })).toBeTruthy()
+    expect(screen.getByRole('list', { name: 'Fundamentos da base histórica' }).textContent).toBe('Fundamentos · Benefício fictício: 184 processos · ex.: processo-ficticio-c')
     fireEvent.click(screen.getByRole('button', { name: /Perito Inventado.*1 caso · base de 09\/10/ }))
     expect(screen.getByRole('region', { name: 'Perfil e jurimetria do perito' }).textContent).toContain('Pergunta fictícia do acervo')
     expect(fetch.mock.calls.map(c => c[0])).toEqual([`/api/processos/${CASO}/pericia`, `/api/casos/${CASO}/juizo`])

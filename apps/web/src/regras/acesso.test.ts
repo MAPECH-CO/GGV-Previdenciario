@@ -28,4 +28,9 @@ describe('podeAbrir: o link só aparece para quem abre a tela', () => {
     expect(acaoDoCaminho(`/casos/${CASO}/parecer/dispensa`)).toBe('caso.aprovar_para_inss')
     expect(acaoDoCaminho(`/casos/${CASO}/publicacoes`)).toBe('processo.abrir')
   })
+
+  it('GGVP-163 R5 · a base histórica por benefício é do Jurídico e do Sócio (estudo.ver)', () => {
+    expect([acaoDoCaminho('/beneficios'), acaoDoCaminho('/beneficios/bpc_loas_deficiente')]).toEqual(['estudo.ver', 'estudo.ver'])
+    expect([podeAbrir('advogada', '/beneficios/bpc_loas_deficiente'), podeAbrir('socio', '/beneficios'), podeAbrir('atendimento', '/beneficios'), podeAbrir('financeiro', '/beneficios')]).toEqual([true, true, false, false])
+  })
 })

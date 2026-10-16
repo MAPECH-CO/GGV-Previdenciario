@@ -14,10 +14,12 @@ const CHANCE = {
   faltaSaber: ['o perito', 'o juízo', 'o parecer médico'],
   fatores: null,
   motivoIa: null,
+  etapa: 'depois_do_laudo',
+  aviso: null,
 }
 
-function servidor() {
-  const fetch = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(CHANCE)))
+function servidor(chance: object = CHANCE) {
+  const fetch = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(chance)))
   vi.stubGlobal('fetch', fetch)
   return fetch
 }
@@ -44,6 +46,17 @@ describe('ChanceDoCaso (GGVP-151)', () => {
     expect(await screen.findByText('Amarelo · de 15% a 50%')).toBeTruthy()
     expect([fetch.mock.calls[0][0], fetch.mock.calls[0][1]?.method]).toEqual(['/api/casos/6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6/chance', 'POST'])
     expect(screen.getByText(/Uso interno: não vai ao cliente nem à peça/)).toBeTruthy()
+    // GGVP-163 R6: a etapa da conta aparece; sem aviso, nenhuma nota.
+    expect(screen.getByText('Etapa da conta: depois do laudo.')).toBeTruthy()
+    expect(screen.queryByRole('note')).toBeNull()
+  })
+
+  it('GGVP-163 R6 · o recorte vazio cai na etapa anterior, com o aviso do servidor; "outro" sem chance mostra o motivo', async () => {
+    entrarComo('advogada')
+    servidor({ ...CHANCE, etapa: 'antes_da_pericia', aviso: 'Nenhum caso da base com o mesmo laudo: a chance é a de antes da perícia.' })
+    render(comSessao(<ChanceDoCaso casoId="6f1c2a8e-3b4d-4c5e-8f60-718293a4b5c6" />))
+    expect(await screen.findByText('Etapa da conta: antes da perícia.')).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toBe('Nenhum caso da base com o mesmo laudo: a chance é a de antes da perícia.')
   })
 
   it('CA5 · o Atendimento não vê e nada é pedido; sem caso nem benefício, nada aparece', async () => {

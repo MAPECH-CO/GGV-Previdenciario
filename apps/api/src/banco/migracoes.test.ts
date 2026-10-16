@@ -59,6 +59,11 @@ describe('migrações', () => {
     expect(rows.map((r) => r.column_name)).toEqual(expect.arrayContaining(['materia', 'vara', 'tese', 'resumo', 'licao']))
   })
 
+  it('GGVP-163 R7 · o acervo guarda o estudo social ao lado do laudo (migração 0037)', async () => {
+    const { rows } = await db.execute<{ column_name: string }>(sql`select column_name from information_schema.columns where table_name = 'processo_acervo'`)
+    expect(rows.map((r) => r.column_name)).toEqual(expect.arrayContaining(['laudo_favoravel', 'estudo_social_favoravel']))
+  })
+
   it('GGVP-64 parte 2 · o caso guarda a vara e o juiz; o juízo, os entendimentos e quando a IA leu', async () => {
     const colunas = async (tabela: string) =>
       (await db.execute<{ column_name: string }>(sql`select column_name from information_schema.columns where table_name = ${tabela}`)).rows.map((r) => r.column_name)

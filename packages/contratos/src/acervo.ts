@@ -117,6 +117,8 @@ export const COLUNAS_DO_RAIO_X = [
   'juiz',
   'falha_nossa',
   'laudo',
+  /** GGVP-163 R7: o resultado do estudo social (sim ou não), que o CSV já traz. */
+  'estudo_social',
   'extinto_por_determinacao',
   'faltou_pericia',
   'recurso',

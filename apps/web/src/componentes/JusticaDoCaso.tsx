@@ -67,6 +67,13 @@ export function JusticaDoCaso({ processoId, veJurimetria, judicial = true }: { p
           </li>)}</ul>
           {juizo.tempoAteASentenca && <p>Tempo até a sentença: {juizo.tempoAteASentenca.meses} meses · {baseFalado(juizo.tempoAteASentenca.processos, juizo.base)}</p>}
           {juizo.entendimentos.length > 0 && <><h3>Entendimentos recorrentes · confira as fontes</h3><ul>{juizo.entendimentos.map(e => <li key={e.texto}>{e.texto} · processos: {e.processos.join(', ')}</li>)}</ul></>}
+          {/* GGVP-163 R3 (CA2): os fundamentos da base histórica do juízo, contados em código, com processos de exemplo. */}
+          {juizo.fundamentos && juizo.fundamentos.processos > 0 && <>
+            <h3>Fundamentos da base histórica · {juizo.fundamentos.processos} processos</h3>
+            <ul aria-label="Fundamentos da base histórica">{juizo.fundamentos.grupos.map(g => <li key={`${g.tipo}|${g.beneficio}`}>
+              {g.tipo === 'acordao' ? 'Acórdãos' : 'Fundamentos'} · {g.nome}: {g.processos} {g.processos === 1 ? 'processo' : 'processos'}{g.exemplos.length > 0 ? ` · ex.: ${g.exemplos.map(e => e.processo).join(', ')}` : ''}
+            </li>)}</ul>
+          </>}
           <ul aria-label="Casos da base do juízo">{juizo.processos.map(p => <li key={p.numeroCnj}>{p.numeroCnj} · {p.desfecho}</li>)}</ul>
         </section>}
       </>}

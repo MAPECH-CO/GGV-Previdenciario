@@ -12,10 +12,10 @@ const F = '5000606-61.2022.4.03.6301'
 const digitos = (cnj: string) => cnj.replace(/\D/g, '')
 
 const PLANILHA = [
-  'cnj;Nome;CPF;Telefone;beneficio;desfecho;data_decisao;perito;vara;juiz;falha_nossa;laudo;extinto_por_determinacao;faltou_pericia;recurso;cartorio_cobrou',
-  `${A};Fulana de Tal;52998224725;11987654321;BPC/LOAS Idoso;Procedente;05/10/2026;Dra. Ana Souza;1ª Vara do JEF;Carlos Lima;não;sim;não;não;;"Comprovante de residência; Procuração"`,
-  ';Beltrano;11144477735;11911112222;BPC/LOAS Idoso;Improcedente;01/09/2026;Dr. Paulo Reis;2ª Vara do JEF;Carlos Lima;sim;não;não;não;;',
-  `${C};Ciclana;;;Auxílio por Incapacidade Temporária;improcedente;20/08/2025;Dr. Paulo Reis;Vara de Mauá;Rita Alves;sim;não;não;sim;provido_parcial;Comprovante de residência`,
+  'cnj;Nome;CPF;Telefone;beneficio;desfecho;data_decisao;perito;vara;juiz;falha_nossa;laudo;estudo_social;extinto_por_determinacao;faltou_pericia;recurso;cartorio_cobrou',
+  `${A};Fulana de Tal;52998224725;11987654321;BPC/LOAS Idoso;Procedente;05/10/2026;Dra. Ana Souza;1ª Vara do JEF;Carlos Lima;não;sim;sim;não;não;;"Comprovante de residência; Procuração"`,
+  ';Beltrano;11144477735;11911112222;BPC/LOAS Idoso;Improcedente;01/09/2026;Dr. Paulo Reis;2ª Vara do JEF;Carlos Lima;sim;não;não;não;não;;',
+  `${C};Ciclana;;;Auxílio por Incapacidade Temporária;improcedente;20/08/2025;Dr. Paulo Reis;Vara de Mauá;Rita Alves;sim;não;;não;sim;provido_parcial;Comprovante de residência`,
 ].join('\n')
 
 describe('GGVP-158 P7.7 · a leitura da planilha do Raio-X', () => {
@@ -34,6 +34,7 @@ describe('GGVP-158 P7.7 · a leitura da planilha do Raio-X', () => {
       juiz: 'Carlos Lima',
       falhaNossa: false,
       laudoFavoravel: true,
+      estudoSocialFavoravel: true,
       extintoPorDeterminacao: false,
       faltouPericia: false,
       resultadoRecurso: null,
@@ -90,6 +91,7 @@ describe('GGVP-158 P7.7 · os indicadores do Raio-X', () => {
     dataDecisao: null,
     falhaNossa: null,
     laudoFavoravel: null,
+    estudoSocialFavoravel: null,
     extintoPorDeterminacao: null,
     faltouPericia: null,
     resultadoRecurso: null,
@@ -134,5 +136,27 @@ describe('GGVP-158 P7.7 · os indicadores do Raio-X', () => {
     const r = indicadoresDoRaioX([])
     expect([r.processos, r.dataDaBase, r.cartorioCobra, r.ondeJulgam]).toEqual([0, null, { processos: 0, itens: [] }, []])
     expect(r.indicadores.every((i) => i.casos === 0 && i.valor === null && i.porSafra.length === 0)).toBe(true)
+  })
+})
+
+describe('GGVP-163 R7 · a coluna estudo_social', () => {
+  it('entra como o laudo (sim ou não, vazia é nula), não aparece entre as ignoradas, e recusa outro valor', () => {
+    const analise = analisarRaioX(PLANILHA, new Set())
+    expect(analise.colunasIgnoradas).not.toContain('estudo_social')
+    expect(analise.novos.map((p) => [p.numeroCnj, p.estudoSocialFavoravel])).toEqual([
+      [digitos(A), true],
+      [digitos(C), null],
+    ])
+    const comErro = analisarRaioX(['cnj;estudo_social', `${D};talvez`].join('\n'), new Set())
+    expect(comErro.erros).toEqual([{ linha: 2, motivo: 'estudo social: use sim ou não.' }])
+  })
+
+  it('os indicadores ganham o estudo social favorável, com o número de casos', () => {
+    const r = indicadoresDoRaioX([
+      { numeroCnj: digitos(A), desfecho: 'procedente_total', dataDecisao: null, falhaNossa: null, laudoFavoravel: null, estudoSocialFavoravel: true, extintoPorDeterminacao: null, faltouPericia: null, resultadoRecurso: null, cartorioCobrou: null },
+      { numeroCnj: digitos(B), desfecho: 'improcedente', dataDecisao: null, falhaNossa: null, laudoFavoravel: null, estudoSocialFavoravel: false, extintoPorDeterminacao: null, faltouPericia: null, resultadoRecurso: null, cartorioCobrou: null },
+      { numeroCnj: digitos(C), desfecho: 'improcedente', dataDecisao: null, falhaNossa: null, laudoFavoravel: null, estudoSocialFavoravel: null, extintoPorDeterminacao: null, faltouPericia: null, resultadoRecurso: null, cartorioCobrou: null },
+    ])
+    expect(r.indicadores.find((i) => i.chave === 'estudo_favoravel')).toMatchObject({ rotulo: 'Estudo social favorável', casos: 2, valor: 0.5 })
   })
 })

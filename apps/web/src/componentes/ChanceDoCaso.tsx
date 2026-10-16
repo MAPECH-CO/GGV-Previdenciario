@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ChanceDeExito } from '@ggv/contratos'
+import { ROTULO_ETAPA_DA_CHANCE, type ChanceDeExito } from '@ggv/contratos'
 import { chamarApi } from '../api.ts'
 import styles from '../paginas/Passo.module.css'
 import { taxaComCasos } from '../regras/caso.ts'
@@ -44,6 +44,12 @@ export function ChanceDoCaso({ casoId, beneficio }: { casoId?: string; beneficio
               <strong>{taxaComCasos(chance.favoraveis, chance.casos, new Date(chance.baseEm).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' }))}</strong>
             )}
           </p>
+          {chance.porcentagem !== null && <p className={styles.dica}>Etapa da conta: {ROTULO_ETAPA_DA_CHANCE[chance.etapa]}.</p>}
+          {chance.aviso && (
+            <p className={styles.dica} role="note">
+              {chance.aviso}
+            </p>
+          )}
           {chance.sugereNaoPegar && (
             <p className={styles.dica} role="note">
               Abaixo de 15%: a sugestão é não pegar o caso. Não bloqueia nada: quem decide é o Jurídico.

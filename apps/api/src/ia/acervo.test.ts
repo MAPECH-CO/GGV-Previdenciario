@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
+import { cnjDeTeste, instalarConhecimentoDeTeste } from '../banco/conhecimento-de-teste.ts'
 import { acervoTrecho, atendimento, caso, chamadaIa, documentacaoMedica, gravacaoRecepcao, modelo, pericia, peticao, peticaoVersao, pessoa, publicacao, resultadoInss, usuario } from '../banco/esquema.ts'
 import { alimentarAcervo, anonimizar, buscarNoAcervo } from './acervo.ts'
 import { DIMENSOES_DO_VETOR, criarIa } from './ia.ts'
@@ -312,5 +313,31 @@ describe('GGVP-141 · busca híbrida (sentido e palavra, por RRF)', () => {
     await alimentarAcervo(banco, iaQueEntende)
     const semSaude = await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'renda per capita', ia: iaQueEntende })
     expect(semSaude.map((f) => f.referencia)).toEqual([`modelo:${m.id}`])
+  })
+})
+
+describe('GGVP-163 R4 · os trechos da base histórica na busca e no acervo', () => {
+  it('entram na busca por palavra, pelo benefício, com a origem visível e o processo na referência; o só do Jurídico fica fora sem saúde', async () => {
+    await instalarConhecimentoDeTeste(banco)
+    const fontes = await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'renda per capita do grupo familiar', saude: false })
+    expect(fontes.map((f) => [f.tipo, f.referencia, f.trecho!.split(':')[0]])).toEqual([['acervo', `processo:${cnjDeTeste(7, 2024).replace(/\D/g, '')}`, 'Base histórica · fundamento']])
+    expect((await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'impedimento de longo prazo natureza mental', saude: false })).map((f) => f.trecho!.split(':')[0])).toEqual([])
+    expect((await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'impedimento de longo prazo natureza mental', saude: true })).map((f) => f.trecho!.split(':')[0])).toEqual(['Base histórica · laudo'])
+    // A lição do LOAS idoso não entra num caso de LOAS deficiente.
+    expect(await buscarNoAcervo(banco, { casoId: atual, beneficio: BPC, consulta: 'juntar o CadÚnico atualizado antes da inicial', saude: true })).toEqual([])
+  })
+
+  it('o acervo se alimenta com os trechos da base pelo hash da vista; rodar de novo não duplica', async () => {
+    await instalarConhecimentoDeTeste(banco)
+    const ia = criarIa({ banco, ambiente: {} })
+    expect(await alimentarAcervo(banco, ia)).toEqual({ novos: 4, vetores: 0 })
+    const trechos = await banco.select().from(acervoTrecho)
+    expect(trechos.map((t) => [t.origem, t.referencia, t.casoId, t.beneficio, t.soJuridico, t.hash]).sort()).toEqual([
+      ['Base histórica · conhecimento', 'conhecimento:bpc_loas_deficiente', null, BPC, false, 'd4'.repeat(32)],
+      ['Base histórica · fundamento', `processo:${cnjDeTeste(7, 2024).replace(/\D/g, '')}`, null, BPC, false, 'a1'.repeat(32)],
+      ['Base histórica · laudo', `processo:${cnjDeTeste(7, 2024).replace(/\D/g, '')}`, null, BPC, true, 'b2'.repeat(32)],
+      ['Base histórica · licao', `processo:${cnjDeTeste(8, 2023).replace(/\D/g, '')}`, null, 'bpc_loas_idoso', false, 'c3'.repeat(32)],
+    ])
+    expect(await alimentarAcervo(banco, ia)).toEqual({ novos: 0, vetores: 0 })
   })
 })

@@ -199,15 +199,19 @@ export function numerosDaJurimetria(j: Jurimetria, base: string): string {
   return j.laudos ? taxaComCasos(j.favoraveis, j.laudos, base, 'laudos') : 'nenhum laudo no acervo'
 }
 
-/** Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. */
-export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; dias: number }[]): Jurimetria {
+/**
+ * Os números vêm do sistema, não do modelo (G19, G22): contagem, taxa favorável e tempo médio até o laudo. GGVP-163 R2: o
+ * laudo histórico conta nos laudos e nos favoráveis, mas fica fora do tempo até o laudo, que a base não tem.
+ */
+export function jurimetria(laudos: { resultado: 'favoravel' | 'desfavoravel'; dias: number; historico?: boolean }[]): Jurimetria {
   const favoraveis = laudos.filter((l) => l.resultado === 'favoravel').length
   const n = laudos.length
+  const comTempo = laudos.filter((l) => !l.historico)
   return {
     laudos: n,
     favoraveis,
     taxa: n ? Math.round((favoraveis / n) * 100) : 0,
-    diasAteOLaudo: n ? Math.round(laudos.reduce((s, l) => s + l.dias, 0) / n) : 0,
+    diasAteOLaudo: comTempo.length ? Math.round(comTempo.reduce((s, l) => s + l.dias, 0) / comTempo.length) : 0,
   }
 }
 

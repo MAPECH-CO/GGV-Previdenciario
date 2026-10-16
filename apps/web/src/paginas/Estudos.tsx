@@ -40,6 +40,9 @@ export function Estudos() {
   return (
     <MolduraDaBase ativo="estudos" titulo="Estudos de caso" subtitulo="Feitos pela IA depois de cada processo perdido. Estratégia interna: não vão ao cliente.">
       <div className={g.estreito}>
+        <p className={styles.dica}>
+          <a href="/beneficios">Base histórica por benefício: o que os processos já decididos ensinam</a>
+        </p>
         {erro && (
           <p className={styles.erro} role="alert">
             {erro}

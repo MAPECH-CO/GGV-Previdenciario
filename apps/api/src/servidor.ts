@@ -22,6 +22,7 @@ import { registrarRotasPeticao } from './rotas/peticao.ts'
 import { registrarRotasGestao } from './rotas/gestao.ts'
 import { registrarRotasAcervo } from './rotas/acervo.ts'
 import { registrarRotasJuizo } from './rotas/juizo.ts'
+import { registrarRotasConhecimento } from './rotas/conhecimento.ts'
 import { registrarRotasRegras } from './rotas/regras.ts'
 import { registrarRotasHistorico } from './rotas/historico.ts'
 import { registrarRotasCofre } from './rotas/cofre.ts'
@@ -260,6 +261,7 @@ export function criarServidor({
     // GGVP-158 P7.7 (GGVP-148): o importador do Raio-X e os indicadores da base importada.
     registrarRotasRaioX(app, { banco, agora })
     registrarRotasJuizo(app, { banco, agora, ia: motorIa, preparo })
+    registrarRotasConhecimento(app, { banco, agora })
     registrarRotasRegras(app, { banco, agora })
     registrarRotasHistorico(app, { banco, agora })
     registrarRotasCofre(app, { banco, agora, cofre: cofreDoGov })

@@ -6,6 +6,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { armazenamentoLocal } from '../armazenamento.ts'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
+import { instalarConhecimentoDeTeste } from '../banco/conhecimento-de-teste.ts'
 import { acessoDadoSensivel, caso, chamadaIa, configuracao, credencialGovbr, decisao, documento, eventoAuditoria, identificadorCaso, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { estadoDaJuncaoD2 } from '../fluxo/juncao-d2.ts'
@@ -214,6 +215,28 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     // Outra gravação guardou o B depois que esta leu o perfil (que só tinha o A); esta acrescenta o C.
     expect(juntarLaudos([laudo('A'), laudo('B')], [laudo('A'), laudo('C')]).map((l) => l.id)).toEqual(['A', 'B', 'C'])
     expect(juntarLaudos([laudo('A')], [laudo('A')]).map((l) => l.id)).toEqual(['A'])
+  })
+
+  it('GGVP-163 R2, CA1 · o perfil do perito traz os laudos históricos da base, casando pelo nome: 38 laudos e 11 favoráveis, com o registro; fora do Jurídico, sem os números', async () => {
+    await instalarConhecimentoDeTeste(banco)
+    const [pr] = await banco
+      .insert(perito)
+      .values({ nome: 'Dr. Helio de Tal Perito', nomeNormalizado: 'helio de tal perito', especialidade: 'Perito judicial', perfil: { tipo: 'medica', onde: '10ª Vara', laudos: [] } })
+      .returning()
+    await decidirPericia()
+    await post('igor', '/liberacao')
+    await marcar(false)
+    expect((await post('igor', '/perito', { peritoId: pr.id })).statusCode).toBe(200)
+    const doJuridico = (await ver('gabi')).json()
+    expect(doJuridico.perfil.jurimetria).toEqual({ laudos: 38, favoraveis: 11, taxa: 29, diasAteOLaudo: 0 })
+    expect([doJuridico.perfil.versao, doJuridico.perfil.perito.registro, doJuridico.perfil.perito.laudos[0].caso]).toEqual([38, '190895', expect.stringMatching(/^\d{7}-11\.20\d\d\.4\.03\.6301$/)])
+    expect(JSON.stringify(doJuridico.perfil.perito.laudos)).not.toContain('Maria')
+    expect(doJuridico.perfil.porBeneficio).toEqual([{ beneficio: 'LOAS Deficiente', jurimetria: expect.objectContaining({ laudos: 38, favoraveis: 11 }) }])
+    // GGVP-156 CA2: a Documentação vê o perito, sem os números.
+    const daDora = (await ver('dora')).json()
+    expect([daDora.perfil.jurimetria, daDora.perfil.perito.laudos]).toEqual([{ laudos: 0, favoraveis: 0, taxa: 0, diasAteOLaudo: 0 }, []])
+    // A lista dos peritos continua com o perito, sem os laudos.
+    expect((await app.inject({ method: 'GET', url: '/api/peritos', cookies: await de('gabi') })).json()).toEqual([{ id: pr.id, nome: 'Dr. Helio de Tal Perito', especialidade: 'Perito judicial', tipo: 'medica' }])
   })
 
   it('GGVP-66 e GGVP-70 · do comparecimento ao resultado: o laudo é do Jurídico, entra no perfil do perito e fecha a junção', async () => {
