@@ -41,10 +41,20 @@
 
   Teste em `apps/web/src/paginas/PrestarContas.test.tsx`. Playwright: `apps/web/e2e/fechamento-financeiro.e2e.ts` marca as quatro. Verifica com `pnpm --filter @ggv/web exec vitest run src/paginas/PrestarContas.test.tsx` e `pnpm --filter @ggv/web exec playwright test e2e/fechamento-financeiro.e2e.ts`.
 
-  Verificado em 16/10: antes, falhou (sem o texto do aviso); depois, `PrestarContas.test.tsx` e `PaginaDoCaso.test.tsx` 21/21; Playwright `fechamento-financeiro.e2e.ts` 2/2 (com o login).
+  Verificado em 16/10: antes, falhou (sem o texto do aviso); depois, `PrestarContas.test.tsx` e `PaginaDoCaso.test.tsx` 21/21; Playwright `fechamento-financeiro.e2e.ts` 2/2 (com o login). A suíte da tela achou três testes antigos que marcavam só a carta: `Prestacao.test.tsx`, `FechamentoFinanceiro.test.tsx` e `e2e/via-administrativa.e2e.ts`. Os três passam a marcar as quatro; os dois de unidade, com `PrestarContas.test.tsx`, 22/22.
 - [x] 1.7 As perguntas em `docs/requisitos/duvidas-abertas.md`:
   - o CA1 e o prazo do CA10 da GGVP-92 (Lucas);
   - o scanner simulado fora dos testes (Mateus, com o Pedro).
 
   Feito em 16/10: seção "Abertas da GGVP-158, lacunas do servidor (16/10)", com quem decide em cada linha.
-- [ ] 1.8 Rodar typecheck, lint, testes e Playwright; `openspec validate --all --strict`; colar a saída; perguntar "Agora ok?".
+- [x] 1.8 Rodar typecheck, lint, testes e Playwright; `openspec validate --all --strict`; colar a saída; perguntar "Agora ok?".
+
+  Verificado em 16 e 17/10:
+  - No clone: typecheck dos quatro pacotes sem erro; lint sem erro (os 5 avisos da tela já existiam, em arquivos fora deste PR); `openspec validate --all --strict` 17/17.
+  - As suítes inteiras da API e da tela, que rodavam aqui, pararam quando a máquina desligou. Valem as da CI do PR #103 no commit `0b6ed4fc`, todos os checks verdes:
+    - typecheck e lint como no clone;
+    - `@ggv/contratos` 197/197 e `@ggv/campos` 12/12;
+    - `@ggv/web` 1731/1731 (204 arquivos);
+    - `@ggv/api` 1048 passando e 3 pulados (108 arquivos; o pulado é o teste do Drive real);
+    - Playwright inteiro: 267 passando no job de tela, sem falha;
+    - CodeQL e varredura de segredos verdes.
