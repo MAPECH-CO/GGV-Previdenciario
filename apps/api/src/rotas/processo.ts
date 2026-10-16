@@ -27,6 +27,8 @@ import {
   tarefa,
   usuario,
 } from '../banco/esquema.ts'
+import { criarCasoMedico, dataDoLaudoNovo, documentosMedicosDoCaso } from '../fluxo/documentacao-medica.ts'
+import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { estrategiaAtual } from './estrategia.ts'
 import { valoresVisiveis } from './valores.ts'
 import { exigir } from '../sessao/rotas.ts'
@@ -55,6 +57,10 @@ export const SETOR: Record<string, string> = {
 const ETAPA_ABERTA = ['aberta', 'aguardando_externo']
 const TAREFA_ABERTA = ['aberta', 'em_andamento', 'aguardando']
 const EXIGENCIA_ABERTA = ['aberta', 'dilacao_pedida']
+/** De quem é a espera, pela regra da tela: começa por "cliente", é o cliente; no D3, a Justiça; o resto, o INSS. */
+const deQuemEspera = (e: { aguardando: string; diagrama: string }) => (/^cliente/i.test(e.aguardando) ? 'cliente' : e.diagrama.startsWith('D3') ? 'justica' : 'inss')
+/** A palavra do tipo da perícia no título da tarefa dela ("Marcar perícia médica e avaliação social"). */
+const NO_TITULO_DA_PERICIA = { medica: 'médica', social: 'social' } as const
 /** A peça em preparo (as versões e o pacote da petição e da manifestação): só o Jurídico (`peticao.ver`). */
 const daPeca = (tipo: string) => tipo === 'pacote_peticao' || tipo.endsWith('_versao')
 
@@ -127,21 +133,20 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
         sensivel: d.sensivel,
       }))
 
-    // A perícia mais recente. A que ainda não abriu na tela da perícia (sem o formato das telas) sai pelas colunas.
-    const [p] = await banco
+    // As perícias do caso, da mais nova à mais antiga. A que ainda não abriu na tela da perícia (sem o formato das telas) sai
+    // pelas colunas.
+    const todas = await banco
       .select({ pericia, perito: perito.nome, passo: etapa.passo })
       .from(pericia)
       .leftJoin(perito, eq(pericia.peritoId, perito.id))
       .leftJoin(etapa, eq(pericia.chamadaPorEtapaId, etapa.id))
       .where(eq(pericia.casoId, casoId))
       .orderBy(desc(pericia.criadoEm), desc(pericia.id))
-      .limit(1)
-    let periciaDoCaso = null
-    if (p) {
+    const naPagina = (p: (typeof todas)[number]) => {
       const doc = p.pericia.documento as Pericia | null
       const origem = doc?.origem ?? ORIGEM_DO_PASSO[p.passo ?? ''] ?? 'd2-necessidade'
       const quando = p.pericia.agendadaPara
-      periciaDoCaso = {
+      return {
         tipo: p.pericia.tipo as 'medica' | 'social',
         origem,
         situacao: situacaoDaPericia(
@@ -162,6 +167,17 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
         resultado: p.pericia.resultado as 'favoravel' | 'desfavoravel' | null,
       }
     }
+    const periciaDoCaso = todas[0] ? naPagina(todas[0]) : null
+    // GGVP-158 P12.3 (GGVP-86 CA9): as abertas e a última com resultado. O responsável é quem tem a tarefa aberta da perícia
+    // (a que cita o tipo, quando há duas), ou o setor dela; o prazo é a data marcada e, antes dela, o prazo da tarefa.
+    const daPericia = tarefas.filter((t) => t.passo?.startsWith('DP.'))
+    const pericias = [...todas.filter((p) => !p.pericia.resultado), ...todas.filter((p) => p.pericia.resultado).slice(0, 1)].map((p) => {
+      const pp = naPagina(p)
+      if (pp.resultado) return { ...pp, responsavel: null, prazo: null }
+      const t = daPericia.find((x) => x.titulo.includes(NO_TITULO_DA_PERICIA[pp.tipo])) ?? daPericia[0]
+      const m = pp.marcada
+      return { ...pp, responsavel: t ? (t.responsavel ?? t.setor) : null, prazo: m && m.data >= hoje ? m.data : (t?.prazo ?? m?.data ?? null) }
+    })
 
     const abertas = await banco
       .select()
@@ -253,6 +269,28 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
     const [ficha] = await banco.select({ documento: fichaRecepcao.documento }).from(fichaRecepcao).where(eq(fichaRecepcao.pessoaId, c.pessoa.id))
     const [cofre] = await banco.select({ id: credencialGovbr.id }).from(credencialGovbr).where(eq(credencialGovbr.pessoaId, c.pessoa.id))
 
+    // GGVP-158 P12.2 (GGVP-86 CA8): a espera de fora com o prazo, quando há (o das tarefas do mesmo passo e, do cliente, o
+    // das exigências abertas), e o lembrete pelo tipo de espera, com o limite da cobrança da Configuração (G15).
+    const lim = await limitesDeCobranca(banco)
+    const vezes = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+    const LEMBRETE = {
+      inss: 'a vigília confere o Meu INSS todo dia útil',
+      cliente: `cobrança: ${vezes(lim.limite, 'tentativa', 'tentativas')}, com ${vezes(lim.intervaloDias, 'dia', 'dias')} entre elas; depois, a Sênior`,
+      justica: 'a vigília lê as publicações 3 vezes por dia',
+    }
+    const comEspera = etapas.map((e) => {
+      const etapaNaPagina = { diagrama: e.diagrama, passo: e.passo, aguardando: e.aguardando, desde: e.iniciadaEm.toISOString() }
+      if (!e.aguardando) return etapaNaPagina
+      const quem = deQuemEspera({ aguardando: e.aguardando, diagrama: e.diagrama })
+      const datas = [...tarefas.filter((t) => t.passo === e.passo).map((t) => t.prazo), ...(quem === 'cliente' ? abertas.map((x) => x.prazo) : [])]
+      return { ...etapaNaPagina, prazo: datas.filter((d): d is string => !!d).sort()[0] ?? null, lembrete: LEMBRETE[quem] }
+    })
+
+    // GGVP-158 P12.1 (GGVP-86 CA5): o laudo novo pela mesma conta do parecer; só a data, sem conteúdo e sem a IA.
+    const parecerGuardado = await criarCasoMedico(banco, agora).lerParte<{ registros?: unknown[] }>(casoId, 'parecer')
+    const naoConferidos = (await documentosMedicosDoCaso(banco, { id: casoId, pessoaId: c.pessoa.id })).filter((d) => !d.conferidoEm)
+    const laudoNovoEm = dataDoLaudoNovo(parecerGuardado?.registros?.length ?? 0, naoConferidos) ?? null
+
     // GGVP-158 P7.6: os valores que a regra de valores deixa o perfil ver; os outros não vêm.
     const visiveis = await valoresVisiveis(banco, casoId, perfil)
     return ProcessoDoCaso.parse({
@@ -271,11 +309,13 @@ export function registrarRotasProcesso(app: FastifyInstance, { banco, agora = ()
       ...(visiveis && 'rendaPorPessoa' in visiveis && { rendaPorPessoa: visiveis.rendaPorPessoa }),
       senhaGovNoCofre: !!cofre,
       transcricoes: (ficha?.documento as { transcricoes?: number } | undefined)?.transcricoes ?? 0,
-      etapas: etapas.map((e) => ({ diagrama: e.diagrama, passo: e.passo, aguardando: e.aguardando, desde: e.iniciadaEm.toISOString() })),
+      etapas: comEspera,
+      laudoNovoEm,
       linha: await linhaDoCaso(banco, casoId),
       documentos,
       tarefas,
       pericia: periciaDoCaso,
+      pericias,
       exigencias,
       prazos,
       publicacoes,

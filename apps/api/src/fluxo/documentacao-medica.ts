@@ -1,11 +1,12 @@
 // O caso como as telas da documentação médica leem (GGVP-132): a ficha da Recepção (o fichário do #29), o processo e as
 // partes guardadas em `documentacao_medica`. Comum às rotas do parecer, do complemento, da deficiência, do acidente e da
 // criança.
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne, or } from 'drizzle-orm'
 import type { FastifyRequest } from 'fastify'
 import type { Banco } from '../banco/conexao.ts'
-import { caso, contratoRecepcao, documentacaoMedica, type PARTES_DOCUMENTACAO_MEDICA } from '../banco/esquema.ts'
+import { caso, contratoRecepcao, documentacaoMedica, documento, documentoMedico, type PARTES_DOCUMENTACAO_MEDICA } from '../banco/esquema.ts'
 import { UUID, criarFichario, type ContratoGuardado } from '../rotas/recepcao.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import type { Ficha, Processo } from '../../../web/src/dados/tipos.ts'
 
 export const MSG_CASO_NAO_ENCONTRADO = 'Caso não encontrado.'
@@ -13,6 +14,40 @@ export const MSG_CASO_NAO_ENCONTRADO = 'Caso não encontrado.'
 export type CasoMedico = { id: string; pessoaId: string; ficha: Ficha; processo: Processo }
 
 export type Parte = (typeof PARTES_DOCUMENTACAO_MEDICA)[number]
+
+/** Os documentos médicos do caso (os do processo e os pessoais), do mais antigo ao mais novo. */
+export async function documentosMedicosDoCaso(banco: Banco, c: { id: string; pessoaId: string }) {
+  return banco
+    .select({
+      id: documento.id,
+      chave: documento.chaveArmazenamento,
+      mime: documento.mime,
+      criadoEm: documento.criadoEm,
+      tipo: documentoMedico.tipo,
+      dataEmissao: documentoMedico.dataEmissao,
+      emitente: documentoMedico.profissional,
+      conferidoEm: documentoMedico.confirmadoEm,
+    })
+    .from(documentoMedico)
+    .innerJoin(documento, eq(documentoMedico.documentoId, documento.id))
+    .where(
+      and(
+        isNull(documento.excluidoEm),
+        ne(documento.situacao, 'recusado'),
+        or(eq(documento.casoId, c.id), and(isNull(documento.casoId), eq(documento.pessoaId, c.pessoaId))),
+      ),
+    )
+    .orderBy(asc(documento.criadoEm))
+}
+
+/**
+ * O laudo novo: com parecer já registrado, o documento médico que ainda espera a conferência do Jurídico. A data é a do mais
+ * antigo. Só a conta, sem a IA: o parecer e a página do processo usam a mesma (GGVP-158 P12.1).
+ */
+export function dataDoLaudoNovo(registros: number, naoConferidos: { criadoEm: Date }[]): string | undefined {
+  if (!registros || !naoConferidos.length) return undefined
+  return hojeEmBrasilia(naoConferidos.reduce((a, b) => (b.criadoEm < a.criadoEm ? b : a)).criadoEm)
+}
 
 export function criarCasoMedico(banco: Banco, agora: () => Date) {
   const fichario = criarFichario(banco, agora)

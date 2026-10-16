@@ -285,6 +285,24 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     expect(await banco.select().from(documento)).toHaveLength(1)
   })
 
+  it('GGVP-158 P12.5 · conferida a leitura do laudo, o médico e o CRM que a IA leu vão ao documento médico; o que já estava fica', async () => {
+    const fichaId = await lead()
+    await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' })
+    // A leitura de exemplo sai no anúncio do arquivo; o conteúdo guarda o documento médico do caso.
+    const anunciado = await enviar(fichaId, doc('Laudo.pdf', 'laudo', sha(PDF_LAUDO)))
+    const r = await conteudo(fichaId, PDF_LAUDO)
+    const medico = async () => (await banco.select().from(documentoMedico).where(eq(documentoMedico.documentoId, r.json().documentoId)))[0]
+    // Antes da conferência, só o tipo; o registro, alguém já tinha preenchido.
+    expect([(await medico()).profissional, (await medico()).registroProfissional]).toEqual([null, null])
+    await banco.update(documentoMedico).set({ registroProfissional: 'CRM-SP 123456' }).where(eq(documentoMedico.documentoId, r.json().documentoId))
+    const lida = anunciado.leituras[0] as { id: string; emitente: string; registro: string }
+    expect([lida.emitente, lida.registro]).toEqual(['Dr. Exemplo Silva', 'CRM-SP 000000'])
+    const arquivou = await json('dora', 'POST', `/api/fichas/${fichaId}/documentos-lidos/arquivar`, { conferi: true, documentos: [{ id: lida.id, tipo: 'laudo', data: '2026-10-08' }] })
+    expect(arquivou).toMatchObject({ arquivados: 1 })
+    // O médico vem da leitura; o registro preenchido fica.
+    expect([(await medico()).profissional, (await medico()).registroProfissional]).toEqual(['Dr. Exemplo Silva', 'CRM-SP 123456'])
+  })
+
   it('GGVP-158 P4.9 · com dois casos, o envio diz o caso: sem ele, recusa; com ele, o laudo vai à pasta e ao registro do caso escolhido', async () => {
     const fichaId = await lead()
     await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' })

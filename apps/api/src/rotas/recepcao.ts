@@ -435,6 +435,11 @@ export function criarFichario(banco: Banco, agora: () => Date) {
       novas.push(lida)
       await guardarLeitura(lida)
     }
+    // GGVP-158 P12.4: a leitura ilegível abre "Pedir documento legível" na hora, sem esperar a ficha guardada nem a rodada.
+    if (novas.some((l) => l.situacao === 'ilegivel'))
+      await sincronizarRecepcao(banco, agora, { pessoaId: ficha.id }).catch((e: unknown) =>
+        console.error('[recepção] as tarefas não sincronizaram', e instanceof Error ? e.message : e),
+      )
     return novas
   }
 

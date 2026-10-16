@@ -22,6 +22,8 @@ Uma parte por vez, na ordem. Cada parte ganha spec e tarefas quando chegar a vez
 8. Auditoria.
 9. Produção, a parte que não depende do Lucas.
 10. A história do sistema: a definição de pronto do portal escrita no repositório, passo a passo por perfil (pedido do Mateus, 15/10).
+11. O ajuste do teste do Pedro (14/10), dentro da parte 7: as tarefas 11.1 a 11.3.
+12. As lacunas da homologação (16/10): o que o Lucas vai testar e hoje falha no servidor, sem decisão pendente.
 
 ## Fora do escopo
 

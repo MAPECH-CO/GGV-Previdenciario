@@ -5,6 +5,18 @@ import { SugestaoDaIa } from './ia.ts'
 
 const ETAPAS = ['entrevista', 'inss', 'justica', 'vigilia', 'desfecho'] as const
 
+/** Uma perícia na página do processo: status e resultado para todo mundo do caso; o laudo fica na tela da perícia (só o Jurídico). */
+const PericiaDoProcesso = z.object({
+  tipo: z.enum(['medica', 'social']),
+  origem: z.enum(['d2-necessidade', 'd2-exigencia', 'd3-despacho', 'd3a-juiz']),
+  situacao: z.enum(['aguardando-inss', 'marcar', 'aguardando-comprovante', 'agendada', 'na-advogada', 'aguardando-resultado', 'concluida']),
+  marcada: z.object({ data: z.string(), hora: z.string(), local: z.string().nullable() }).nullable(),
+  /** GGVP-158 P5.5: a data que o sistema leu da publicação do juiz, e não a que alguém registrou. */
+  marcadaPeloSistema: z.boolean().optional(),
+  perito: z.string().nullable(),
+  resultado: z.enum(['favoravel', 'desfavoravel']).nullable(),
+})
+
 export const ProcessoDoCaso = z.object({
   casoId: z.uuid(),
   pessoa: z.object({ id: z.uuid(), nome: z.string(), cpf: z.string().nullable(), nascimento: z.string().nullable() }),
@@ -25,8 +37,22 @@ export const ProcessoDoCaso = z.object({
   rendaPorPessoa: z.string().nullable().optional(),
   senhaGovNoCofre: z.boolean(),
   transcricoes: z.number().int(),
-  /** Os passos do BPMN abertos agora; `aguardando` diz quem de fora o caso espera. */
-  etapas: z.array(z.object({ diagrama: z.string(), passo: z.string(), aguardando: z.string().nullable(), desde: z.string() })),
+  /**
+   * Os passos do BPMN abertos agora; `aguardando` diz quem de fora o caso espera. GGVP-158 P12.2 (GGVP-86 CA8): a espera traz
+   * o prazo, quando há, e o lembrete pelo tipo de espera.
+   */
+  etapas: z.array(
+    z.object({
+      diagrama: z.string(),
+      passo: z.string(),
+      aguardando: z.string().nullable(),
+      desde: z.string(),
+      prazo: z.string().nullable().optional(),
+      lembrete: z.string().nullable().optional(),
+    }),
+  ),
+  /** GGVP-158 P12.1 (GGVP-86 CA5): a data do laudo novo, que espera a conferência do Jurídico; só a data, sem conteúdo. */
+  laudoNovoEm: z.string().nullable().optional(),
   /** A linha do caso: os eventos e as decisões do histórico (GGVP-99), em ordem, sem o detalhe interno. */
   linha: z.array(z.object({ quando: z.string(), quem: z.string(), origem: z.enum(['pessoa', 'sistema']), passo: z.string().nullable(), descricao: z.string() })),
   /** Tipo e nome, nunca o conteúdo. Documento de saúde fora do Jurídico: só que ele existe (`nome` nulo). */
@@ -35,19 +61,13 @@ export const ProcessoDoCaso = z.object({
   tarefas: z.array(
     z.object({ id: z.uuid(), setor: z.string(), titulo: z.string(), responsavel: z.string().nullable(), prazo: z.string().nullable(), passo: z.string().nullable(), tela: z.string().nullable() }),
   ),
-  /** A perícia mais recente: status e resultado para todo mundo do caso; o laudo fica na tela da perícia (só o Jurídico). */
-  pericia: z
-    .object({
-      tipo: z.enum(['medica', 'social']),
-      origem: z.enum(['d2-necessidade', 'd2-exigencia', 'd3-despacho', 'd3a-juiz']),
-      situacao: z.enum(['aguardando-inss', 'marcar', 'aguardando-comprovante', 'agendada', 'na-advogada', 'aguardando-resultado', 'concluida']),
-      marcada: z.object({ data: z.string(), hora: z.string(), local: z.string().nullable() }).nullable(),
-      /** GGVP-158 P5.5: a data que o sistema leu da publicação do juiz, e não a que alguém registrou. */
-      marcadaPeloSistema: z.boolean().optional(),
-      perito: z.string().nullable(),
-      resultado: z.enum(['favoravel', 'desfavoravel']).nullable(),
-    })
-    .nullable(),
+  /** A perícia mais recente. */
+  pericia: PericiaDoProcesso.nullable(),
+  /**
+   * GGVP-158 P12.3 (GGVP-86 CA9): as perícias sem resultado e a última com resultado, cada uma com o responsável (quem tem a
+   * tarefa aberta da perícia, ou o setor) e o prazo (a data marcada ou o prazo da tarefa).
+   */
+  pericias: z.array(PericiaDoProcesso.extend({ responsavel: z.string().nullable(), prazo: z.string().nullable() })).optional(),
   /** Exigências em aberto (INSS, juízo ou despacho), com o prazo contado em código e os itens por setor (G21). */
   exigencias: z.array(
     z.object({

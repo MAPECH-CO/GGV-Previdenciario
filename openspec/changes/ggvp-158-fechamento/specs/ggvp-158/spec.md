@@ -1275,3 +1275,53 @@ O repositório SHALL ter a história do sistema em `docs/scrum/historia-do-siste
 #### Scenario: P10.1 · O que ficou para depois
 - **Dado** um passo que o Lucas deixou para depois, como o acompanhamento da RPV e do precatório
 - **Então** a história diz que ele fica fora hoje, com a data e quem decidiu
+
+### Requirement: P12.1 · O laudo novo na página do processo
+A página do processo SHALL trazer a data do laudo novo quando há parecer registrado e documento médico ainda não conferido, do caso ou da pessoa sem caso, pela mesma conta do parecer, sem chamar a IA. A data MUST ser a do documento mais antigo e não leva conteúdo.
+
+#### Scenario: P12.1 · Laudo que chegou depois do parecer
+- **Dado** um caso com parecer registrado e um laudo guardado depois, ainda não conferido
+- **Quando** o Jurídico abre o processo
+- **Então** a página traz a data do laudo novo
+
+#### Scenario: P12.1 · Laudo conferido
+- **Dado** o mesmo laudo, já conferido
+- **Então** a página não traz laudo novo
+
+### Requirement: P12.2 · A espera de fora com o prazo ou o lembrete
+Cada etapa que espera alguém de fora SHALL trazer o prazo, o mais perto entre as tarefas abertas do mesmo passo e as exigências abertas da espera, e o lembrete, pelo tipo de espera: o INSS, o cliente ou a Justiça.
+
+#### Scenario: P12.2 · Esperando o INSS
+- **Dado** um caso esperando o INSS decidir
+- **Então** a espera traz o lembrete "a vigília confere o Meu INSS todo dia útil"
+
+#### Scenario: P12.2 · Esperando o cliente na exigência
+- **Dado** um caso esperando o cliente entregar o documento de uma exigência com prazo
+- **Então** a espera traz o prazo da exigência e o lembrete da cobrança
+
+### Requirement: P12.3 · As perícias abertas, cada uma com responsável e prazo
+A página do processo SHALL trazer todas as perícias sem resultado e a última com resultado. Cada uma MUST vir com o responsável, quem tem a tarefa aberta da perícia, ou o setor, e o prazo: a data marcada ou o prazo da tarefa. A perícia mais recente continua no campo de hoje.
+
+#### Scenario: P12.3 · Médica e social ao mesmo tempo
+- **Dado** um caso com uma perícia médica marcada e uma social a marcar
+- **Quando** o Jurídico abre o processo
+- **Então** as duas aparecem, cada uma com o responsável e o prazo
+
+### Requirement: P12.4 · O ilegível vira "Pedir documento legível" no servidor
+Uma leitura ilegível, sem um legível do mesmo tipo depois, SHALL abrir "Pedir documento legível" para o Atendimento na tabela de tarefas, uma por pessoa. A linha MUST fechar quando o legível chega, e a tela MUST NOT repetir a tarefa para a ficha do servidor.
+
+#### Scenario: P12.4 · Documento ilegível
+- **Dado** um documento do balcão que a IA não conseguiu ler
+- **Então** o Atendimento tem "Pedir documento legível", com o tipo no detalhe
+
+#### Scenario: P12.4 · Chegou o legível
+- **Dado** o mesmo tipo de documento, lido depois e legível
+- **Então** a tarefa fecha
+
+### Requirement: P12.5 · O médico e o CRM gravados na conferência
+Conferida a leitura de um documento médico, o médico e o registro profissional que a IA leu SHALL ser gravados no documento médico, sem apagar o que já estava preenchido.
+
+#### Scenario: P12.5 · Laudo com médico e CRM
+- **Dado** um laudo lido com o médico e o CRM
+- **Quando** a Documentação confere a leitura
+- **Então** o documento médico guarda os dois, e o parecer mostra o médico
