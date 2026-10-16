@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { agendamento, caso, contrato, contratoRecepcao, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
+import { CONFERENCIAS_DO_OK } from '@ggv/contratos'
+import { agendamento, caso, contrato, contratoRecepcao, dadoBancario, documento, eventoAuditoria, mensagem, modelo, pessoa, prestacaoContas, processoAcervo, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
 import {
@@ -10,6 +11,7 @@ import {
   MSG_ANTES_DA_PRESTACAO,
   MSG_ANTES_DO_AVISO,
   MSG_ANTES_DO_RECEBIMENTO,
+  MSG_BANCARIO_SEM_CONFIRMACAO,
   MSG_DATA_PASSADA,
   MSG_ENCERRADO,
   MSG_G8,
@@ -44,7 +46,7 @@ const chamar = async (apelido: string, metodo: 'GET' | 'POST', resto: string, pa
   app.inject({ method: metodo, url: `/api/casos/${casoId}${resto}`, cookies: await cookieDe(apelido), ...(payload ? { payload } : {}) })
 const abertas = async () =>
   (await banco.select().from(tarefa).where(and(eq(tarefa.casoId, casoId), isNull(tarefa.concluidaEm)))).map((t) => `${t.perfilDono} · ${t.titulo}`).sort()
-const PRESTACAO = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true }
+const PRESTACAO = { valorRecebido: '12.345,67', percentual: '30', formaPagamento: 'pix', prazoPagamento: '30/10/2026', conferiCarta: true, conferiHonorarios: true, conferiDadosBancarios: true, revisouAviso: true }
 const AGENDA = () => ({ data: '15/10/2026', hora: '10:00', local: 'Caixa, agência Centro', acompanhanteId: ids.ana })
 const RECEBIDO = { resultado: 'recebido', valoresConferem: true }
 const receber = () => chamar('julia', 'POST', '/prestacao/recebimento', RECEBIDO)
@@ -180,6 +182,34 @@ describe('GGVP-44 · prestação de contas', () => {
     const [b] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     // Separação de funções, e não o G8 (que é "o aviso só sai depois do OK"): código neutro, sem número (Q21, 08/10).
     expect(b.detalhe).toMatchObject({ portao: 'funcoes', passo: 'D2.06r', perfil: 'financeiro', motivo: 'ok_e_recebimento' })
+  })
+})
+
+describe('GGVP-158 L2, L3 · as conferências do OK e os dados bancários (GGVP-92 CA5, CA10)', () => {
+  it('L2 · CA5 · sem uma das quatro conferências, 400 com a mensagem dela e nada gravado; a Sênior lê o texto do aviso para revisar', async () => {
+    await deferir()
+    expect((await chamar('gabi', 'GET', '/prestacao')).json().aviso).toBe('Olá, {cliente}! Ida ao banco em {data} às {hora}, {local}.{acompanhamento}')
+    for (const [campo, rotulo] of Object.entries(CONFERENCIAS_DO_OK)) {
+      const r = await chamar('gabi', 'POST', '/prestacao', { ...PRESTACAO, [campo]: false })
+      expect([campo, r.statusCode, r.json().erro]).toEqual([campo, 400, `Marque "${rotulo}"`])
+    }
+    expect(await banco.select().from(prestacaoContas)).toEqual([])
+    expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(201)
+  })
+
+  it('L3 · CA10 · a mudança dos dados bancários que espera a segunda confirmação trava o OK; confirmada, o OK sai', async () => {
+    await deferir()
+    const [{ pessoaId }] = await banco.select({ pessoaId: caso.pessoaId }).from(caso).where(eq(caso.id, casoId))
+    const dados = { pessoaId, banco: 'Banco Exemplo', agencia: '0001', conta: '12345-6', verificacao: 'video', pedidoPor: ids.ana, pedidoEm: AGORA }
+    // O pedido que outro tomou o lugar não conta; o aberto, sim.
+    await banco.insert(dadoBancario).values({ ...dados, descartadoEm: AGORA })
+    const [aberto] = await banco.insert(dadoBancario).values(dados).returning()
+    const r = await chamar('gabi', 'POST', '/prestacao', PRESTACAO)
+    expect([r.statusCode, r.json().erro]).toEqual([409, MSG_BANCARIO_SEM_CONFIRMACAO])
+    expect(await banco.select().from(prestacaoContas)).toEqual([])
+    expect(await abertas()).toEqual(['senior · Prestar contas'])
+    await banco.update(dadoBancario).set({ confirmadoPor: ids.igor, confirmadoEm: AGORA }).where(eq(dadoBancario.id, aberto.id))
+    expect((await chamar('gabi', 'POST', '/prestacao', PRESTACAO)).statusCode).toBe(201)
   })
 })
 

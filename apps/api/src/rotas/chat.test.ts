@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { RespostaDoChat } from '@ggv/contratos'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, peticao, peticaoVersao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, documentacaoMedica, documento, documentoMedico, eventoAuditoria, gravacaoRecepcao, modelo, peticao, peticaoVersao, pessoa, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
@@ -185,13 +185,13 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
     await banco.insert(documentoMedico).values({ documentoId: d.id, tipo: 'laudo', dataEmissao: '2026-09-20', cid: 'M54.5' })
   }
 
-  it('16.4 · o modelo recebe as quatro ferramentas de leitura e, com um caso, a de criar tarefa só para quem atribui tarefa (GGVP-158 P7.3)', async () => {
+  it('16.4 · o modelo recebe as ferramentas de leitura (o acervo só para quem vê as peças, GGVP-158 L1) e, com um caso, a de criar tarefa só para quem atribui tarefa (GGVP-158 P7.3)', async () => {
     await perguntar('ana', 'Oi', casoId)
-    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['buscar_no_acervo', 'explicar_portao', 'ler_caso', 'minhas_tarefas'])
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name).sort()).toEqual(['explicar_portao', 'ler_caso', 'minhas_tarefas'])
     montar({ ...CHAVE, IA_PERMITE_DADO_DE_SAUDE: 'sim' })
     chamadas = []
     await perguntar('helena', 'Oi', casoId)
-    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('criar_tarefa')
+    expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toEqual(expect.arrayContaining(['buscar_no_acervo', 'criar_tarefa']))
   })
 
   it('16.4, GGVP-162 CA6 · o Atendimento lê o caso pela ficha da cliente: o benefício e a etapa, sem a página do processo; a fonte é o caso', async () => {
@@ -242,6 +242,34 @@ describe('GGVP-142 · as ferramentas de leitura (CA1, CA2)', () => {
       { tipo: 'regra', referencia: 'tarefas da Central' },
       { tipo: 'regra', referencia: 'G8' },
     ])
+  })
+
+  it('GGVP-158 L1 (16/10) · o acervo é de quem vê as peças: nada dele chega ao modelo pela pergunta do Financeiro, da Documentação ou do Atendimento', async () => {
+    const [d] = await banco
+      .insert(usuario)
+      .values({ email: 'dora@exemplo.ggv', nome: 'dora', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['documentacao'], trocarSenha: false })
+      .returning()
+    ids.dora = d.id
+    const [p] = await banco.insert(pessoa).values({ nome: 'Joana Pereira Lima', situacao: 'cliente' }).returning()
+    await banco.insert(caso).values({ pessoaId: p.id, beneficio: 'aposentadoria_idade', fase: 'administrativa' })
+    // A entrevista que não foi do Jurídico: a transcrição conferida entra no acervo sem a marca de saúde.
+    await banco.insert(gravacaoRecepcao).values({
+      id: 'gravacao-do-atendimento',
+      pessoaId: p.id,
+      soJuridico: false,
+      dados: { trechos: [{ aos: 10, quem: 'Joana Pereira Lima', papel: 'cliente', texto: 'Parei de trabalhar na roça em março.', prova: true }], extraidas: [] },
+    })
+    await banco.insert(modelo).values({ tipo: 'peticao', nome: 'Rural', conteudo: 'Modelo de petição: trabalho na roça e a prova do tempo rural.' })
+    const vistos = []
+    for (const apelido of ['julia', 'dora', 'ana']) {
+      chamadas = []
+      roteiro = [ferramenta('buscar_no_acervo', { consulta: 'trabalhar na roça' }), { role: 'assistant', content: 'Sem caso parecido.' }]
+      await perguntar(apelido, 'Tem caso parecido de quem parou de trabalhar na roça?')
+      const visto = JSON.stringify(chamadas.map((c) => c.corpo.messages))
+      const ferramentas = chamadas[0].corpo.tools?.map((t) => t.function.name) ?? []
+      vistos.push({ apelido, transcricao: visto.includes('roça em março'), modelo: visto.includes('Modelo de petição'), acervo: ferramentas.includes('buscar_no_acervo') })
+    }
+    expect(vistos).toEqual(['julia', 'dora', 'ana'].map((apelido) => ({ apelido, transcricao: false, modelo: false, acervo: false })))
   })
 })
 

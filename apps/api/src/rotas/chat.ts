@@ -354,7 +354,9 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
         return `${portao}: ${PORTOES[portao]}`
       },
     }),
-  ]
+    // GGVP-158 L1 (16/10): o acervo é material jurídico (peças, decisões, pareceres, modelos de petição e a conversa e a
+    // entrevista de outros clientes). Só quem vê as peças recebe a ferramenta; para os outros, ela nem vai ao modelo.
+  ].filter((t) => t.name !== 'buscar_no_acervo' || pode(x.perfil, 'peticao.ver'))
 }
 
 type PessoaDoEscritorio = { id: string; nome: string; perfil: string; setor: string }

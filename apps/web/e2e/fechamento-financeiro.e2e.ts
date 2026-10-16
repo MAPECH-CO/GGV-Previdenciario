@@ -18,7 +18,12 @@ test('a prestação mantém valores editáveis antes do OK e sinaliza o contrato
   await page.getByLabel('Prazo de pagamento', { exact: true }).fill('2030-10-30')
   await expect(page.getByRole('button', { name: 'Concluir a prestação' })).toBeDisabled()
   expect(enviados).toBe(0)
+  // GGVP-92 CA5 (GGVP-158 L2): o OK só habilita com as quatro conferências.
   await page.getByLabel('Conferi os valores com a carta de concessão', { exact: true }).check()
+  await page.getByLabel('Conferi os honorários com o contrato', { exact: true }).check()
+  await page.getByLabel('Conferi que o Atendimento confirmou os dados bancários do cliente', { exact: true }).check()
+  await expect(page.getByRole('button', { name: 'Concluir a prestação' })).toBeDisabled()
+  await page.getByLabel('Revisei o texto do aviso ao cliente', { exact: true }).check()
   await page.getByRole('button', { name: 'Concluir a prestação' }).click()
   await expect(page.getByRole('status')).toContainText('Prestação concluída.')
   expect(enviados).toBe(1)
