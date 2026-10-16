@@ -39,7 +39,7 @@ export function CentralFinanceiro() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Financeiro</h1>
-          <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Financeiro" />
+          <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Financeiro" tarefas={tarefas} />
           {tarefas && (
             <FilasDeTarefas
               tarefas={tarefas}

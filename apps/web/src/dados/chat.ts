@@ -30,6 +30,7 @@ import { dataCurta, hojeIso } from '../regras/datas.ts'
 import { recusaDoChat } from '../regras/parecer.ts'
 import { NOMES_DO_TIPO, numerosDaJurimetria, prazosDaPericia, recusaDoChatNaPericia } from '../regras/pericia.ts'
 import { LEMBRETE_DA_IDENTIDADE } from '../regras/seguranca.ts'
+import { citaAlguemDaLista, paraOChat, perguntaDasTarefas, respostaDasTarefas } from '../regras/tarefasNoChat.ts'
 import { complementoDo, jurimetriaDoJuizoDoCaso, juizosDeExemplo, obterCaso, type QuemPergunta } from './caso.ts'
 import { tarefasDeDecidirCobranca } from './cobranca.ts'
 import { pessoasDoEscritorio } from './conversa.ts'
@@ -524,12 +525,29 @@ async function vaiAoServidor(p: { texto: string; processoId?: string }) {
  * perfil, as ações (com cartão) e as consultas. Nada executa aqui.
  */
 export async function perguntar(
-  p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string; anteriores?: MensagemAnterior[] },
+  p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string; anteriores?: MensagemAnterior[]; tarefas?: Tarefa[] | null },
   quem: QuemPergunta,
 ): Promise<RespostaDoChat> {
+  // "O que eu tenho para fazer?" (Pedro, 16/10): a resposta sai da lista da Central, a mesma que a pessoa vê, com a conta
+  // feita por código. A IA lia só as tarefas do servidor e dizia "nada para hoje" com tarefa vencendo hoje na tela.
+  const hoje = hojeIso(agora())
+  const daTela = p.tarefas?.map((t) => paraOChat(t, hoje))
+  // Pergunta que cita um cliente ("a próxima tarefa da Josefa") fica com o motor, que lê o caso dele.
+  const citaCliente = daTela && (citaAlguemDaLista(daTela, p.texto) || (await identificarCliente(p.texto)).length > 0)
+  if (daTela && !p.anexos?.length && !citaCliente && perguntaDasTarefas(p.texto)) {
+    const r = respostaDasTarefas(daTela, hoje)
+    return { ...resposta(r.texto, [], [{ tipo: 'regra', referencia: 'tarefas da sua Central' }]), blocos: r.blocos }
+  }
   if (servidorLigado() && (await vaiAoServidor(p))) {
-    // GGVP-142 CA5 (Pedro, 14/10): a conversa vai junto, para a IA entender "é ele" e o cliente citado antes.
-    const corpo = { texto: p.texto, anexos: p.anexos ?? [], ...(p.processoId ? { processoId: p.processoId } : {}), ...(p.anteriores?.length ? { anteriores: p.anteriores } : {}) }
+    // GGVP-142 CA5 (Pedro, 14/10): a conversa vai junto, para a IA entender "é ele" e o cliente citado antes. As tarefas da
+    // tela também, para a IA ler a mesma lista que a pessoa vê.
+    const corpo = {
+      texto: p.texto,
+      anexos: p.anexos ?? [],
+      ...(p.processoId ? { processoId: p.processoId } : {}),
+      ...(p.anteriores?.length ? { anteriores: p.anteriores } : {}),
+      ...(daTela?.length ? { tarefasDaTela: daTela.slice(0, 80) } : {}),
+    }
     return noBanco<RespostaDoChat>('/chat', { method: 'POST', corpo })
   }
   await esperar()

@@ -26,7 +26,7 @@ export function InicioDoSocio() {
       <Resultados
         topo={
           <>
-            <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Sócio" />
+            <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Sócio" tarefas={tarefas} />
             {tarefas && tarefas.length > 0 && <FilasDeTarefas tarefas={tarefas} />}
           </>
         }

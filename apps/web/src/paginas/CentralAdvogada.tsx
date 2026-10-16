@@ -50,7 +50,7 @@ export function CentralAdvogada() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
-          <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
+          <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} tarefas={tarefas} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>
       </main>
