@@ -7,12 +7,22 @@ import { Topbar } from './Topbar.tsx'
  * então o "Você · ..." desenhado para uma função deixa de ser repetido. Sem sessão (teste de uma tela sozinha), fica como
  * foi desenhado.
  */
-export function TopoPasso({ contexto, inicio = '/' }: { contexto: string; /** A Central de quem está na tela. */ inicio?: string }) {
+export function TopoPasso({
+  contexto,
+  inicio = '/',
+  ativo = '',
+}: {
+  contexto: string
+  /** A Central de quem está na tela. */
+  inicio?: string
+  /** O botão do topo que fica aceso: o Balcão, que é tela do topo e também passo. */
+  ativo?: string
+}) {
   const sessao = useSessao()
   const itens = [
     { id: 'inicio', rotulo: 'Início', href: sessao ? '/' : inicio },
     { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
   ]
   const deQuem = sessao && contexto.startsWith('Você ·') ? undefined : contexto
-  return <Topbar itens={itens} ativo="" funcao="" voltar contexto={deQuem} />
+  return <Topbar itens={itens} ativo={ativo} funcao="" voltar contexto={deQuem} />
 }

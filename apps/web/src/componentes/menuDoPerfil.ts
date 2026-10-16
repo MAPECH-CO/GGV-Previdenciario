@@ -3,6 +3,7 @@ import type { ItemNavegacao } from './Topbar.tsx'
 
 const ITEM = {
   inicio: { id: 'inicio', rotulo: 'Início', href: '/' },
+  balcao: { id: 'balcao', rotulo: 'Balcão', href: '/balcao' },
   agenda: { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
   clientes: { id: 'clientes', rotulo: 'Clientes', href: '/clientes' },
   processos: { id: 'processos', rotulo: 'Processos', href: '/processos' },
@@ -27,6 +28,12 @@ const ITEM = {
 const COM_AS_BASES = ['atendimento_lider', 'advogada', 'senior', 'financeiro', 'socio']
 
 /**
+ * O Balcão, onde se recebe quem chegou, é do Atendimento e do líder (Pedro, 16/10): era uma tarefa fixa na fila, que não
+ * era tarefa, e ninguém achava o caminho para a tela.
+ */
+const NO_BALCAO = ['atendimento', 'atendimento_lider']
+
+/**
  * As telas de consulta no topo: a Sênior chega aos estudos de caso (GGVP-19) e aos roteiros que ela edita (GGVP-135); o
  * Sócio, que só lê, a essas duas e à vigília (GGVP-162 CA9). Os outros perfis chegam a elas pela tarefa.
  */
@@ -42,6 +49,7 @@ export function menuDoPerfil(perfil: string | null | undefined): { principais: I
   const bases = COM_AS_BASES.includes(perfil ?? '') && p('caso.ver')
   const principais = [
     ITEM.inicio,
+    ...(NO_BALCAO.includes(perfil ?? '') ? [ITEM.balcao] : []),
     // A agenda lê os casos: sem ver o caso, a tela só daria erro.
     ...(p('caso.ver') ? [ITEM.agenda] : []),
     ...(bases ? [ITEM.clientes] : []),

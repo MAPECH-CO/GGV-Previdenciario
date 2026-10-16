@@ -10,6 +10,7 @@ import cartao from './CartaoConfirmacao.module.css'
 import itens from './ChatDaPericia.module.css'
 import { TextoFormatado } from './TextoFormatado.tsx'
 import { WidgetNoChat } from './WidgetsDoChat.tsx'
+import type { Tarefa } from '../dados/tipos.ts'
 import styles from './ChatDoPortal.module.css'
 
 type EstadoDoCartao = { estado: EstadoAcao; escolha?: string; responsavel?: string; trocando?: boolean; resultado?: ResultadoDaAcao; erro?: string }
@@ -35,6 +36,8 @@ type Props = {
   funcao: string
   /** O chat aberto de dentro de um caso: a pergunta sem nome de cliente é sobre ele. */
   processoId?: string
+  /** As tarefas da Central, a lista que a pessoa vê: "o que eu tenho para fazer?" responde por ela (Pedro, 16/10). */
+  tarefas?: Tarefa[] | null
 }
 
 /**
@@ -42,7 +45,7 @@ type Props = {
  * Uma casca só para toda Central e para a aba Suporte, sobre o motor único (`perguntar` e `confirmarAcao` de dados/chat.ts).
  * Só responde e orienta; para executar algo, mostra um cartão, e nada acontece sem o clique.
  */
-export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId }: Props) {
+export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId, tarefas }: Props) {
   const perfil = usePerfil(funcao)
   const quem = { id: perfil?.id ?? 'atendimento', usuario: perfil?.usuario ?? funcao }
   const [mensagens, setMensagens] = useState<Mensagem[]>([])
@@ -57,7 +60,7 @@ export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId }: Props) 
     const anteriores = anterioresDe(mensagens)
     setMensagens((m) => [...m, pedido, { id, de: 'ia', texto: '', pensando: true, arquivos }])
     try {
-      const resposta = await perguntar({ texto, anexos: arquivos.map((a) => ({ nome: a.name, tamanho: a.size })), processoId, anteriores }, quem)
+      const resposta = await perguntar({ texto, anexos: arquivos.map((a) => ({ nome: a.name, tamanho: a.size })), processoId, anteriores, tarefas }, quem)
       mudar(id, { pensando: false, resposta, cartao: resposta.acao ? { estado: 'esperando' } : undefined })
     } catch (e) {
       mudar(id, { pensando: false, texto: e instanceof Error ? e.message : 'Não deu para responder agora. Tente de novo.' })

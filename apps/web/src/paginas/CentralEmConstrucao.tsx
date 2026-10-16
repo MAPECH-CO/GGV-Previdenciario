@@ -37,7 +37,7 @@ export function CentralEmConstrucao({ rotulo, deExemplo = [] }: { rotulo: string
       <main className={centralStyles.pagina}>
         <div className={centralStyles.coluna}>
           <h1 className={styles.titulo}>Central · {rotulo}</h1>
-          <ChatDoPortal exemplo="Ex.: “qual é a próxima tarefa da Maria Exemplo?”" sugestoes={[]} funcao={rotulo} />
+          <ChatDoPortal exemplo="Ex.: “qual é a próxima tarefa da Maria Exemplo?”" sugestoes={[]} funcao={rotulo} tarefas={tarefas} />
           {tarefas && (
             <FilasDeTarefas
               tarefas={tarefas}

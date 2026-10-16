@@ -483,6 +483,19 @@ describe('12/10 · os widgets do chat', () => {
     expect(numeros.tipo === 'widget' && numeros.widget.tipo === 'numeros' && numeros.widget.itens[0]).toEqual({ rotulo: 'Abertas', valor: 2 })
   })
 
+  it('Pedro, 16/10: com a lista da tela, a IA lê as tarefas que a pessoa vê, e não só as do servidor', async () => {
+    await tarefasDaAna()
+    roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem **1 tarefa**, que vence hoje.\n{{w2}}' }]
+    const tarefasDaTela = [{ quem: 'Maria Exemplo', acao: 'Marcar perícia', detalhe: 'o INSS liberou o agendamento', prazo: '2026-10-09', urgente: true, href: '/casos/maria-exemplo-1/pericia/marcar' }]
+    const r = await app.inject({ method: 'POST', url: '/api/chat', cookies: await cookieDe('ana'), payload: { texto: 'O que tem hoje pra mim?', tarefasDaTela } })
+    expect(r.statusCode, r.body).toBe(200)
+    expect(saidaDaFerramenta(1)).toContain('"venceHoje":true')
+    expect(saidaDaFerramenta(1)).toContain('Maria Exemplo')
+    expect(saidaDaFerramenta(1)).not.toContain('Cobrar documento')
+    const lista = RespostaDoChat.parse(r.json()).blocos?.find((b) => b.tipo === 'widget')
+    expect(lista?.tipo === 'widget' && lista.widget.tipo === 'lista' && lista.widget.itens[0]).toMatchObject({ titulo: 'Maria Exemplo · Marcar perícia', selo: { texto: 'hoje' } })
+  })
+
   it('sem marcador, a resposta vem sem blocos', async () => {
     await tarefasDaAna()
     roteiro = [ferramenta('minhas_tarefas'), { role: 'assistant', content: 'Você tem duas tarefas.' }]
@@ -578,7 +591,7 @@ describe('GGVP-142 · ajustes do teste do Pedro no chat (14/10)', () => {
     expect(MSG_CLIENTE_NAO_ACHADO).not.toMatch(/peça o nome completo/)
     const instrucao = conteudo(chamadas[0].corpo.messages.find((m) => m.role === 'system' || m.role === 'developer')!)
     expect(instrucao).toContain('Nunca peça de novo o nome que a pessoa já deu.')
-    expect(await registros()).toMatchObject([{ versaoInstrucao: 3 }])
+    expect(await registros()).toMatchObject([{ versaoInstrucao: 4 }])
   })
 
   it('18.15 CA8 · o Atendimento pede uma minuta: o código diz que o perfil não tem acesso e manda pedir à Sênior, sem modelo', async () => {

@@ -10,6 +10,20 @@ export const AnexoDoChat = z.object({ nome: z.string().min(1).max(200), tamanho:
 export const MensagemAnterior = z.object({ de: z.enum(['pessoa', 'chat']), texto: z.string().max(2000) })
 export type MensagemAnterior = z.infer<typeof MensagemAnterior>
 
+/**
+ * A tarefa como a Central mostra (Pedro, 16/10): a lista junta o servidor, a perícia, o chat e o setor, e o chat lê a
+ * mesma. O prazo já em data (aaaa-mm-dd), lido pela tela.
+ */
+export const TarefaDaTela = z.object({
+  quem: z.string().max(200),
+  acao: z.string().max(200),
+  detalhe: z.string().max(400),
+  prazo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  urgente: z.boolean(),
+  href: z.string().regex(/^\/(?![/\\])[^\\]*$/).nullable(),
+})
+export type TarefaDaTela = z.infer<typeof TarefaDaTela>
+
 /** POST /api/chat: a pergunta. `processoId` quando o chat foi aberto de dentro de um caso; `anteriores`, as últimas 10 mensagens. */
 export const PerguntaDoChat = z
   .object({
@@ -17,6 +31,7 @@ export const PerguntaDoChat = z
     anexos: z.array(AnexoDoChat).max(500).default([]),
     processoId: z.string().optional(),
     anteriores: z.array(MensagemAnterior).max(10).default([]),
+    tarefasDaTela: z.array(TarefaDaTela).max(80).optional(),
   })
   .refine((p) => p.texto.length > 0 || p.anexos.length > 0, { message: 'Escreva a pergunta ou anexe um arquivo', path: ['texto'] })
 export type PerguntaDoChat = z.infer<typeof PerguntaDoChat>

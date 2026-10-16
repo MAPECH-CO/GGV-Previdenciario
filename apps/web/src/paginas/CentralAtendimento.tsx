@@ -7,7 +7,7 @@ import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
 import { juntarMinhas, useMinhasDoSetor } from '../dados/setor.ts'
-import { exemploChatAtendimento, tarefasAtendimento } from '../dados/atendimento.ts'
+import { exemploChatAtendimento } from '../dados/atendimento.ts'
 import { tarefasDeConfirmar } from '../dados/agenda.ts'
 import { tarefasDeConfirmarAgendamento } from '../dados/confirmacao.ts'
 import { tarefasDeCompletarTelefone } from '../dados/documentos.ts'
@@ -56,7 +56,6 @@ function tarefasDeExemplo(funcao: Funcao | null): Tarefa[] {
     ['Atendimento', tarefasDeConfirmar()],
     ['Atendimento', tarefasDeConfirmarAgendamento()],
     ['Atendimento', tarefasDeCompletarTelefone()],
-    ['Atendimento', tarefasAtendimento],
     ['Atendimento', tarefasDoContrato()],
     ['Documentação', tarefasDeConferirDocumento()],
     ['Documentação', tarefasDeConferirChecklist()],
@@ -102,7 +101,7 @@ export function CentralAtendimento() {
         <div className={styles.coluna}>
           <h1 className="so-leitor">{funcao === 'Documentação' ? 'Início da Documentação' : 'Início do Atendimento'}</h1>
           {/* GGVP-96: a Documentação e o líder, que também abrem esta Central, com as sugestões do perfil deles. */}
-          <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={SUGESTOES_DO_PERFIL[grupoDoPerfil(perfil?.id)]} />
+          <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={SUGESTOES_DO_PERFIL[grupoDoPerfil(perfil?.id)]} tarefas={tarefas} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>
       </main>

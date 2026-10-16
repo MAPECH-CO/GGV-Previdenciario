@@ -105,6 +105,15 @@ describe('GGVP-157 CA6 · a visão das custas', () => {
     expect(within(mes).getByRole('link', { name: 'Cliente Inventada' }).getAttribute('href')).toBe(`/casos/${CASO}#custas`)
     expect(screen.queryByRole('button', { name: 'Aprovar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Recusar com motivo' })).toBeNull()
+    expect(screen.queryByRole('button', { name: '+ Novo custo' })).toBeNull()
+  })
+
+  it('Pedro, 16/10 · o Financeiro abre o Novo custo pela visão das custas', async () => {
+    servidor()
+    render(comSessao(<Custas />))
+    fireEvent.click(await screen.findByRole('button', { name: '+ Novo custo' }))
+    expect(screen.getByRole('dialog', { name: 'Novo custo' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: /Buscar o processo/ })).toBeTruthy()
   })
 
   it('o detalhe de um processo para o Financeiro: o card de custas, com o caminho de volta', async () => {

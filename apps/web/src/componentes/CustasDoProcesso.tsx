@@ -21,13 +21,7 @@ const VAZIO = { descricao: '', valor: '', data: '' }
 
 export function CustasDoProcesso({ casoId }: { casoId: string }) {
   const [custas, setCustas] = useState<Custas | null | undefined>(undefined)
-  const [form, setForm] = useState(() => ({ ...VAZIO, data: isoParaData(hojeIso(agora())) ?? '' }))
-  const [arquivo, setArquivo] = useState<File | null>(null)
-  const [erros, setErros] = useState<Record<string, string>>({})
   const [aviso, setAviso] = useState('')
-  const [falha, setFalha] = useState('')
-  const travado = useRef(false)
-  const idArquivo = useId()
 
   async function carregar() {
     const r = await chamarApi<Custas>(`/casos/${casoId}/custas`)
@@ -48,39 +42,6 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
 
   if (custas === undefined) return <p className={base.nota}>Abrindo as custas do processo…</p>
   if (custas === null) return null
-
-  /** Uma ação por vez: dois cliques não lançam duas vezes. */
-  async function umaVez(acao: () => Promise<void>) {
-    if (travado.current) return
-    travado.current = true
-    setAviso('')
-    setFalha('')
-    try {
-      await acao()
-    } finally {
-      travado.current = false
-    }
-  }
-
-  const lancar = () =>
-    umaVez(async () => {
-      const entrada = LancarCusto.safeParse(form)
-      const novos: Record<string, string> = {}
-      if (!entrada.success) for (const i of entrada.error.issues) novos[String(i.path[0])] ??= i.message
-      const problema = arquivo ? problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size }) : MSG_SEM_COMPROVANTE
-      if (problema) novos.arquivo = problema
-      setErros(novos)
-      if (Object.keys(novos).length) return
-      const corpo = new FormData()
-      for (const [k, v] of Object.entries(form)) corpo.append(k, v)
-      corpo.append('arquivo', arquivo!)
-      const r = await chamarApi<{ situacao: SituacaoDoCusto }>(`/casos/${casoId}/custas`, { method: 'POST', corpo })
-      if (!r.ok) return setFalha(r.erro)
-      setForm({ ...VAZIO, data: form.data })
-      setArquivo(null)
-      setAviso(r.dados.situacao === 'aprovado' ? 'Custo lançado e já aprovado.' : 'Enviado ao Financeiro. Conta no lucro depois que ele aprovar.')
-      await carregar()
-    })
 
   const { totais } = custas
   const negativo = Number(totais.lucro) < 0
@@ -172,53 +133,120 @@ export function CustasDoProcesso({ casoId }: { casoId: string }) {
       )}
 
       {custas.podeLancar && (
-        <form
-          className={styles.lancar}
-          aria-labelledby="lancar-custo"
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault()
-            void lancar()
+        <FormularioDoCusto
+          casoId={casoId}
+          podeAprovar={custas.podeAprovar}
+          aoLancar={(texto) => {
+            setAviso(texto)
+            void carregar()
           }}
-        >
-          <h3 id="lancar-custo" className={base.grupo}>
-            Lançar custo
-          </h3>
-          <div className={styles.campos}>
-            <Campo id="custo-descricao" rotulo="Descrição" valor={form.descricao} aoMudar={(descricao) => setForm({ ...form, descricao })} erro={erros.descricao} maxLength={200} placeholder="Ex.: Uber para levar o cliente à perícia" />
-            <Campo id="custo-valor" rotulo="Valor (R$)" valor={form.valor} aoMudar={(valor) => setForm({ ...form, valor })} erro={erros.valor} inputMode="decimal" placeholder="0,00" />
-            <Campo id="custo-data" rotulo="Data" valor={form.data} aoMudar={(data) => setForm({ ...form, data: normalizarData(data) })} erro={erros.data} inputMode="numeric" maxLength={10} placeholder="dd/mm/aaaa" />
-          </div>
-          <div className={styles.anexo}>
-            <label htmlFor={idArquivo} className={passo.atalho}>
-              <span aria-hidden="true">📎</span> Anexar comprovante (foto ou PDF)
-            </label>
-            <input
-              id={idArquivo}
-              className={styles.arquivo}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-              aria-invalid={erros.arquivo ? true : undefined}
-              aria-describedby={`${idArquivo}-dica`}
-              onChange={(e) => {
-                setArquivo(e.target.files?.[0] ?? null)
-                setErros({ ...erros, arquivo: '' })
-              }}
-            />
-            <span id={`${idArquivo}-dica`} className={base.nota}>
-              {arquivo ? arquivo.name : 'obrigatório para enviar'}
-            </span>
-          </div>
-          {erros.arquivo && <p className={styles.erroCampo}>{erros.arquivo}</p>}
-          <button type="submit" className={passo.principalBotao}>
-            {custas.podeAprovar ? 'Lançar (já entra aprovado)' : 'Enviar ao Financeiro'}
-          </button>
-        </form>
+        />
       )}
-      {falha && <p role="alert" className={styles.erroCampo}>{falha}</p>}
       {aviso && <p role="status">{aviso}</p>}
       <p className={base.nota}>Só conta no lucro depois que o Financeiro aprova. O custo não entra na prestação de contas do cliente.</p>
     </section>
+  )
+}
+
+type PropsDoFormulario = {
+  /** Nulo na janela do "Novo custo" enquanto a pessoa não escolheu o processo: enviar pede a escolha. */
+  casoId: string | null
+  podeAprovar: boolean
+  aoLancar: (aviso: string) => void
+  /** O título "Lançar custo" do card; a janela tem o dela. */
+  comTitulo?: boolean
+  /** O que falta antes de enviar, de quem usa o formulário (a janela: escolher o processo). */
+  falta?: () => string | null
+}
+
+/** "Lançar custo": descrição, valor, data e comprovante. O card do processo e a janela do "Novo custo" usam o mesmo. */
+export function FormularioDoCusto({ casoId, podeAprovar, aoLancar, comTitulo = true, falta }: PropsDoFormulario) {
+  const [form, setForm] = useState(() => ({ ...VAZIO, data: isoParaData(hojeIso(agora())) ?? '' }))
+  const [arquivo, setArquivo] = useState<File | null>(null)
+  const [erros, setErros] = useState<Record<string, string>>({})
+  const [falha, setFalha] = useState('')
+  const travado = useRef(false)
+  const idArquivo = useId()
+
+  async function lancar() {
+    // Uma vez só: dois cliques não lançam duas vezes.
+    if (travado.current) return
+    travado.current = true
+    setFalha('')
+    try {
+      const entrada = LancarCusto.safeParse(form)
+      const novos: Record<string, string> = {}
+      if (!entrada.success) for (const i of entrada.error.issues) novos[String(i.path[0])] ??= i.message
+      const problema = arquivo ? problemaDoArquivo({ nome: arquivo.name, tamanho: arquivo.size }) : MSG_SEM_COMPROVANTE
+      if (problema) novos.arquivo = problema
+      const antes = falta?.()
+      setErros(novos)
+      if (antes) return setFalha(antes)
+      if (Object.keys(novos).length || !casoId) return
+      const corpo = new FormData()
+      for (const [k, v] of Object.entries(form)) corpo.append(k, v)
+      corpo.append('arquivo', arquivo!)
+      const r = await chamarApi<{ situacao: SituacaoDoCusto }>(`/casos/${casoId}/custas`, { method: 'POST', corpo })
+      if (!r.ok) return setFalha(r.erro)
+      setForm({ ...VAZIO, data: form.data })
+      setArquivo(null)
+      aoLancar(r.dados.situacao === 'aprovado' ? 'Custo lançado e já aprovado.' : 'Enviado ao Financeiro. Conta no lucro depois que ele aprovar.')
+    } finally {
+      travado.current = false
+    }
+  }
+
+  return (
+    <form
+      className={styles.lancar}
+      aria-label={comTitulo ? undefined : 'Lançar custo'}
+      aria-labelledby={comTitulo ? 'lancar-custo' : undefined}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        void lancar()
+      }}
+    >
+      {comTitulo && (
+        <h3 id="lancar-custo" className={base.grupo}>
+          Lançar custo
+        </h3>
+      )}
+      <div className={styles.campos}>
+        <Campo id="custo-descricao" rotulo="Descrição" valor={form.descricao} aoMudar={(descricao) => setForm({ ...form, descricao })} erro={erros.descricao} maxLength={200} placeholder="Ex.: Uber para levar o cliente à perícia" />
+        <Campo id="custo-valor" rotulo="Valor (R$)" valor={form.valor} aoMudar={(valor) => setForm({ ...form, valor })} erro={erros.valor} inputMode="decimal" placeholder="0,00" />
+        <Campo id="custo-data" rotulo="Data" valor={form.data} aoMudar={(data) => setForm({ ...form, data: normalizarData(data) })} erro={erros.data} inputMode="numeric" maxLength={10} placeholder="dd/mm/aaaa" />
+      </div>
+      <div className={styles.anexo}>
+        <label htmlFor={idArquivo} className={passo.atalho}>
+          <span aria-hidden="true">📎</span> Anexar comprovante (foto ou PDF)
+        </label>
+        <input
+          id={idArquivo}
+          className={styles.arquivo}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          aria-invalid={erros.arquivo ? true : undefined}
+          aria-describedby={`${idArquivo}-dica`}
+          onChange={(e) => {
+            setArquivo(e.target.files?.[0] ?? null)
+            setErros({ ...erros, arquivo: '' })
+          }}
+        />
+        <span id={`${idArquivo}-dica`} className={base.nota}>
+          {arquivo ? arquivo.name : 'obrigatório para enviar'}
+        </span>
+      </div>
+      {erros.arquivo && <p className={styles.erroCampo}>{erros.arquivo}</p>}
+      {falha && (
+        <p role="alert" className={styles.erroCampo}>
+          {falha}
+        </p>
+      )}
+      <button type="submit" className={passo.principalBotao}>
+        {podeAprovar ? 'Lançar (já entra aprovado)' : 'Enviar ao Financeiro'}
+      </button>
+    </form>
   )
 }
 

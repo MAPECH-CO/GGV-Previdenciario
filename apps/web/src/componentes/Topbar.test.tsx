@@ -73,7 +73,7 @@ describe('GGVP-78 · o topo pelo perfil da sessão, igual em toda tela', () => {
   }
 
   it('Clientes e Processos depois do Início e da Agenda; a líder só com Clientes (GGVP-162); a Gestão à parte', () => {
-    expect(ids('atendimento_lider')).toEqual({ principais: ['inicio', 'agenda', 'clientes'], gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'] })
+    expect(ids('atendimento_lider')).toEqual({ principais: ['inicio', 'balcao', 'agenda', 'clientes'], gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao'] })
     expect(ids('advogada')).toEqual({ principais: ['inicio', 'agenda', 'clientes', 'processos'], gestao: [] })
     expect(ids('senior')).toEqual({
       principais: ['inicio', 'agenda', 'clientes', 'processos', 'estudos', 'roteiros'],
@@ -82,7 +82,7 @@ describe('GGVP-78 · o topo pelo perfil da sessão, igual em toda tela', () => {
   })
 
   it('o Atendimento tem a Agenda; o Financeiro, que não vê o caso, fica sem ela e com os Resultados e o painel Financeiro', () => {
-    expect(ids('atendimento')).toEqual({ principais: ['inicio', 'agenda'], gestao: [] })
+    expect(ids('atendimento')).toEqual({ principais: ['inicio', 'balcao', 'agenda'], gestao: [] })
     expect(ids('financeiro')).toEqual({ principais: ['inicio', 'financeiro', 'custas'], gestao: ['resultados'] })
     expect(ids(null)).toEqual({ principais: ['inicio'], gestao: [] })
   })

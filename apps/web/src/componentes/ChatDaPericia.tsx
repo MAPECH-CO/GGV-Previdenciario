@@ -1,3 +1,4 @@
+import type { Tarefa } from '../dados/tipos.ts'
 import { ChatDoPortal } from './ChatDoPortal.tsx'
 
 /**
@@ -6,6 +7,6 @@ import { ChatDoPortal } from './ChatDoPortal.tsx'
  * advogada (`advogada`), as perícias da semana (2107:667) e como o perito avalia (2186:2). Desde a GGVP-82, é um caso do
  * motor único (ChatDoPortal, sobre dados/chat.ts).
  */
-export function ChatDaPericia({ exemplo, sugestoes, advogada = false }: { exemplo: string; sugestoes: string[]; advogada?: boolean }) {
-  return <ChatDoPortal exemplo={exemplo} sugestoes={sugestoes} funcao={advogada ? 'Advogada' : 'Jurídico administrativo'} />
+export function ChatDaPericia({ exemplo, sugestoes, advogada = false, tarefas }: { exemplo: string; sugestoes: string[]; advogada?: boolean; tarefas?: Tarefa[] | null }) {
+  return <ChatDoPortal exemplo={exemplo} sugestoes={sugestoes} funcao={advogada ? 'Advogada' : 'Jurídico administrativo'} tarefas={tarefas} />
 }

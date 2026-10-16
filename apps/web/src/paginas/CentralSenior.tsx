@@ -46,7 +46,7 @@ export function CentralSenior({ deExemplo = [] }: { deExemplo?: Tarefa[] }) {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Sênior</h1>
-          <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Sênior" />
+          <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Sênior" tarefas={tarefas} />
           {tarefas && (
             <FilasDeTarefas
               tarefas={tarefas}

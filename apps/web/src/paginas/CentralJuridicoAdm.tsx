@@ -38,7 +38,7 @@ export function CentralJuridicoAdm() {
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Jurídico administrativo</h1>
-          <ChatDaPericia exemplo={exemploChatJuridicoAdm} sugestoes={sugestoesChatJuridicoAdm} />
+          <ChatDaPericia exemplo={exemploChatJuridicoAdm} sugestoes={sugestoesChatJuridicoAdm} tarefas={tarefas} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>
       </main>

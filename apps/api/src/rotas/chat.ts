@@ -14,6 +14,7 @@ import {
   type ProcessoDoCaso,
   type RespostaDoChat,
   type TarefaDaCentral,
+  type TarefaDaTela,
   type TextoDaFala,
   type WidgetDoChat,
 } from '@ggv/contratos'
@@ -232,6 +233,8 @@ type Ambiente = {
   widgets: Map<string, WidgetDoChat>
   /** O dia de hoje em Brasília, para os prazos dos widgets. */
   hoje: string
+  /** A lista da Central que a tela mandou (Pedro, 16/10): mais completa que a do servidor (perícia, chat, setor). */
+  tarefasDaTela?: TarefaDaTela[]
   evento: (acao: string, alvo: string, detalhe: Record<string, unknown>) => Promise<unknown>
   confirmacao?: { responsavel?: string }
   resultado?: { texto: string; links: LinkDoChat[] }
@@ -332,10 +335,16 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
       description: 'As tarefas abertas da pessoa, como na Central dela, com o cliente, o prazo e a urgência.',
       parameters: z.object({}),
       execute: async () => {
-        const r = await x.app.inject({ method: 'GET', url: '/api/tarefas', headers: { cookie: x.cookie } })
-        if (r.statusCode !== 200) return 'Não deu para ler as tarefas agora.'
+        // A lista que a pessoa vê, quando a tela mandou; senão, a do servidor.
+        let tarefas: TarefaDaCentral[]
+        if (x.tarefasDaTela) {
+          tarefas = x.tarefasDaTela.map((t, i) => ({ id: `tela-${i}`, casoId: null, passo: null, cliente: null, contexto: t.quem || null, titulo: t.acao, detalhe: t.detalhe, tela: t.href, prazo: t.prazo, urgente: t.urgente }))
+        } else {
+          const r = await x.app.inject({ method: 'GET', url: '/api/tarefas', headers: { cookie: x.cookie } })
+          if (r.statusCode !== 200) return 'Não deu para ler as tarefas agora.'
+          tarefas = r.json() as TarefaDaCentral[]
+        }
         x.fontes.push({ tipo: 'regra', referencia: 'tarefas da Central' })
-        const tarefas = r.json() as TarefaDaCentral[]
         // CA9 (Pedro, 14/10): o atraso sai do código, com o dia de hoje; o modelo só repete o que veio marcado.
         const marcadas = tarefas.map((t) => {
           const prazo = dataDe(t.prazo)
@@ -547,6 +556,7 @@ export function registrarRotasChat(app: FastifyInstance, { banco, agora = () => 
     const link = alvo ? linkDoCaso(pedido.perfilAtivo, alvo) : null
     if (entrada.data.anexos.length) return arquivosPeloChat(texto, entrada.data.anexos, casoId ?? noProcesso ?? null, link, agora())
     const x = ambiente(pedido, alvo)
+    x.tarefasDaTela = entrada.data.tarefasDaTela
     // GGVP-158 A1 (G9): a senha do gov.br sai da pergunta e do histórico antes da IA, pela regra da entrevista: a mensagem
     // logo depois da que fala de senha também conta ("qual a senha?" e depois só a senha).
     const limpas = tirarSenhas([...entrada.data.anteriores, { de: 'pessoa' as const, texto }].map((m, i) => ({ aos: i, quem: m.de, papel: 'cliente' as const, texto: m.texto })))

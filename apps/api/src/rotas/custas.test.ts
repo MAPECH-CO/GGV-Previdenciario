@@ -202,3 +202,25 @@ describe('GGVP-157 · custas do processo', () => {
     expect(linha.eventos.some((e: { descricao: string }) => /custo/i.test(e.descricao))).toBe(false)
   })
 })
+
+describe('Novo custo na visão das custas (Pedro, 16/10)', () => {
+  const buscar = async (apelido: string, busca: string) => app.inject({ method: 'GET', url: `/api/custas/processos?busca=${encodeURIComponent(busca)}`, cookies: await cookieDe(apelido) })
+
+  it('quem lança acha o processo pelo nome do cliente, sem acento; a resposta não leva CPF nem telefone', async () => {
+    await banco.update(pessoa).set({ cpf: '27183946509', telefone: '11988887777' }).where(eq(pessoa.nome, 'Cliente Inventada'))
+    for (const apelido of ['julia', 'helena']) {
+      const r = await buscar(apelido, 'cliente inven')
+      expect(r.json(), apelido).toEqual([{ casoId, cliente: 'Cliente Inventada', beneficio: 'BPC/LOAS Idoso', fase: 'Judicial' }])
+    }
+    // CPF e telefone só inteiros: pedaço de número não diz quem é cliente.
+    expect((await buscar('julia', '271.839.465-09')).json()).toHaveLength(1)
+    expect((await buscar('julia', '(11) 98888-7777')).json()).toHaveLength(1)
+    for (const pedaco of ['2718394', '27183946508', '98888']) expect((await buscar('julia', pedaco)).json(), pedaco).toEqual([])
+    expect((await buscar('julia', 'x')).json()).toEqual([])
+    expect((await buscar('julia', 'Ninguém Assim')).json()).toEqual([])
+  })
+
+  it('quem não lança custo não busca processo por aqui', async () => {
+    for (const apelido of ['otavio', ...SEM_CUSTAS]) expect((await buscar(apelido, 'Cliente')).statusCode, apelido).toBe(403)
+  })
+})

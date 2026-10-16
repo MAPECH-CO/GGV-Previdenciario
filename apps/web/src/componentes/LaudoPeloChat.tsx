@@ -1,3 +1,4 @@
+import type { Tarefa } from '../dados/tipos.ts'
 import { ChatDoPortal } from './ChatDoPortal.tsx'
 
 /**
@@ -5,6 +6,6 @@ import { ChatDoPortal } from './ChatDoPortal.tsx'
  * lembrete de confirmar a identidade (GGVP-111) e o resto do chat (GGVP-82). Desde a GGVP-82, é um caso do motor único
  * (ChatDoPortal, sobre dados/chat.ts): nada acontece antes de "Confirmar".
  */
-export function LaudoPeloChat({ exemplo, sugestoes }: { exemplo: string; sugestoes: string[] }) {
-  return <ChatDoPortal exemplo={exemplo} sugestoes={sugestoes} funcao="Atendimento" />
+export function LaudoPeloChat({ exemplo, sugestoes, tarefas }: { exemplo: string; sugestoes: string[]; tarefas?: Tarefa[] | null }) {
+  return <ChatDoPortal exemplo={exemplo} sugestoes={sugestoes} funcao="Atendimento" tarefas={tarefas} />
 }
