@@ -2,7 +2,7 @@
 // o registro do recebimento, a leitura da IA (simulada), uma por arquivo, e a conferência da Documentação. As regras são as do servidor de exemplo do Pedro
 // (documentos.ts e leitura.ts), com as regras puras importadas das telas. O arquivo de verdade segue simulado até o Drive.
 import { createHash, randomUUID } from 'node:crypto'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '@ggv/campos'
 import { ArquivamentoDosLidos, CampoLidoNoCadastro, EnvioDeArquivos, MudancaDeCaso, RegistroDoRecebimento, type Erro } from '@ggv/contratos'
@@ -39,7 +39,7 @@ const rotuloDoCaso = (ficha: Ficha, p: Processo) => `${ficha.nome} · ${nomeBene
 const dataValida = (iso: string) => /^\d{4}-\d{2}-\d{2}$/.test(iso) && dataParaIso(iso.split('-').reverse().join('/')) === iso
 
 /** Ilegível ainda em aberto: nenhum documento legível do mesmo tipo chegou depois, para a mesma ficha (GGVP-95, CA3). */
-const ilegivelEmAberto = (l: DocumentoLido, leituras: DocumentoLido[]) =>
+export const ilegivelEmAberto = (l: DocumentoLido, leituras: DocumentoLido[]) =>
   l.situacao === 'ilegivel' && !leituras.some((o) => o.fichaId === l.fichaId && o.tipo === l.tipo && o.situacao !== 'ilegivel' && o.lidoEm > l.lidoEm)
 const negar = (resposta: FastifyReply, status: number, erro: string) => resposta.code(status).send({ erro } satisfies Erro)
 
@@ -124,7 +124,18 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
         d = (await tx.insert(documento).values(valores).returning({ id: documento.id, sensivel: documento.sensivel, casoId: documento.casoId }))[0]
       }
       const tipoMedico = TIPO_DO_DOCUMENTO_MEDICO[leitura.tipo]
-      if (d?.casoId && tipoMedico) await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico }).onConflictDoNothing()
+      if (d?.casoId && tipoMedico) {
+        await tx.insert(documentoMedico).values({ documentoId: d.id, tipo: tipoMedico }).onConflictDoNothing()
+        // GGVP-158 P12.5 (GGVP-95 CA1): o médico e o registro que a IA leu, conferidos agora; o que já estava preenchido fica.
+        if (leitura.emitente || leitura.registro)
+          await tx
+            .update(documentoMedico)
+            .set({
+              profissional: sql`coalesce(${documentoMedico.profissional}, ${leitura.emitente ?? null})`,
+              registroProfissional: sql`coalesce(${documentoMedico.registroProfissional}, ${leitura.registro ?? null})`,
+            })
+            .where(eq(documentoMedico.documentoId, d.id))
+      }
       return d ? { id: d.id, tipo: leitura.tipo } : null
     })
   }

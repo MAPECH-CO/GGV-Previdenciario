@@ -4,7 +4,7 @@
 // a Mistral lê o arquivo e a OpenAI diz o que ele cobre do roteiro, com o trecho; sem a IA, a análise segue manual, com o
 // motivo. O parecer só vale com a pessoa do Jurídico (G17); cada registro vai também para `parecer_medico`,
 // que a conferência da Sênior e o portão das outras telas leem. A dispensa é de duas Sêniores diferentes, em `decisao`.
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { CoberturaDoRoteiroPelaIa, DispensarParecer, PedidoDeParecer, ResponderDispensa, pode, type Erro, type FonteDaIa } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
@@ -12,7 +12,7 @@ import type { Banco } from '../banco/conexao.ts'
 import { acessoDadoSensivel, chamadaIa, decisao, documento, documentoMedico, parecerMedico, usuario } from '../banco/esquema.ts'
 import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
-import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, type CasoMedico } from '../fluxo/documentacao-medica.ts'
+import { MSG_CASO_NAO_ENCONTRADO, criarCasoMedico, dataDoLaudoNovo, documentosMedicosDoCaso, type CasoMedico } from '../fluxo/documentacao-medica.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { nomeBeneficio } from '../../../web/src/dados/catalogos.ts'
@@ -65,29 +65,7 @@ export function criarParecerDoCaso({ banco, agora = () => new Date(), ia, armaze
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
 
   /** Os documentos médicos do caso (os do processo e os pessoais). */
-  async function documentosMedicos(c: CasoMedico) {
-    return banco
-      .select({
-        id: documento.id,
-        chave: documento.chaveArmazenamento,
-        mime: documento.mime,
-        criadoEm: documento.criadoEm,
-        tipo: documentoMedico.tipo,
-        dataEmissao: documentoMedico.dataEmissao,
-        emitente: documentoMedico.profissional,
-        conferidoEm: documentoMedico.confirmadoEm,
-      })
-      .from(documentoMedico)
-      .innerJoin(documento, eq(documentoMedico.documentoId, documento.id))
-      .where(
-        and(
-          isNull(documento.excluidoEm),
-          ne(documento.situacao, 'recusado'),
-          or(eq(documento.casoId, c.id), and(isNull(documento.casoId), eq(documento.pessoaId, c.pessoaId))),
-        ),
-      )
-      .orderBy(asc(documento.criadoEm))
-  }
+  const documentosMedicos = (c: CasoMedico) => documentosMedicosDoCaso(banco, c)
   type DocumentoMedico = Awaited<ReturnType<typeof documentosMedicos>>[number]
 
   /**
@@ -212,7 +190,7 @@ export function criarParecerDoCaso({ banco, agora = () => new Date(), ia, armaze
     }
     // CA6: o laudo que chegou depois de um parecer espera a conferência do Jurídico (o mesmo que a conferência da Sênior vê).
     const naoConferidos = docs.filter((d) => !d.conferidoEm)
-    const laudoNovoEm = guardado.registros.length && naoConferidos.length ? hojeEmBrasilia(naoConferidos[0].criadoEm) : undefined
+    const laudoNovoEm = dataDoLaudoNovo(guardado.registros.length, naoConferidos)
     const p: ParecerDoCaso = { ...guardado, dispensas: await dispensas(c.id) }
     return { p, laudoNovoEm, naoConferidos: naoConferidos.map((d) => d.id), semRoteiro: roteiro === undefined }
   }

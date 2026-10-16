@@ -390,7 +390,8 @@ export function tarefasDePedirLegivel(): Tarefa[] {
     .filter((l) => ilegivelEmAberto(l, leituras))
     .flatMap((l) => {
       const ficha = banco.fichas.find((f) => f.id === l.fichaId)
-      if (!ficha) return []
+      // A ficha do servidor já vem na Central pela linha do servidor (GGVP-158 P12.4): não repete aqui.
+      if (!ficha || doServidor(ficha.id)) return []
       return [
         {
           id: `legivel-${l.id}`,

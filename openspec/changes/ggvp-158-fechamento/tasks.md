@@ -840,15 +840,48 @@ Numeradas 11.x ao juntar com a Parte 10 (15/10), que já usava 10.1 a 10.3.
 
 Pedido do Mateus em 16/10, sobre a lista de lacunas da mesma data: só o que o Lucas vai testar e hoje falha no servidor. Branch `fix/GGVP-158-lacunas-da-homologacao`, da main `e49d5100`. Sem migração e sem matriz nova.
 
-- [ ] 12.1 O laudo novo na página do processo (P12.1, decisão 87): a conta numa função só, usada pelo parecer e pela rota do processo; o contrato ganha `laudoNovoEm`.
+- [x] 12.1 O laudo novo na página do processo (P12.1, decisão 87): a conta numa função só, usada pelo parecer e pela rota do processo; o contrato ganha `laudoNovoEm`.
   - Verifica com teste da rota: com parecer e laudo não conferido, vem a data; conferido, não vem.
-- [ ] 12.2 A espera com o prazo ou o lembrete (P12.2, decisão 88): `etapas[].prazo` e `etapas[].lembrete` no contrato e na rota.
+
+  Verificado em 16/10: `rotas/processo.test.ts` 14/14 (3 novos). Com parecer registrado e o laudo não conferido, vem a data, para a advogada e para o Jurídico administrativo; conferido, nulo; sem parecer, nulo. A conta (`dataDoLaudoNovo`) e a busca dos documentos médicos (`documentosMedicosDoCaso`) foram para `fluxo/documentacao-medica.ts`; o parecer usa as duas, e a suíte da API passou inteira.
+- [x] 12.2 A espera com o prazo ou o lembrete (P12.2, decisão 88): `etapas[].prazo` e `etapas[].lembrete` no contrato e na rota.
   - Verifica com teste da rota: a espera do INSS com o lembrete; a do cliente com o prazo da exigência.
-- [ ] 12.3 As perícias abertas (P12.3, decisão 89): `pericias` no contrato e na rota, cada uma com o responsável e o prazo.
+
+  Verificado em 16/10, em `rotas/processo.test.ts`:
+  - a espera do cliente vem com o prazo da exigência aberta (15/10) e o lembrete da cobrança, com o limite da Configuração ("2 tentativas, com 3 dias entre elas; depois, a Sênior");
+  - a do INSS vem com o lembrete da vigília e o prazo da tarefa do mesmo passo.
+- [x] 12.3 As perícias abertas (P12.3, decisão 89): `pericias` no contrato e na rota, cada uma com o responsável e o prazo.
   - Verifica com teste da rota: a médica marcada e a social a marcar, cada uma com o responsável e o prazo; a `pericia` de hoje segue igual.
-- [ ] 12.4 O ilegível no servidor (P12.4, decisão 90): a linha "Pedir documento legível" em `sincronizarRecepcao`, e a tela deixa de calculá-la para a ficha do servidor.
+
+  Verificado em 16/10, em `rotas/processo.test.ts`:
+  - a social, sem data e sem pessoa na tarefa, vem com o setor e o prazo da tarefa;
+  - a médica marcada vem com quem tem a tarefa que cita "médica" e com a data marcada;
+  - a favorável concluída vem sem responsável e sem prazo;
+  - a `pericia` de hoje não ganhou campo.
+- [x] 12.4 O ilegível no servidor (P12.4, decisão 90): a linha "Pedir documento legível" em `sincronizarRecepcao`, e a tela deixa de calculá-la para a ficha do servidor.
   - Verifica com teste: a leitura ilegível abre a linha; o legível do mesmo tipo depois a fecha; a tela não repete.
-- [ ] 12.5 O médico e o CRM (P12.5, decisão 91): gravados na conferência da leitura.
+
+  Verificado em 16/10 com `fluxo/tarefas-da-recepcao.test.ts` (novo, 2/2):
+  - duas leituras ilegíveis abrem uma linha só, com os dois tipos e o prazo na mais antiga;
+  - a linha aparece em `/api/tarefas` com o id `legivel-<pessoa>`, o passo D1.18 e a tela da ficha;
+  - o RG legível tira o RG da linha, e o comprovante legível a fecha;
+  - o arquivo ilegível enviado pelo card abre a linha na hora.
+
+  Na implementação, a leitura ilegível passou a sincronizar na hora (`lerArquivosNovos`), porque antes só a ficha guardada e a rodada sincronizavam.
+
+  Na tela, `dados/leituraServidor.test.ts` (novo, 1/1) falha sem a mudança em `dados/leitura.ts`, e `dados/leitura.test.ts` segue passando. Também passaram `fluxo/leitura.test.ts`, `rotas/custas.test.ts`, `fluxo/scanner.test.ts` e `rotas/recepcao-contrato.test.ts`, 47/47.
+- [x] 12.5 O médico e o CRM (P12.5, decisão 91): gravados na conferência da leitura.
   - Verifica com teste da rota: conferido o laudo lido com médico e CRM, o documento médico guarda os dois, e o parecer traz o médico.
-- [ ] 12.6 Rodar typecheck, lint e testes; colar a saída; pedido para a main.
+
+  Verificado em 16/10: `rotas/recepcao-documentos.test.ts` 13/13 (1 novo). Conferido o laudo, o documento médico ganha o médico da leitura ("Dr. Exemplo Silva"), e o registro que alguém já tinha preenchido fica. O parecer lê o médico pela mesma coluna (`documentosMedicosDoCaso`, `emitente`).
+- [x] 12.6 Rodar typecheck, lint e testes; colar a saída; pedido para a main.
+
+  Verificado em 16/10:
+  - typecheck da API, da tela e dos contratos sem erro;
+  - lint sem erro, só com os avisos que já existiam;
+  - contratos 196/196;
+  - API 1051 de 1054 na suíte inteira, com 3 pulados e nenhuma falha, rodada de novo depois da sincronização na hora;
+  - tela 1731/1731, em 204 arquivos.
+
+  Sem tela nova, sem Playwright novo.
 - [ ] 12.7 Depois do merge do #104: a tela da página do processo lê o laudo novo, a espera com o prazo ou o lembrete e a lista de perícias (`dados/caso.ts` e a página), com o Playwright.

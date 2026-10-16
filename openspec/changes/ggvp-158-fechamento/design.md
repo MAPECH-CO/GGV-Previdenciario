@@ -620,6 +620,7 @@ Só o servidor, e na tela só o que nenhum pedido aberto mexe. A página do proc
 90. **O documento ilegível vira "Pedir documento legível" no servidor** (P12.4).
     - A regra é a da conferência (`ilegivelEmAberto`): a leitura é ilegível e não chegou um legível do mesmo tipo depois.
     - Vira linha da tabela de tarefas do Atendimento (D1.18), como as outras da Recepção (P7.2): uma por pessoa, com o prazo na leitura mais antiga e os tipos no detalhe. Fecha quando chega o legível.
+    - A leitura ilegível sincroniza na hora, sem esperar a ficha guardada nem a rodada de 5 minutos: antes, a tela calculava a tarefa no ato (16/10, na implementação).
     - A tela deixa de calcular essa tarefa para a ficha do servidor, como já faz com as outras (`dados/leitura.ts`).
     - O laudo ilegível continua abrindo "Analisar laudo novo" para o Jurídico até o Lucas decidir (lacuna 7).
 91. **O médico e o CRM gravados na conferência** (P12.5).

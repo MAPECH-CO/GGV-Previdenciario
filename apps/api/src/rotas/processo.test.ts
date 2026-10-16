@@ -6,6 +6,7 @@ import {
   acessoDadoSensivel,
   caso,
   decisao,
+  documentacaoMedica,
   documento,
   documentoMedico,
   etapa,
@@ -136,7 +137,19 @@ describe('GGVP-146 (parte 5) · a página do processo lê o caso do banco', () =
       'inss',
     ])
     expect(p.identificadores).toEqual({ nb: '4561237895', protocolo: null, cnj: null })
-    expect(p.etapas).toEqual([{ diagrama: 'D2', passo: 'D2.E3', aguardando: 'cliente entregar o documento', desde: '2026-10-03T12:00:00.000Z' }])
+    // GGVP-158 P12.2: a espera do cliente traz o prazo da exigência aberta e o lembrete da cobrança, com o limite da Configuração.
+    expect(p.etapas).toEqual([
+      {
+        diagrama: 'D2',
+        passo: 'D2.E3',
+        aguardando: 'cliente entregar o documento',
+        desde: '2026-10-03T12:00:00.000Z',
+        prazo: '2026-10-15',
+        lembrete: 'cobrança: 2 tentativas, com 3 dias entre elas; depois, a Sênior',
+      },
+    ])
+    // Sem parecer registrado, o laudo guardado ainda não é "novo" (GGVP-158 P12.1).
+    expect(p.laudoNovoEm).toBeNull()
     // As tarefas abertas, do prazo mais perto ao sem prazo, com o setor e a tela do passo; a concluída não entra.
     expect(p.tarefas.map((t: { setor: string; titulo: string; responsavel: string | null; prazo: string | null; tela: string | null }) => [t.setor, t.titulo, t.responsavel, t.prazo, t.tela])).toEqual([
       ['Jurídico', 'Conferir resultado da perícia', 'gabi', '2026-10-08', `/casos/${casoId}/pericia/decidir`],
@@ -328,5 +341,43 @@ describe('GGVP-86 CA14 · os dados do processo dentro da tarefa (Pedro, 14/10)',
   it('o Financeiro, que não vê o caso, não recebe o resumo; caso que não existe ou id torto: 404', async () => {
     expect((await resumo('julia')).statusCode).toBe(403)
     for (const id of ['00000000-0000-4000-8000-000000000000', 'antonio-exemplo-1']) expect((await resumo('gabi', id)).statusCode).toBe(404)
+  })
+})
+
+describe('GGVP-158 P12 · a página do processo completa: o laudo novo, a espera e as perícias (GGVP-86 CA5, CA8 e CA9)', () => {
+  it('P12.1 · com parecer registrado, o laudo não conferido é laudo novo, com a data dele; conferido, deixa de ser', async () => {
+    await banco.insert(documentacaoMedica).values({ casoId, parte: 'parecer', documento: { processoId: casoId, fichaId: 'ficha-inventada', analises: [], registros: [{ situacao: 'suficiente' }] } })
+    expect((await ver('gabi')).json().laudoNovoEm).toBe('2026-10-02')
+    // Só a data, para quem abre o processo: o Jurídico administrativo também vê, sem o conteúdo do laudo.
+    expect((await ver('igor')).json().laudoNovoEm).toBe('2026-10-02')
+    await banco.update(documentoMedico).set({ confirmadoEm: new Date('2026-10-06T12:00:00Z'), confirmadoPor: ids.gabi })
+    expect((await ver('gabi')).json().laudoNovoEm).toBeNull()
+  })
+
+  it('P12.2 · a espera do INSS traz o lembrete da vigília e o prazo da tarefa do mesmo passo', async () => {
+    await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date('2026-10-04T12:00:00Z') })
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada', prazo: '2026-10-09' })
+    const inss = (await ver('gabi')).json().etapas.find((e: { passo: string }) => e.passo === 'D2.04')
+    expect([inss.aguardando, inss.prazo, inss.lembrete]).toEqual(['INSS decidir', '2026-10-09', 'a vigília confere o Meu INSS todo dia útil'])
+  })
+
+  it('P12.3 · as perícias abertas e a última com resultado, cada uma com o responsável e o prazo; o campo de hoje não muda', async () => {
+    await banco.insert(pericia).values([
+      { casoId, tipo: 'medica', agendadaPara: new Date('2026-10-20T13:00:00Z'), local: 'Agência Centro', criadoEm: new Date('2026-10-06T12:00:00Z') },
+      { casoId, tipo: 'social', criadoEm: new Date('2026-10-06T13:00:00Z') },
+    ])
+    await banco.insert(tarefa).values([
+      { casoId, passo: 'DP.06', titulo: 'Orientar para a perícia médica', perfilDono: 'juridico_adm', responsavelId: ids.igor, prazo: '2026-10-17' },
+      { casoId, passo: 'DP.02', titulo: 'Marcar avaliação social', perfilDono: 'juridico_adm', prazo: '2026-10-12' },
+    ])
+    const p = (await ver('gabi')).json()
+    // A social, sem data e sem pessoa na tarefa: o setor e o prazo da tarefa. A médica marcada: quem orienta e a data marcada.
+    // A favorável, concluída: sem responsável nem prazo.
+    expect(p.pericias.map((x: { tipo: string; responsavel: string | null; prazo: string | null; resultado: string | null }) => [x.tipo, x.responsavel, x.prazo, x.resultado])).toEqual([
+      ['social', 'Jurídico administrativo', '2026-10-12', null],
+      ['medica', 'igor', '2026-10-20', null],
+      ['medica', null, null, 'favoravel'],
+    ])
+    expect(Object.keys(p.pericia)).not.toContain('responsavel')
   })
 })

@@ -8,10 +8,11 @@ import { and, eq, inArray, isNull, or } from 'drizzle-orm'
 import type { Banco } from '../banco/conexao.ts'
 import { boasVindas, cobrancaDocumento, tarefa } from '../banco/esquema.ts'
 import { criarChecklist } from '../rotas/recepcao-checklist.ts'
+import { ilegivelEmAberto } from '../rotas/recepcao-documentos.ts'
 import { criarFichario } from '../rotas/recepcao.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { limitesDeCobranca } from './exigencia.ts'
-import { nomeBeneficio, nomeMotivo } from '../../../web/src/dados/catalogos.ts'
+import { nomeBeneficio, nomeMotivo, nomeTipo } from '../../../web/src/dados/catalogos.ts'
 import type { Ficha } from '../../../web/src/dados/tipos.ts'
 import { boasVindasDoCaso, type RegistroDasBoasVindas } from '../../../web/src/regras/boasVindas.ts'
 import { juntar } from '../../../web/src/regras/checklist.ts'
@@ -31,6 +32,7 @@ const DA_RECEPCAO: Record<string, DaRecepcao> = {
   'Registrar fechamento': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `fechamento-${p}`, tela: (p) => `/clientes/${p}/fechamento` },
   'Recontatar lead': { passo: 'D1.14', perfil: 'atendimento', id: (p) => `recontato-${p}`, tela: (p) => `/clientes/${p}/recontato` },
   'Confirmar se a entrevista aconteceu': { passo: 'D1.03', perfil: 'atendimento', id: (p) => `confirmar-${p}`, tela: () => '/agenda?ver=lista' },
+  'Pedir documento legível': { passo: 'D1.18', perfil: 'atendimento', id: (p) => `legivel-${p}`, tela: (p) => `/clientes/${p}` },
 }
 const PASSOS = [...new Set(Object.values(DA_RECEPCAO).map((t) => t.passo))]
 
@@ -97,6 +99,16 @@ async function devidas(banco: Banco, agora: () => Date, fichas: Ficha[], hoje: s
     if (primeiro && ultima && !lidas.some((l) => l.situacao === 'a-conferir') && !(primeiro.conferencia && primeiro.conferencia.quando >= ultima)) {
       const recebidos = primeiro.checklist.itens.filter((i) => i.situacao === 'recebido').length
       doCaso('Conferir checklist', primeiro.processoId, dia(ultima), `${primeiro.beneficio} · ${recebidos} de ${primeiro.checklist.itens.length} itens recebidos · leitura arquivada`)
+    }
+
+    // D1.18 (GGVP-95 CA3; GGVP-158 P12.4): a leitura ilegível, sem um legível do mesmo tipo depois, pede o reenvio ao cliente.
+    // Uma linha por pessoa, com os tipos no detalhe e o prazo na leitura mais antiga; fecha quando o legível chega. O laudo
+    // ilegível também abre "Analisar laudo novo" para o Jurídico, até o Lucas decidir.
+    const ilegiveis = lidas.filter((l) => ilegivelEmAberto(l, lidas))
+    if (ilegiveis.length) {
+      const tipos = [...new Set(ilegiveis.map((l) => nomeTipo(l.tipo) || l.tipo))]
+      const desde = ilegiveis.map((l) => l.lidoEm).sort()[0]
+      linhas.push({ titulo: 'Pedir documento legível', casoId: null, pessoaId: ficha.id, prazo: dia(desde), detalhe: `${juntar(tipos)} · a leitura falhou: pedir o reenvio legível ao cliente` })
     }
 
     // D1.22: as boas-vindas do cliente novo, depois do checklist conferido (GGVP-97); a que não saiu volta.
