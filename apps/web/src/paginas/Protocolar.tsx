@@ -72,7 +72,7 @@ export function SenhaDoGov({ casoId }: { casoId: string }) {
           Cancelar
         </button>
       </div>
-      <p className={styles.dica}>O uso da senha fica no histórico do caso (G9).</p>
+      <p className={styles.dica}>O uso da senha fica no histórico do caso.</p>
     </form>
   )
 }
@@ -139,10 +139,10 @@ export function Protocolar({ casoId }: { casoId: string }) {
         </h2>
         {caso.okSenior ? (
           <span className={styles.selo}>
-            OK recebido · {caso.okSenior.por} em {new Date(caso.okSenior.em).toLocaleDateString('pt-BR')} (G2)
+            OK recebido · {caso.okSenior.por} em {new Date(caso.okSenior.em).toLocaleDateString('pt-BR')}
           </span>
         ) : (
-          <span className={`${styles.selo} ${styles.seloAlerta}`}>Sem o OK da Sênior: não dá para protocolar (G2)</span>
+          <span className={`${styles.selo} ${styles.seloAlerta}`}>Sem o OK da Sênior: não dá para protocolar</span>
         )}
       </section>
 

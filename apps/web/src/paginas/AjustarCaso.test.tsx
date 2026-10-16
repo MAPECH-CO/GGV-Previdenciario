@@ -69,10 +69,10 @@ describe('Ajustar o caso devolvido pela Sênior (GGVP-127)', () => {
   })
 
   it('CA4 · com o checklist ou o parecer travando, não libera e diz o que falta; a recusa do servidor aparece', async () => {
-    servidor({ ...devolvido, checklist: { cadastrado: true, completo: false, faltam: ['cnis'] } }, [409, { erro: 'Checklist incompleto (G1): faltam cnis.' }])
+    servidor({ ...devolvido, checklist: { cadastrado: true, completo: false, faltam: ['cnis'] } }, [409, { erro: 'Checklist incompleto: faltam cnis.' }])
     render(<AjustarCaso casoId={CASO} />)
     expect(await screen.findByText('Faltam: cnis')).toBeTruthy()
-    expect(screen.getByText('Checklist incompleto (G1): faltam cnis.')).toBeTruthy()
+    expect(screen.getByText('Checklist incompleto: faltam cnis.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Liberar de novo' }) as HTMLButtonElement).disabled).toBe(true)
   })
 

@@ -199,7 +199,7 @@ export function PainelVigilia() {
           <div className={g.coluna}>
             <section className={painel.cartao} aria-label="Rodadas do dia">
               <h2 className={painel.cartaoTitulo}>Rodadas do dia</h2>
-              <p className={painel.cartaoSub}>Cada rodada lê as fontes no horário previsto. Falha ou atraso pede reprocessamento antes de fechar o dia (G13).</p>
+              <p className={painel.cartaoSub}>Cada rodada lê as fontes no horário previsto. Falha ou atraso pede reprocessamento antes de fechar o dia.</p>
               <ul className={g.rodadas}>
                 {p.rodadas.map((r) => (
                   <li key={r.id} className={g.rodada} data-situacao={r.situacao}>

@@ -145,7 +145,7 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     if ('erro' in r) return negar(resposta, r.status, r.erro)
     const { ficha } = achou.achado
     ficha.historico.push(evento(`Cobrança: ${r.tentativas.length}ª tentativa por ${CANAIS[canal]} (${RESULTADOS[resultado]}); falta: ${juntar(achou.atual.faltam)}`, quem))
-    if (naSenior(r, dia, achou.lim)) ficha.historico.push(evento(`A cobrança passou do limite de ${achou.lim.tentativas} tentativas: foi para a advogada sênior decidir (G15)`, quem))
+    if (naSenior(r, dia, achou.lim)) ficha.historico.push(evento(`A cobrança passou do limite de ${achou.lim.tentativas} tentativas: foi para a advogada sênior decidir`, quem))
     return responder(r, achou.achado, achou.lim)
   })
 

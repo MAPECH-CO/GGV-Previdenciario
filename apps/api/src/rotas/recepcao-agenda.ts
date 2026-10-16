@@ -51,10 +51,10 @@ export const MSG_JA_REGISTRADO = 'Este compromisso já foi registrado.'
 export const MSG_DESISTENCIA = 'A desistência é do lead, na entrevista marcada.'
 
 const PASSOS: Record<string, string> = {
-  Entrevista: 'D1.09 · Atender e entrevistar',
-  'Retirada da cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
-  'Entregar cópia do contrato': 'D1.20 · Entregar a cópia do contrato',
-  'Recontatar lead': 'D1.14 · Recontatar lead',
+  Entrevista: 'Atender e entrevistar',
+  'Retirada da cópia do contrato': 'Entregar a cópia do contrato',
+  'Entregar cópia do contrato': 'Entregar a cópia do contrato',
+  'Recontatar lead': 'Recontatar lead',
 }
 const CANAL = { ligacao: 'Ligação', mensagem: 'Chatwoot' } as const
 const CANAL_FALADO = { ligacao: 'ligação', mensagem: 'mensagem pelo Chatwoot' } as const
@@ -389,7 +389,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       if (!entrevista || ficha.situacao !== 'lead') return negar(resposta, 400, MSG_DESISTENCIA)
       const papel = papelDa(pedido.perfilAtivo)
       if (!MOTIVOS_DE_NAO_FECHAR.some((m) => m.id === envio.motivo) || !podeRegistrarOMotivo(envio.motivo, papel))
-        return negar(resposta, 400, 'Escolha o motivo da lista (G16).')
+        return negar(resposta, 400, 'Escolha o motivo da lista.')
       if ((envio.detalhe ?? '').length > TAMANHO_DO_DETALHE) return negar(resposta, 400, `O detalhe vai até ${TAMANHO_DO_DETALHE} caracteres.`)
       const em = envio.recontatar ? dataParaIso(envio.recontatar.data) : null
       if (envio.recontatar && (!em || em < hoje())) return negar(resposta, 400, 'Data do recontato inválida.')
@@ -406,7 +406,7 @@ export function registrarRotasRecepcaoAgenda(app: FastifyInstance, { banco, agor
       } else {
         ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
         await arquivar(ficha, envio.motivo, detalhe)
-        registro = evento(`${desistiu} Lead arquivado com o motivo (G16)`, quem)
+        registro = evento(`${desistiu} Lead arquivado com o motivo`, quem)
       }
       ficha.historico.push(registro)
       await guardar(ficha)

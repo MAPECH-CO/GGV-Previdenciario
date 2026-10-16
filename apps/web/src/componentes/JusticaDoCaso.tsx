@@ -5,7 +5,9 @@ import { chamarApi } from '../api.ts'
 import type { PericiaNaTela } from '../dados/pericia.ts'
 import { amostraPerito } from '../regras/amostraPerito.ts'
 import { NOMES_DO_TIPO, O_QUE_LEVAR } from '../regras/pericia.ts'
+import { usePodeAbrir } from '../sessao.ts'
 import styles from '../paginas/Passo.module.css'
+import linha from './JusticaDoCaso.module.css'
 
 const data = (iso: string) => isoParaData(iso) ?? iso
 const baseFalado = (n: number, base: string | null) => `${n} ${n === 1 ? 'caso' : 'casos'} · ${base ? 'base de ' + data(base).slice(0, 5) : 'base ainda indisponível'}`
@@ -18,6 +20,7 @@ export function JusticaDoCaso({ processoId, veJurimetria, judicial = true }: { p
   const [erroJuizo, setErroJuizo] = useState('')
   const [abrirJuizo, setAbrirJuizo] = useState(false)
   const [abrirPerito, setAbrirPerito] = useState(false)
+  const abrePeritos = usePodeAbrir('/peritos')
   useEffect(() => {
     if (!veJurimetria) return
     let atual = true
@@ -83,7 +86,7 @@ export function JusticaDoCaso({ processoId, veJurimetria, judicial = true }: { p
           <ul>{[...perfil.observou, ...perfil.perguntou, ...perfil.pediu].map((texto, i) => <li key={i}>{texto}</li>)}</ul>
         </section>}
       </> : <p>Perfil e jurimetria do perito ainda não disponíveis para este caso.</p>}
-      <p><a href="/peritos">Consultar cadastro de peritos</a></p>
+      {abrePeritos && <p className={linha.linha}><a className={linha.link} href="/peritos">Consultar cadastro de peritos</a></p>}
     </>}
   </section>
 }

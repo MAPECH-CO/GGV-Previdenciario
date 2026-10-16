@@ -323,7 +323,7 @@ describe('GGVP-137 · a perícia nasce do INSS e anda no servidor', () => {
     const segunda = await remarcar()
     expect([segunda.situacao, segunda.pericia.historico.at(-1).oQue]).toEqual([
       'na-advogada',
-      'Passou do limite de 1 remarcação: a perícia subiu para a advogada responsável (G15)',
+      'Passou do limite de 1 remarcação: a perícia subiu para a advogada responsável',
     ])
     // Com 2 na Configuração, a mesma perícia volta a marcar (são 2 remarcações, dentro do limite).
     await banco.insert(configuracao).values({ chave: 'pericia.remarcacao.limite', valor: 2 })

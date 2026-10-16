@@ -53,7 +53,7 @@ import { contratoConferidoDo, type ChecklistDoCaso } from '../../../web/src/regr
 
 export const MSG_NAO_ESPERA = 'Este caso não está esperando a conferência.'
 /** O começo da mensagem do checklist incompleto no `bloqueioDoG1`, que a liberação e a aprovação usam (GGVP-158, P3.2). */
-export const MSG_G1 = 'Checklist incompleto (G1): faltam'
+export const MSG_G1 = 'Checklist incompleto: faltam'
 
 /**
  * O G1 do caso que nasceu no "fechou" da Recepção (GGVP-125, bloco 5c; decisão do Mateus, 09/10): o checklist dela,
@@ -63,12 +63,12 @@ function faltamNaRecepcao({ checklist: c, conferencia }: ChecklistDoCaso): strin
   if (!c.temLista) return ['a lista de documentos do benefício, na configuração do escritório']
   if (c.bloqueio) return [c.bloqueio.replace(/\.$/, '')]
   if (c.faltam.length) return c.faltam
-  return conferencia?.completo ? [] : ['a conferência do checklist completo (D1.21)']
+  return conferencia?.completo ? [] : ['a conferência do checklist completo']
 }
 
 export const MSG_DISPENSA_JA_PEDIDA = 'A dispensa do parecer já foi pedida e espera outra Sênior.'
 export const MSG_SEM_DISPENSA = 'Não há pedido de dispensa esperando resposta.'
-export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer (G17).'
+export const MSG_MESMA_SENIOR = 'Quem pediu a dispensa não a aprova: uma pessoa sozinha nunca dispensa o parecer.'
 export const MSG_JA_NA_FILA = 'O caso já está na fila da Sênior.'
 export const MSG_QUEM_LIBERA = 'Quem libera ao Jurídico é a Documentação; o caso devolvido pela Sênior, o Atendimento.'
 

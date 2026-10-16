@@ -62,7 +62,7 @@ describe('GGVP-132 · a documentação médica do servidor para as Centrais e o 
     await pedir('helena', 'POST', `/api/processos/${casoId}/parecer/dispensa`, { justificativa: 'Caso urgente, com prazo do INSS.' })
     const ficha = (await pedir('ana', 'GET', `/api/fichas/${pessoaId}`)).json()
     // GGVP-158 P8.6: a justificativa é texto livre e fica na decisão, só para quem vê dado de saúde.
-    expect(ficha.historico.map((e: { oQue: string; quem: string }) => [e.oQue, e.quem])).toEqual([['Pediu a dispensa do parecer médico (1ª aprovação da sênior, G17)', 'Helena']])
+    expect(ficha.historico.map((e: { oQue: string; quem: string }) => [e.oQue, e.quem])).toEqual([['Pediu a dispensa do parecer médico (1ª aprovação da sênior)', 'Helena']])
   })
 
   it('GGVP-158 P8.6 · no portão do parecer dispensado, a justificativa só para quem vê dado de saúde', async () => {

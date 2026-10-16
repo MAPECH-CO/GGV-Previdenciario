@@ -577,7 +577,7 @@ export function leituraDoLaudo(pericia: Pericia, beneficio: string, nome: string
         ? 'A assistente social constatou a vulnerabilidade: a renda da casa não cobre as despesas básicas e a família depende de ajuda.'
         : 'O perito concluiu incapacidade para o trabalho habitual, coerente com os laudos e os exames do escritório.',
       conclusao: social ? 'Favorável · vulnerabilidade constatada na visita' : 'Favorável · incapacidade para o trabalho habitual',
-      coerencia: `${beneficio}: atende. Nada contradiz o benefício pedido (G18).`,
+      coerencia: `${beneficio}: atende. Nada contradiz o benefício pedido.`,
       pontoDeAtencao: social ? 'O laudo não cita a renda de todos que moram na casa; conferir o grupo familiar' : 'O laudo não cita a data do último vínculo; considerar quesito complementar',
       ...conteudo,
     }
@@ -588,7 +588,7 @@ export function leituraDoLaudo(pericia: Pericia, beneficio: string, nome: string
       ? 'A assistente social não constatou a vulnerabilidade: considerou a renda declarada sem as despesas com saúde.'
       : 'O perito não viu incapacidade atual: baseou-se no exame físico do dia.',
     conclusao: social ? 'Desfavorável · vulnerabilidade não constatada' : 'Desfavorável · sem incapacidade atual',
-    coerencia: `${beneficio}: o laudo não reconhece o requisito do benefício pedido (G18).`,
+    coerencia: `${beneficio}: o laudo não reconhece o requisito do benefício pedido.`,
     pontoDeAtencao: 'O laudo não comenta os documentos que o escritório levou',
     porque: social
       ? 'A avaliação não considerou as despesas com saúde, que estão nos comprovantes do escritório.'
@@ -656,7 +656,7 @@ function remarcar(pericia: Pericia, motivo: string, quem: string, agora: Date) {
     pericia.historico.push({
       quando,
       quem: SISTEMA,
-      oQue: `Passou do limite de ${pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA} ${(pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA) === 1 ? 'remarcação' : 'remarcações'}: a perícia subiu para a advogada responsável (G15)`,
+      oQue: `Passou do limite de ${pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA} ${(pericia.limiteDeRemarcacoes ?? LIMITE_DE_REMARCACOES_DA_PERICIA) === 1 ? 'remarcação' : 'remarcações'}: a perícia subiu para a advogada responsável`,
       passo: 'DP.02',
     })
   }
@@ -739,7 +739,7 @@ export const mudancas = {
     if (situacaoDaPericia(pericia) !== 'na-advogada') throw new Error('Esta perícia não está com a advogada.')
     if (justificativa.trim().length < MINIMO_DA_JUSTIFICATIVA) throw new Error('Escreva a justificativa (pelo menos 10 letras).')
     pericia.autorizadas = (pericia.autorizadas ?? 0) + 1
-    pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Autorizou mais uma remarcação (G15): ${justificativa.trim()}`, passo: 'DP.02' })
+    pericia.historico.push({ quando: agora.toISOString(), quem, oQue: `Autorizou mais uma remarcação: ${justificativa.trim()}`, passo: 'DP.02' })
   },
 
   /** O lembrete da véspera, enviado pelo Chatwoot depois de revisado pelo Jurídico (GGVP-53, CA7, Q5). */
@@ -809,7 +809,7 @@ export const mudancas = {
     if (problema) throw new Error(problema)
     const quando = agora.toISOString()
     d.pedidosAoMedico.push({ quando, quem, abordar: abordar.trim() })
-    pericia.historico.push({ quando, quem, oQue: 'Preparou o pedido ao médico do laudo da perícia (o que o documento deve abordar, G20)', passo: 'DP.03' })
+    pericia.historico.push({ quando, quem, oQue: 'Preparou o pedido ao médico do laudo da perícia (o que o documento deve abordar)', passo: 'DP.03' })
   },
 
   /** A cobrança do dia, enviada pelo Chatwoot depois de conferida (Lucas, 02/10: a Documentação cobra, todo dia). */
@@ -834,7 +834,7 @@ export const mudancas = {
     if (texto.trim().length < MINIMO_DA_JUSTIFICATIVA) throw new Error('Escreva a decisão (pelo menos 10 letras).')
     const quando = agora.toISOString()
     d.decisaoDaAdvogada = { quando, quem, texto: texto.trim() }
-    pericia.historico.push({ quando, quem, oQue: `Decidiu sobre o documento que falta (G15): ${texto.trim()}`, passo: 'DP.03' })
+    pericia.historico.push({ quando, quem, oQue: `Decidiu sobre o documento que falta: ${texto.trim()}`, passo: 'DP.03' })
   },
 
   /** A pergunta de um clique (GGVP-61, CA6): liga o perito; a orientação sai de novo pelo perfil. */
@@ -991,7 +991,7 @@ export const mudancas = {
         quem: SISTEMA,
         oQue:
           `O resultado subiu no card e voltou para quem pediu (${ORIGENS[pericia.origem].rotulo}): ${COMO_SEGUE[pericia.origem]}` +
-          (manifestarAte ? `, até ${dataCurta(manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias, G12)` : ''),
+          (manifestarAte ? `, até ${dataCurta(manifestarAte, hoje)} (${DIAS_PARA_MANIFESTAR} dias)` : ''),
         passo: 'DP.08',
       })
     }
@@ -1155,7 +1155,7 @@ export function tarefasDaAdvogadaEm(mundo: MundoDaPericia, agora: Date): Tarefa[
           id: `pericia-limite-${t.pericia.id}`,
           codigo: 'DP.02',
           acao: 'Decidir a perícia',
-          detalhe: [t.beneficio, NOMES_DO_TIPO[t.pericia.tipo], `${t.pericia.remarcacoes} remarcações: passou do limite (G15)`].join(' · '),
+          detalhe: [t.beneficio, NOMES_DO_TIPO[t.pericia.tipo], `${t.pericia.remarcacoes} remarcações: passou do limite`].join(' · '),
           prazo: 'hoje',
           urgente: true,
         },
@@ -1233,7 +1233,7 @@ export function tarefasDeDecidirDocumentoEm(mundo: MundoDaPericia, agora: Date):
       codigo: 'DP.03',
       cliente: { id: t.ficha.id, nome: t.ficha.nome },
       acao: 'Decidir documento da perícia',
-      detalhe: [t.beneficio, `falta ${t.documentos!.faltando.map((i) => i.nome.toLowerCase()).join(', ')}`, `perícia em ${dataCurta(t.pericia.marcacao!.data, hoje)} (G15)`].join(' · '),
+      detalhe: [t.beneficio, `falta ${t.documentos!.faltando.map((i) => i.nome.toLowerCase()).join(', ')}`, `perícia em ${dataCurta(t.pericia.marcacao!.data, hoje)}`].join(' · '),
       prazo: 'hoje',
       urgente: true,
       href: `/casos/${t.processo.id}/pericia`,

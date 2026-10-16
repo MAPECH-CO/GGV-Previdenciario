@@ -32,7 +32,7 @@ describe('Roteiro de laudos · tela', () => {
     expect(within(obrigatorios).getAllByRole('listitem')).toHaveLength(7)
     expect(obrigatorios.textContent).toContain('Consolidação das lesõesPergunta ao médico: As lesões já estão consolidadas? Desde quando?')
     // GGVP-47: o laudo sem redução da capacidade também bloqueia (resposta do Lucas, 01/10).
-    expect(within(screen.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+    expect(within(screen.getByRole('list', { name: 'Contradições que bloqueiam' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'Lesão ainda não consolidada',
       'Laudo sem redução da capacidade para o trabalho habitual (a redução mínima basta, Tema 416 do STJ)',
     ])

@@ -35,7 +35,7 @@ describe('Pedir complemento ao médico · tela do Atendimento', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Rita Exemplo · Pedir complemento ao médico')
     expect(screen.getByText('parecer Insuficiente · 1ª tentativa · hoje')).toBeTruthy()
     const resultado = screen.getByRole('heading', { name: 'Resultado do parecer' }).closest('section')!
-    expect(resultado.textContent).toContain('INSUFICIENTE confirmado por Dra. Paula (exemplo) em 06/10 (G17).')
+    expect(resultado.textContent).toContain('INSUFICIENTE confirmado por Dra. Paula (exemplo) em 06/10.')
     expect(within(screen.getByRole('list', { name: 'Perguntas ao médico' })).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
       '1. Qual a previsão de duração do quadro?',
       '2. O paciente depende de outra pessoa, de acompanhamento contínuo, de transporte ou de tratamento? Com que frequência?',

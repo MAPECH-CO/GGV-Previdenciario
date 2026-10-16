@@ -57,7 +57,7 @@ describe('Recontatar lead (GGVP-60)', () => {
   it('CA10 e G16 · "Não vai seguir": arquiva com o motivo', async () => {
     await abrir()
     fireEvent.click(screen.getByRole('radio', { name: 'Não vai seguir: arquivar' }))
-    expect(screen.getByText('Escolha o motivo para arquivar (G16).')).toBeTruthy()
+    expect(screen.getByText('Escolha o motivo para arquivar.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Motivo *'), { target: { value: 'desistiu' } })
     fireEvent.click(botao('Registrar o recontato'))
     expect(await screen.findByRole('heading', { name: '✓ Lead arquivado com o motivo' })).toBeTruthy()

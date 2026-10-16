@@ -99,7 +99,7 @@ export function DispensarParecer({ processoId }: { processoId: string }) {
 
           <p className={styles.aviso}>
             Dispensar é seguir sem a prova médica e assumir o risco. Uma pessoa sozinha não decide: precisa de duas sêniores de acordo, e a justificativa e as
-            duas aprovações ficam no histórico (G17).
+            duas aprovações ficam no histórico.
           </p>
 
           {aviso && (
@@ -188,7 +188,7 @@ export function DispensarParecer({ processoId }: { processoId: string }) {
           <h2 id="antes-de-concluir" className={styles.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={styles.ladoSub}>O portão do parecer médico (G17): ao liberar ao Jurídico, antes do INSS e ao pedir a petição.</p>
+          <p className={styles.ladoSub}>O portão do parecer médico: ao liberar ao Jurídico, antes do INSS e ao pedir a petição.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <p>• Justificativa: por que seguir sem a prova médica*</p>
           <h3 className={styles.ladoSecao}>Travas</h3>

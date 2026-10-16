@@ -53,7 +53,7 @@ export function AntesDeConcluirConfirmacao({ resultado, aoResultado, ficha, aoFi
           </button>
         </div>
       </div>
-      <h3 className={styles.ladoSecao}>Travas e estados</h3>
+      <h3 className={styles.ladoSecao}>Regras e situação</h3>
       <p>{estado}</p>
       <p className={styles.ladoSub}>«Confirmar entrevista» só habilita com as decisões respondidas.</p>
     </aside>

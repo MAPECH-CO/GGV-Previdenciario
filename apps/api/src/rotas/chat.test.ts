@@ -304,7 +304,7 @@ describe('GGVP-142 · a ação só com o clique de quem pediu (CA3)', () => {
     roteiro = [ferramenta('pedir_peca', { peca: 'Petição inicial' })]
     const r = await perguntar('gabi', 'Faz a petição inicial da Vera', casoId)
     expect(chamadas[0].corpo.tools?.map((t) => t.function.name)).toContain('pedir_peca')
-    expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Vera Lúcia · Petição inicial', travas: expect.arrayContaining([expect.stringContaining('(G6)')]) })
+    expect(r.acao).toMatchObject({ tipo: 'pedir-peca', titulo: 'Vera Lúcia · Petição inicial', travas: expect.arrayContaining([expect.stringContaining('A IA não assina nem protocola')]) })
     // GGVP-158 P7.3: sem o despacho da Sênior, a peça não é pedida, e nenhuma tarefa nasce.
     roteiro = [{ role: 'assistant', content: 'Não deu.' }]
     const antes = await confirmar('gabi', r.acao!.id)

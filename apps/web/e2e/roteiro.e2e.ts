@@ -16,7 +16,7 @@ test('CA1 e CA2 · a sênior abre o roteiro do LOAS Deficiente, edita um item e 
   await expect(page.getByRole('link', { name: /BPC\/LOAS Deficiente/ }).first()).toHaveAttribute('href', '/roteiros/loas-deficiente')
   await page.goto('/roteiros/loas-deficiente')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('BPC/LOAS Deficiente · Roteiro de conteúdo mínimo')
-  await expect(page.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).toContainText('menor que 24 meses')
+  await expect(page.getByRole('list', { name: 'Contradições que bloqueiam' })).toContainText('menor que 24 meses')
 
   await page.getByRole('button', { name: 'Editar o roteiro' }).click()
   const prognostico = page.getByRole('textbox', { name: 'Texto do item' }).nth(2)
@@ -30,7 +30,7 @@ test('CA1 e CA2 · a sênior abre o roteiro do LOAS Deficiente, edita um item e 
 test('CA1 · a advogada vê o roteiro sem editar; o Atendimento não vê', async ({ page }) => {
   await entrarPelaApi(page, 'advogada@exemplo.ggv')
   await page.goto('/roteiros/pcd')
-  await expect(page.getByRole('list', { name: 'Contradições que bloqueiam (G18)' })).toContainText('incapacidade total para o trabalho')
+  await expect(page.getByRole('list', { name: 'Contradições que bloqueiam' })).toContainText('incapacidade total para o trabalho')
   await expect(page.getByRole('button', { name: 'Editar o roteiro' })).toHaveCount(0)
   await entrarPelaApi(page)
   await page.goto('/roteiros/pcd')

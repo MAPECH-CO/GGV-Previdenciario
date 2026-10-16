@@ -110,7 +110,7 @@ describe('GGVP-53 · Marcar a perícia (Figma 10:374)', () => {
   it('G9 · sem campo de senha: a marcação é pelo Meu INSS, com a senha do cofre', async () => {
     await abrir()
     expect(screen.queryByLabelText(/senha/i)).toBeNull()
-    expect(screen.getByText(/A marcação é pelo Meu INSS, com a senha do cofre \(G9\)/)).toBeTruthy()
+    expect(screen.getByText(/A marcação é pelo Meu INSS, com a senha do cofre:/)).toBeTruthy()
   })
 })
 
@@ -175,7 +175,7 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     expect(screen.getByRole('link', { name: 'Maria Exemplo · Decidir a perícia' }).getAttribute('href')).toBe('/casos/maria-exemplo-1/pericia')
     unmount()
     render(comSessao(<ProcessoPericia processoId="maria-exemplo-1" />))
-    await screen.findByRole('heading', { name: 'Decisão da advogada responsável (G15)' })
+    await screen.findByRole('heading', { name: 'Decisão da advogada responsável' })
     fireEvent.change(screen.getByLabelText(/Justificativa/), { target: { value: 'Cliente internada; o médico dá alta na semana que vem.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Autorizar mais uma remarcação' }))
     expect(await screen.findByText('Remarcação autorizada: a tarefa de marcar volta para o Jurídico administrativo.')).toBeTruthy()

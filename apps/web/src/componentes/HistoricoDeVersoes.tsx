@@ -116,7 +116,7 @@ export function HistoricoDeVersoes({ ficha, funcao = 'Atendimento', aoFechar }: 
         )
       })}
       <p className={styles.nota}>
-        A IA só muda o que foi dito; o valor antigo fica aqui e {senior ? 'você pode voltar a versão' : 'a Sênior pode voltar a versão'} (G14).
+        A IA só muda o que foi dito; o valor antigo fica aqui e {senior ? 'você pode voltar a versão' : 'a Sênior pode voltar a versão'}.
       </p>
     </dialog>
   )

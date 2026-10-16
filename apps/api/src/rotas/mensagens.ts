@@ -58,7 +58,7 @@ export const MSG_SEM_CONTATO = 'o Chatwoot não achou o contato deste telefone'
 export const MSG_SEM_TELEFONE = 'a ficha não tem telefone'
 export const MSG_FORA_DA_LISTA = 'o telefone está fora da lista de teste da homologação'
 export const MSG_SIMULADO = 'simulado, não saiu: o Chatwoot não está ligado neste ambiente'
-export const MSG_FAVORAVEL_PELO_FINANCEIRO = `O aviso de resultado favorável sai pela tela «${TITULO_AVISO}», do Financeiro, com o texto que a advogada revisou na prestação de contas (G8).`
+export const MSG_FAVORAVEL_PELO_FINANCEIRO = `O aviso de resultado favorável sai pela tela «${TITULO_AVISO}», do Financeiro, com o texto que a advogada revisou na prestação de contas.`
 export const MSG_SEM_TEXTO_APROVADO = 'Falta o texto aprovado pelo Jurídico: o aviso usa só esse texto, sem estratégia interna.'
 export const MSG_SEM_COMPLEMENTO_ABERTO = 'Sem pedido de complemento aberto no processo.'
 /** GGVP-102 CA11 (Pedro, 14/10): o lead sem caso não recebe "Seu caso começou". */
@@ -291,10 +291,9 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     const texto = p.texto.trim()
     if (!texto) return { erro: 'Escreva a mensagem.' }
     if (!pronta.editavel && texto !== pronta.texto) return { erro: 'O texto aprovado não muda: o aviso sai como foi revisado.' }
-    const problema = problemasDaMensagem(texto).bloqueia[0]
+    const { bloqueia: [problema], portao } = problemasDaMensagem(texto)
     if (problema) {
       // Só o código do portão, nunca o texto (pode ter dado de saúde).
-      const portao = /\((G\d+)\)/.exec(problema)?.[1] ?? 'G20'
       await historico(pedido.usuario!.id, 'portao_bloqueado', pedido, `pessoa:${ficha.id}`, { portao, passo: 'D5', perfil: pedido.perfilAtivo, modelo: p.modelo })
       return { erro: problema }
     }
@@ -372,9 +371,8 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
    */
   async function enviarAprovado(pedido: FastifyRequest, ficha: Ficha, a: { casoId: string; modeloId: string; nome: string; texto: string }) {
     const texto = comAvisoDaSenha(a.texto)
-    const problema = problemasDaMensagem(texto).bloqueia[0]
+    const { bloqueia: [problema], portao } = problemasDaMensagem(texto)
     if (problema) {
-      const portao = /\((G\d+)\)/.exec(problema)?.[1] ?? 'G20'
       await historico(pedido.usuario!.id, 'portao_bloqueado', pedido, `pessoa:${ficha.id}`, { portao, passo: 'D3b.03', perfil: pedido.perfilAtivo })
       return { status: 'falhou' as const, erro: problema }
     }

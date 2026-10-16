@@ -252,7 +252,7 @@ describe('GGVP-125 · bloco 4c: a leitura, a conferência e a cópia do contrato
     const entregue = await json('ana', 'POST', `${base}/copia/entrega`, ENTREGA)
     expect(entregue.contrato).toMatchObject({ etapa: 'entregue', copia: { entrega: { entregueEm: '2026-10-08', quemRecebeu: 'Joana Ribeiro', quem: 'ana' } } })
     expect(entregue.ficha.processos[0]).toEqual(
-      expect.objectContaining({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício (D1.21)' }),
+      expect.objectContaining({ etapa: 'Documentação · checklist do benefício', proximaAcao: 'conferir o checklist do benefício' }),
     )
     expect(entregue.ficha.processos[0].prazo).toBeUndefined()
     expect(entregue.ficha.agendamentos.find((a: { data: string }) => a.data === '2026-10-14').estado).toBe('realizado')

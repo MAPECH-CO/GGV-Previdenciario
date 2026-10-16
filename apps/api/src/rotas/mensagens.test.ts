@@ -91,9 +91,9 @@ describe('GGVP-138 · mensagens ao cliente no servidor', () => {
     const url = `/api/fichas/${fichaId}/mensagens`
     const envio = (texto: string) => ({ modelo: 'cobranca', texto, conversa: conversas[0].id })
     expect((await chamar('marcos', 'POST', url, envio('Olá!'))).statusCode).toBe(403)
-    expect((await json('ana', 'POST', url, envio('Olá, Maria! Mande a sua senha do gov.br por aqui.'))).erro).toBe('O escritório nunca pede a senha do gov.br por mensagem (G9).')
-    expect((await json('ana', 'POST', url, envio('Na perícia, não conte que você trabalha.'))).erro).toBe('Nunca oriente a esconder ou mudar a situação real (G11).')
-    expect((await json('ana', 'POST', url, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
+    expect((await json('ana', 'POST', url, envio('Olá, Maria! Mande a sua senha do gov.br por aqui.'))).erro).toBe('O escritório nunca pede a senha do gov.br por mensagem.')
+    expect((await json('ana', 'POST', url, envio('Na perícia, não conte que você trabalha.'))).erro).toBe('Nunca oriente a esconder ou mudar a situação real.')
+    expect((await json('ana', 'POST', url, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/^Não peça nem sugira CID/)
     const recusas = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'portao_bloqueado'))
     expect(recusas.map((r) => (r.detalhe as { portao: string }).portao)).toEqual(['G9', 'G11', 'G20'])
     expect(JSON.stringify(recusas)).not.toMatch(/CID da doença|trabalha/)
@@ -144,7 +144,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     expect(pronta.texto).toMatch(/^Olá, Maria! Aqui é do escritório GGV\. .*\n1\. Desde quando a paciente apresenta o quadro\?\n2\. Qual a previsão de duração\?\n/s)
     expect(pronta.texto.endsWith(NUNCA_A_SENHA)).toBe(true)
     const envio = (texto: string) => ({ modelo: 'complemento', texto, conversa: pronta.conversas[0].id, processoId })
-    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/\(G20\)\.$/)
+    expect((await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio('Peça ao médico o CID da doença.'))).erro).toMatch(/^Não peça nem sugira CID/)
     // GGVP-158: sem o Chatwoot, nada sai, e o que não saiu não conta como tentativa do laço (G15). A que sai pelo Chatwoot
     // conta: ver "GGVP-146 · ... o complemento que sai".
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, envio(pronta.texto))).toMatchObject({ modelo: 'complemento', status: 'falhou', erro: MSG_SIMULADO, processoId })
@@ -161,7 +161,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     const { fichaId, processoId } = await cliente()
     const tentativas = ['2026-09-30', '2026-10-03'].map((dia) => ({ dia, canal: 'chatwoot' as const, resultado: 'sem-resposta' as const, quem: 'ana' }))
     await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
-    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide \(G15\)\.$/)
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide\.$/)
   })
 
   it('o resultado desfavorável: só com o resumo aprovado pelo Jurídico, e o texto aprovado não muda', async () => {

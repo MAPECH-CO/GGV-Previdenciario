@@ -165,17 +165,17 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
   const analise = g?.transcricao === 'pronta' ? c.analise : undefined
   const ditoAs = (aos: number) =>
     g?.avisoEm ? `dito às ${hora(new Date(Date.parse(g.avisoEm) + aos * 1000).toISOString())}` : `aos ${relogio(aos).slice(3)} do áudio`
-  const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)} (G10)` : ''
+  const aviso = g?.avisoEm ? ` · aviso de gravação feito às ${hora(g.avisoEm)}` : ''
   // Só o texto final aparece aqui depois de finalizar; enquanto grava, o texto ao vivo da OpenAI. Nada de falas de exemplo.
   const trechos = encerrada && g.transcricao === 'pronta' ? g.trechos : []
 
   const situacao = !g
-    ? 'Antes de gravar · avise o cliente (G10)'
+    ? 'Antes de gravar · avise o cliente'
     : g.estado === 'gravando'
       ? `● Gravando · ${relogio(segundos)}${aviso}`
       : g.estado === 'pausada'
         ? cofre
-          ? `❚❚ Pausada para a senha do gov.br · ${relogio(segundos)} · nada entra no áudio (G9)`
+          ? `❚❚ Pausada para a senha do gov.br · ${relogio(segundos)} · nada entra no áudio`
           : `❚❚ Pausada · ${relogio(segundos)}${aviso}`
         : g.estado === 'falhou'
           ? `⚠ A gravação falhou · ${relogio(g.duracao)}`
@@ -217,7 +217,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                 ✦
               </span>
               <h2 id="aviso-g10" className={base.instrucoesTitulo}>
-                Aviso de gravação (G10) · senha no cofre (G9)
+                Aviso de gravação · senha no cofre
               </h2>
             </div>
             <p className={base.instrucoesTexto}>
@@ -346,7 +346,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               {lembrete && !g && (
                 <div className={vivo.lembrete} role="group" aria-labelledby="lembrete-do-aviso">
                   <h3 id="lembrete-do-aviso" className={vivo.cartaoTitulo}>
-                    Antes de gravar, avise que a conversa será gravada (G10)
+                    Antes de gravar, avise que a conversa será gravada
                   </h3>
                   <p>Diga, com estas palavras ou parecidas:</p>
                   <blockquote className={vivo.frase}>“{ficha.nome.split(' ')[0]}, esta conversa vai ser gravada e transcrita para atualizar a sua ficha. Tudo bem?”</blockquote>
@@ -383,7 +383,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   >
                     Fechar o cofre e retomar
                   </button>
-                  <p className={base.nota}>O cliente digita a senha no cofre; o trecho não entra no áudio nem na transcrição (G9).</p>
+                  <p className={base.nota}>O cliente digita a senha no cofre; o trecho não entra no áudio nem na transcrição.</p>
                 </div>
               )}
 
@@ -467,7 +467,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               )}
               <p className={vivo.ia}>
                 <span aria-hidden="true">✦ </span>A IA está ouvindo com o mesmo motor da entrevista. Senha do gov.br não entra na
-                transcrição: vai ao cofre (G9).
+                transcrição: vai ao cofre.
               </p>
             </section>
           )}
@@ -483,7 +483,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </label>
               <label className={vivo.conferencia} htmlFor={idAvisoNaLigacao}>
                 <input id={idAvisoNaLigacao} type="checkbox" checked={avisoNaLigacao} onChange={(e) => setAvisoNaLigacao(e.target.checked)} />
-                A ligação começou com o aviso de que seria gravada (G10)
+                A ligação começou com o aviso de que seria gravada
               </label>
               <button
                 type="button"
@@ -524,7 +524,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </p>
               {g.transcricao === 'pronta' && g.alertaDaIa && (
                 <p className={vivo.alerta} role="alert">
-                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar (G14).
+                  Atenção: {g.alertaDaIa}. A fala entrou como dado; confira o texto antes de usar.
                 </p>
               )}
               <div className={base.atalhos}>
@@ -547,10 +547,10 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
               </h2>
               {analise.daIa && (
                 <div className={proprio.iaParte}>
-                  <span className={proprio.selo}>Sugestão da IA · quem confere é você (G14)</span>
+                  <span className={proprio.selo}>Sugestão da IA · quem confere é você</span>
                   {analise.daIa.alerta && (
                     <p className={vivo.alerta} role="alert">
-                      Atenção: {analise.daIa.alerta}. A fala entrou como dado; nada muda sem você conferir (G14).
+                      Atenção: {analise.daIa.alerta}. A fala entrou como dado; nada muda sem você conferir.
                     </p>
                   )}
                   <h3 className={proprio.iaSub}>Resumo da conversa</h3>
@@ -607,7 +607,7 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
                   Conferir e atualizar
                 </a>
               </div>
-              <p className={base.nota}>A IA só muda o que foi dito; nada vai para a ficha nem para o processo sem você conferir (G14).</p>
+              <p className={base.nota}>A IA só muda o que foi dito; nada vai para a ficha nem para o processo sem você conferir.</p>
             </section>
           )}
         </div>
@@ -621,13 +621,13 @@ export function Conversa({ conversaId, simular, passo = 1000 }: Props) {
           <ul className={base.ladoLista}>
             <li>• Canal da conversa (telefone ou presencial)*</li>
             <li>• Com quem falou*</li>
-            <li>• Aviso de gravação registrado (G10)*</li>
+            <li>• Aviso de gravação registrado*</li>
             <li>• Gravação ou áudio da ligação* (sem áudio, só o registro escrito)</li>
           </ul>
           <h3 className={base.ladoSecao}>Travas</h3>
           <p className={base.ladoSub}>
-            «Gravar» só começa depois do aviso registrado (G10); «Anexar» pede a confirmação do aviso na ligação. A senha dita vai para
-            o cofre, nunca para a transcrição (G9).
+            «Gravar» só começa depois do aviso registrado; «Anexar» pede a confirmação do aviso na ligação. A senha dita vai para
+            o cofre, nunca para a transcrição.
           </p>
         </aside>
       </main>

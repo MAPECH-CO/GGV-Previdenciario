@@ -117,7 +117,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             {depois || falta
               ? `Depois de ${dataCurta(ultima.data, hoje)}, registre se ${primeiro} foi. Se faltou, marque de novo.`
-              : `Na véspera, confirme com ${primeiro} a ${tipo} de ${quando}, em ${ultima.local}, até as ${HORA_DA_CONFIRMACAO}h. Se ${primeiro} não puder ir, remarque na hora e registre o motivo: a remarcação conta no limite (G15).`}
+              : `Na véspera, confirme com ${primeiro} a ${tipo} de ${quando}, em ${ultima.local}, até as ${HORA_DA_CONFIRMACAO}h. Se ${primeiro} não puder ir, remarque na hora e registre o motivo: a remarcação conta no limite.`}
           </InstrucoesPasso>
 
           {aviso && (
@@ -158,12 +158,12 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
               )}
               {t.situacao === 'na-advogada' ? (
                 <p className={styles.trava}>
-                  Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável (G15). Ela decide se vale mais uma.
+                  Passou do limite de {LIMITE_DE_REMARCACOES_DA_PERICIA} remarcações: a perícia subiu para a advogada responsável. Ela decide se vale mais uma.
                 </p>
               ) : (
                 <>
                   <p>
-                    A perícia voltou para remarcar: {pericia.remarcacoes}ª remarcação, limite {LIMITE_DE_REMARCACOES_DA_PERICIA} (G15).
+                    A perícia voltou para remarcar: {pericia.remarcacoes}ª remarcação, limite {LIMITE_DE_REMARCACOES_DA_PERICIA}.
                   </p>
                   <a className={styles.atalho} href={`/casos/${processoId}/pericia/marcar`}>
                     Remarcar a perícia
@@ -192,7 +192,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
                 </label>
               </section>
               <p className={styles.aviso}>
-                Se faltou: remarcação {pericia.remarcacoes + 1} · limite {LIMITE_DE_REMARCACOES_DA_PERICIA} (G15); passou, sobe para a advogada.
+                Se faltou: remarcação {pericia.remarcacoes + 1} · limite {LIMITE_DE_REMARCACOES_DA_PERICIA}; passou, sobe para a advogada.
               </p>
               <div className={styles.rodape}>
                 <button
@@ -243,7 +243,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
                   )}
                   {confirmacao === 'nao-vai' && (
                     <p className={styles.aviso}>
-                      Remarcar na hora: remarcação {pericia.remarcacoes + 1} · limite {LIMITE_DE_REMARCACOES_DA_PERICIA} (G15); passou, sobe para a advogada.
+                      Remarcar na hora: remarcação {pericia.remarcacoes + 1} · limite {LIMITE_DE_REMARCACOES_DA_PERICIA}; passou, sobe para a advogada.
                     </p>
                   )}
                   <div className={styles.rodape}>
@@ -282,7 +282,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
                     Ligar
                   </button>
                 )}
-                <button type="button" className={cobranca.botao} aria-disabled="true" title="A conversa abre pelo Chatwoot (GGVP-102)">
+                <button type="button" className={cobranca.botao} aria-disabled="true" title="A conversa abre pelo Chatwoot">
                   WhatsApp
                 </button>
               </span>
@@ -306,7 +306,7 @@ export function ComparecimentoPericia({ processoId }: { processoId: string }) {
             <li>• Se não vai poder ir: o motivo da remarcação*</li>
           </ul>
           <h3 className={styles.ladoSecao}>Travas</h3>
-          <p className={styles.trava}>Remarcação tem limite (G15): passou, sobe para a advogada responsável, nunca para a sênior.</p>
+          <p className={styles.trava}>Remarcação tem limite: passou, sobe para a advogada responsável, nunca para a sênior.</p>
           <p className={styles.ladoSub}>«Registrar» só habilita depois do dia e da hora da perícia, com a resposta.</p>
           <p className={styles.ladoSub}>Sem a presença confirmada até {HORA_DA_CONFIRMACAO}h da véspera, vem o alerta para contatar o cliente.</p>
         </aside>

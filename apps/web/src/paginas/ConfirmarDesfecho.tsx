@@ -80,9 +80,6 @@ export function ConfirmarDesfecho({ casoId }: { casoId: string }) {
         <div className={passo.principal}>
           <div className={passo.cabecalho}>
             <div className={passo.chips}>
-              <span className={passo.codigo} title="D4.02 · Confirmar o desfecho de mérito (passo do BPMN)">
-                D4.02
-              </span>
               <span className={proprio.advogada}>Advogada</span>
             </div>
             <h1 className={passo.titulo}>
@@ -192,7 +189,7 @@ export function ConfirmarDesfecho({ casoId }: { casoId: string }) {
           <h2 id="antes-de-concluir" className={passo.ladoTitulo}>
             Antes de concluir
           </h2>
-          <p className={passo.ladoSub}>Desfecho de mérito (D4.02): a vigília traz a decisão, a IA lê, e a advogada confirma.</p>
+          <p className={passo.ladoSub}>Desfecho de mérito: a vigília traz a decisão, a IA lê, e a advogada confirma.</p>
           <h3 className={passo.ladoSecao}>O que a IA fez</h3>
           <ul className={passo.ladoLista}>
             <li>• Leu a decisão e sugeriu a classe, com a confiança</li>

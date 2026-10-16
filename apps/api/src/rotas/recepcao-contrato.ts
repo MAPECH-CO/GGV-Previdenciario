@@ -630,7 +630,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     const seguinte: Processo = {
       ...processo,
       etapa: 'Documentação · checklist do benefício',
-      proximaAcao: 'conferir o checklist do benefício (D1.21)',
+      proximaAcao: 'conferir o checklist do benefício',
       prazo: undefined,
       urgente: undefined,
     }
@@ -640,7 +640,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       texto: `Recebeu a cópia do contrato assinado${quemRecebeu === ficha.nome ? '' : ` (entregue a ${quemRecebeu})`}.${observacao ? ` ${observacao}` : ''}`,
     })
     ficha.historico.push(
-      evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, dia)} a ${quemRecebeu}; o caso segue para o checklist do benefício (D1.21)`, nome),
+      evento(`Entregou a cópia impressa da versão assinada em ${dataCurta(entregueEm, dia)} a ${quemRecebeu}; o caso segue para o checklist do benefício`, nome),
     )
     await guardarContrato(ficha.id, { contrato, processo: seguinte })
     await guardar(ficha)

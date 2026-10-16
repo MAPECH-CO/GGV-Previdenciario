@@ -50,7 +50,7 @@ test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento
   await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
   await expect(page.getByText(/A gravação da ligação fica na conversa do cliente no Chatwoot, como mensagem privada/)).toBeVisible()
   await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'ligacao-chatwoot.ogg', mimeType: 'audio/ogg', buffer: Buffer.from('OggS gravação da ligação') })
-  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada' }).check()
   await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
   await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
   await expect(page.getByText('O áudio ficou guardado no card do cliente: ligacao-chatwoot.ogg.')).toBeVisible()
@@ -98,7 +98,7 @@ test('a Atendimento abre o áudio da ligação: o player já mostra a duração 
   await janela.getByRole('radio', { name: 'Ligação', exact: true }).click()
   await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
   await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'parte-1.webm', mimeType: 'audio/webm', buffer: webm })
-  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada' }).check()
   await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
   await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
 

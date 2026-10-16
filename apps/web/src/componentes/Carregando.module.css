@@ -1,0 +1,61 @@
+/* A tela enquanto a sessão é conferida. Só aparece depois de um instante, para não piscar quando a resposta é rápida. */
+.tela {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px;
+  background: var(--cor-fundo);
+  text-align: center;
+  animation: aparecer 200ms var(--curva) 250ms both;
+}
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-20);
+  font-weight: 700;
+  box-shadow: var(--sombra-acento);
+}
+
+.texto {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+.falha {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 36ch;
+  color: var(--cor-texto);
+  font-size: var(--fonte-14);
+}
+
+.botao {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--raio-10);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-14);
+  font-weight: 600;
+}
+
+.botao:focus-visible {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}

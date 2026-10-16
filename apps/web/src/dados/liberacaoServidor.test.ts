@@ -60,7 +60,7 @@ describe('GGVP-125 · bloco 6: a primeira liberação ao Jurídico no servidor',
   it('o servidor recusa: a tela recebe o motivo, e nada fica liberado aqui', async () => {
     await ritaProntaParaLiberar()
     Object.assign(servidor, { ligado: true, aceita: false })
-    await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('o parecer médico ainda não foi confirmado (G17)')
+    await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('o parecer médico ainda não foi confirmado')
     servidor.ligado = false
     expect((await obterLiberacao('rita-exemplo-1'))?.liberacao).toBeUndefined()
   })

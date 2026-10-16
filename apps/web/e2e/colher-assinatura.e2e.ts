@@ -22,7 +22,7 @@ test('GGVP-72 CA2, CA4, CA5, CA11 e CA12 · da Central ao lembrete pelo WhatsApp
   const janela = page.getByRole('dialog', { name: 'Chatwoot · conversa com Nair Exemplo' })
   await expect(janela.getByLabel('Lembrete com o mesmo link do ZapSign (confira antes de enviar)')).toHaveValue(/O link é o mesmo: https:\/\/zapsign\.exemplo\/assinar\/zapsign-exemplo-nair-exemplo-1/)
   await janela.getByRole('button', { name: 'Enviar' }).click()
-  await expect(page.getByText(/Limite de 2 tentativas atingido \(G15\): o caso subiu para a advogada sênior/)).toBeVisible()
+  await expect(page.getByText(/Limite de 2 tentativas atingido: o caso subiu para a advogada sênior/)).toBeVisible()
   await expect(page.getByRole('list', { name: 'Tentativas de contato' }).getByRole('listitem')).toHaveCount(2)
 
   await page.goto('/')

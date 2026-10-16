@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { LaudoPeloChat } from '../componentes/LaudoPeloChat.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
-import { ITENS_DA_GESTAO } from '../componentes/itensDaGestao.ts'
 import { Topbar } from '../componentes/Topbar.tsx'
 import type { ItemNavegacao } from '../componentes/Topbar.tsx'
 import { useTarefasDoServidor } from '../dados/tarefas.ts'
@@ -29,7 +27,7 @@ import { tarefasDaDocumentacaoNaPericia } from '../dados/pericia.ts'
 import { useTarefasDaConversa } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
 import type { Tarefa } from '../dados/tipos.ts'
-import { usePode, useSessao } from '../sessao.ts'
+import { useSessao } from '../sessao.ts'
 import { grupoDoPerfil, SUGESTOES_DO_PERFIL } from '../regras/chat.ts'
 
 // Figma: "Central de trabalho · Atendimento" (11:2), arquivo nHOPzl005CpWDXUWyVZIo6.
@@ -89,22 +87,20 @@ export function CentralAtendimento() {
   const daConversa = useTarefasDaConversa() ?? []
   // GGVP-147: o que o líder deu a outra pessoa sai da fila; o que deu a esta pessoa entra no topo.
   const tarefas = juntarMinhas([...doServidor, ...daConversa, ...deExemplo], useMinhasDoSetor())
-  // O líder do Atendimento vê a Gestão no topo, como a matriz dá a ele (GGVP-135, P14).
-  const gestao = usePode('gestao.ver')
 
   return (
     <>
       <title>Início · GGV Previdenciário</title>
       <Topbar
-        itens={gestao ? [...navegacao, ...ITENS_DA_GESTAO] : navegacao}
+        itens={navegacao}
         ativo="inicio"
         funcao="Atendimento"
         acao={{ rotulo: '+ Novo cliente', href: '/clientes/novo' }}
+        tarefas={tarefas}
       />
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">{funcao === 'Documentação' ? 'Início da Documentação' : 'Início do Atendimento'}</h1>
-          <CampoBusca tarefas={tarefas} />
           {/* GGVP-96: a Documentação e o líder, que também abrem esta Central, com as sugestões do perfil deles. */}
           <LaudoPeloChat exemplo={exemploChatAtendimento} sugestoes={SUGESTOES_DO_PERFIL[grupoDoPerfil(perfil?.id)]} />
           <FilasDeTarefas tarefas={tarefas} />

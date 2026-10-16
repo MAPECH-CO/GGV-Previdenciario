@@ -104,7 +104,7 @@ describe('GGVP-124 · nova demanda de quem já é cliente · servidor de exemplo
     expect(ficha.demandas?.[0]).toMatchObject({ situacao: 'nao-fechou', motivo: 'preco', detalhe: 'vai pensar' })
     expect(ficha).toMatchObject({ situacao: 'cliente', processos: [expect.objectContaining({ beneficio: 'incapacidade-permanente' })] })
     expect(ficha.fechamento).toBeUndefined()
-    expect(ficha.historico.at(-1)?.oQue).toBe('Nova demanda não fechou: Preço (vai pensar). Segue cliente nos outros processos (G16)')
+    expect(ficha.historico.at(-1)?.oQue).toBe('Nova demanda não fechou: Preço (vai pensar). Segue cliente nos outros processos')
     await expect(registrarFechamento('antonio-exemplo', { fechou: true })).rejects.toThrow('Não há nova demanda aberta')
   })
 })

@@ -486,7 +486,7 @@ export function registrarRotasPeticao(app: FastifyInstance, { banco, armazenamen
           passo: 'D3.06',
           tipo: 'aprovacao_peticao',
           resultado: `versao ${ultima.numero}`,
-          justificativa: 'Li a petição na íntegra; fundamentos, pedidos e valores conferem com o caso; nada contradiz o requisito do benefício (G18).',
+          justificativa: 'Li a petição na íntegra; fundamentos, pedidos e valores conferem com o caso; nada contradiz o requisito do benefício.',
           decididoPor: quem,
           perfil: pedido.perfilAtivo!,
           decididoEm: agora(),

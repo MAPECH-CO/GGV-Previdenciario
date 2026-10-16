@@ -25,7 +25,7 @@ describe('Fazer entrevista · tela do passo', () => {
     await abrir()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Josefa Exemplo · Fazer entrevista')
     expect(screen.getByText('entrevista inicial · gravada · hoje 15:30')).toBeTruthy()
-    expect(screen.getByText('A gravação começa com o aviso ao cliente (G10).')).toBeTruthy()
+    expect(screen.getByText('A gravação começa com o aviso ao cliente.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Iniciar entrevista (Transcrição)' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Analise a ficha antes: pode ser auxílio acidentário?')).toBeTruthy()
     // A entrevista iniciada na hora pula a preparação: o atalho da análise fica aqui.
