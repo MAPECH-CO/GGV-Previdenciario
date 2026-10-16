@@ -79,9 +79,10 @@ O registro de contato SHALL guardar com quem a pessoa falou; o pedido de mudanç
 - **Então** o registro guarda isso, e pedido de mudança de dado feito por quem não é o cliente não é aplicado sem a verificação
 
 ### Requirement: CA9 · Agência e conta com o traço automático
-Teste do Pedro (14/10): a conta digitada só com números ("123456") era recusada, pedindo o traço.
 - Os campos Agência e Conta SHALL formatar enquanto a pessoa digita, pela biblioteca `campos`: a conta ganha o traço antes do último caractere (o dígito, que pode ser X); a agência com 4 números fica como está e, com 5, o último vira o dígito, depois do traço.
 - A conferência SHALL ser a da biblioteca, na tela e no servidor, com as mesmas mensagens.
+
+Teste do Pedro (14/10): a conta digitada só com números ("123456") era recusada, pedindo o traço.
 
 #### Scenario: CA9 · Digitar só os números
 - **Dado** o cartão "Dados bancários para o repasse", com a mudança aberta
