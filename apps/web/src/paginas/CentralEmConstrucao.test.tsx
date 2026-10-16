@@ -29,11 +29,11 @@ describe('GGVP-135 · a Gestão no topo do líder do Atendimento (P14)', () => {
   it('o líder vê Prazos, Tentativas bloqueadas e Resultados, e Clientes sem Processos (GGVP-162); o Atendimento, não', async () => {
     entrarComo('atendimento-lider')
     const { unmount } = render(comSessao(<CentralAtendimento />))
-    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes'])
+    expect(topo()).toEqual(['Início', 'Balcão', 'Agenda', 'Clientes'])
     expect(screen.getByRole('button', { name: 'Gestão' })).toBeTruthy()
     unmount()
     entrarComo('atendimento')
     render(comSessao(<CentralAtendimento />))
-    expect(topo()).toEqual(['Início', 'Agenda'])
+    expect(topo()).toEqual(['Início', 'Balcão', 'Agenda'])
   })
 })

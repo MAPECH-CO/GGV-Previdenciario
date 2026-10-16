@@ -4,21 +4,6 @@
 // Rita e da fila do scanner (D1.18) também: nascem da leitura da IA (GGVP-81, dados/leitura.ts). E o "Liberar ao
 // Jurídico" do Sebastião (D1.24) nasce da fila da Documentação (GGVP-18, dados/liberacao.ts). GGVP-120 CA4 (Pedro, 14/10): as
 // fixas sem tela saíram, porque caíam na "tela não construída"; a ida ao banco, o aviso do resultado e as exigências do INSS
-// e do juiz nascem no servidor, com a tela certa.
-import type { Tarefa } from './tipos.ts'
-
-export const tarefasAtendimento: Tarefa[] = [
-  // O "Cobrar documento" e o "Reunir documentos da perícia" fixos da Maria (DP.03) saíram: nascem da perícia (épico GGVP-10,
-  // dados/pericia.ts), para a Documentação.
-  {
-    id: 't6',
-    codigo: 'D1.01',
-    cliente: null,
-    contexto: 'Balcão',
-    acao: 'Receber quem chegou',
-    detalhe: 'agora',
-    href: '/balcao',
-  },
-]
-
+// e do juiz nascem no servidor, com a tela certa. O "Balcão · Receber quem chegou" também saiu (Pedro, 16/10): não era
+// tarefa, e o Balcão virou botão no topo do Atendimento e do líder.
 export const exemploChatAtendimento = 'Ex.: “a Josefa me ligou, qual é a próxima tarefa dela?”'

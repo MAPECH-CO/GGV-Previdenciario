@@ -18,10 +18,10 @@ beforeEach(() => {
 })
 
 describe('Central do Atendimento', () => {
-  it('mostra a fila de 13 tarefas; quem não é líder não vê a aba "Tarefas do setor" (GGVP-147 CA3)', async () => {
+  it('mostra a fila de 12 tarefas; quem não é líder não vê a aba "Tarefas do setor" (GGVP-147 CA3)', async () => {
     render(<CentralAtendimento />)
     // A conversa com o cliente vem do servidor (GGVP-138): a fila completa chega depois dele.
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(13))
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(12))
     expect(screen.queryByRole('tab')).toBeNull()
   })
 
@@ -137,8 +137,11 @@ describe('Central do Atendimento', () => {
         entrarComo(perfil)
         const { unmount } = render(comSessao(<CentralAtendimento />))
         expect(await screen.findByRole('heading', { level: 1, name: 'Início do Atendimento' })).toBeTruthy()
-        for (const nome of ['Antônio Exemplo · Cobrar documento', 'Marta Exemplo · Completar telefone', 'Balcão · Receber quem chegou'])
+        for (const nome of ['Antônio Exemplo · Cobrar documento', 'Marta Exemplo · Completar telefone'])
           expect(screen.getByRole('link', { name: nome })).toBeTruthy()
+        // Pedro, 16/10: o Balcão é botão do topo, não tarefa na fila.
+        expect(screen.queryByRole('link', { name: 'Balcão · Receber quem chegou' })).toBeNull()
+        expect(within(screen.getByRole('navigation', { name: 'Principal' })).getByRole('link', { name: 'Balcão' }).getAttribute('href')).toBe('/balcao')
         expect(acoes()).toContain('Cobrar documento')
         expect(acoes().filter((a) => DA_DOCUMENTACAO.includes(a))).toEqual([])
         unmount()
@@ -284,8 +287,8 @@ describe('Central do Atendimento', () => {
       vi.fn(async (url: string, init?: RequestInit) => (await responderRelacionamento(url, init)) ?? new Response(JSON.stringify([ajuste]))),
     )
     render(<CentralAtendimento />)
-    // As 12 de exemplo, a ligação do Pedro Exemplo (do servidor do Relacionamento) e o ajuste do servidor.
-    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(14))
+    // As 11 de exemplo, a ligação do Pedro Exemplo (do servidor do Relacionamento) e o ajuste do servidor.
+    await vi.waitFor(() => expect(within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')).toHaveLength(13))
     const [primeira] = within(screen.getByRole('region', { name: 'O que você tem que fazer' })).getAllByRole('listitem')
     expect(primeira.textContent).toContain('Ajustar o caso: Falta o laudo')
   })

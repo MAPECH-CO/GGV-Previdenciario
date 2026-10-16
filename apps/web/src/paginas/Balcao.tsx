@@ -94,7 +94,7 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
   return (
     <>
       <title>Balcão · GGV Previdenciário</title>
-      <TopoPasso contexto="Balcão · agora" />
+      <TopoPasso contexto="Balcão · agora" ativo="balcao" />
       <main className={styles.pagina}>
         <div className={styles.principal}>
           <div className={styles.cabecalho}>
