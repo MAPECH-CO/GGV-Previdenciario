@@ -59,6 +59,21 @@ afterEach(async () => {
 })
 
 describe('GGVP-125 · bloco 5b: a chegada dos documentos no servidor', () => {
+  it('GGVP-158 E10 (15/10) · as decisões da conferência da leitura são da Documentação: o Atendimento e a Sênior recebem 403 ao arquivar, liberar, mover e usar no cadastro', async () => {
+    const id = '00000000-0000-4000-8000-000000000001'
+    for (const apelido of ['ana', 'helena']) {
+      for (const [metodo, url, corpo] of [
+        ['POST', `/api/fichas/${id}/documentos-lidos/arquivar`, { conferi: true, documentos: [] }],
+        ['POST', `/api/documentos-lidos/${id}/liberar`, undefined],
+        ['POST', `/api/documentos-lidos/${id}/mover`, { processoId: id, motivo: 'é da outra pessoa' }],
+        ['POST', `/api/documentos-lidos/${id}/cadastro`, { campo: 'cpf' }],
+      ] as const) {
+        const r = await chamar(apelido, metodo, url, corpo)
+        expect([apelido, url, r.statusCode]).toEqual([apelido, url, 403])
+      }
+    }
+  })
+
   it('card: o documento entra na pasta da ficha e a IA lê; o repetido não sobrescreve; o laudo vai ao Jurídico sem resumo', async () => {
     const fichaId = await lead()
     expect((await chamar('julia', 'POST', `/api/fichas/${fichaId}/arquivos`, { origem: 'card', arquivos: [doc('RG.pdf', 'rg')] })).statusCode).toBe(403)

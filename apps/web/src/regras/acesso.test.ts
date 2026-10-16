@@ -19,7 +19,13 @@ describe('podeAbrir: o link só aparece para quem abre a tela', () => {
   it('a tela de caso usa a ação dela, e a tela que confere sozinha deixa o link', () => {
     expect(acaoDoCaminho(`/casos/${CASO}/pericia/decidir`)).toBe('pericia.decidir')
     expect(podeAbrir('juridico_adm', `/casos/${CASO}/pericia/decidir`)).toBe(false)
-    expect(acaoDoCaminho('/roteiros/pcd')).toBeUndefined()
+    expect(acaoDoCaminho('/')).toBeUndefined()
+    expect(podeAbrir('financeiro', '/')).toBe(true)
+    // GGVP-158 E7: os roteiros de laudos e as telas de passo do caso abrem só para quem vê o caso.
+    expect(acaoDoCaminho('/roteiros/pcd')).toBe('caso.ver')
     expect(podeAbrir('atendimento', '/roteiros/pcd')).toBe(true)
+    expect(podeAbrir('financeiro', '/roteiros/pcd')).toBe(false)
+    expect(acaoDoCaminho(`/casos/${CASO}/parecer/dispensa`)).toBe('caso.aprovar_para_inss')
+    expect(acaoDoCaminho(`/casos/${CASO}/publicacoes`)).toBe('processo.abrir')
   })
 })

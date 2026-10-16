@@ -314,6 +314,23 @@ describe('GGVP-136 · o kit de verdade: o Word do escritório, preenchido e guar
     expect((guardado.dados as { contrato: { percentualHonorarios?: number } }).contrato.percentualHonorarios).toBe(30)
   })
 
+  it('GGVP-158 E2 (15/10) · a cópia da Recepção leva o percentual e o acordo só a quem conduz o contrato ou vê valores; a Documentação, o Jurídico adm, a advogada e a Sênior recebem o contrato sem eles', async () => {
+    for (const [apelido, perfil] of [['dora', 'documentacao'], ['igor', 'juridico_adm'], ['lauro', 'socio']] as const)
+      await banco.insert(usuario).values({ email: `${apelido}@exemplo.ggv`, nome: apelido, senhaHash: await bcrypt.hash(SENHA, 4), perfis: [perfil], trocarSenha: false })
+    await app.inject({ method: 'PUT', url: '/api/configuracao/modelos/contrato-completo-loas/honorarios', cookies: await cookieDe('helena'), payload: { percentual: 30 } })
+    const { processoId } = await gerar(await lead(), 'loas-idoso', { entrada: '500,00', parcelas: { quantidade: '4', valor: '300,00' } })
+    const contrato = async (apelido: string) =>
+      (await json(apelido, 'GET', '/api/recepcao')).contratos.find((c: { processoId: string }) => c.processoId === processoId) as { percentualHonorarios?: number; acordo?: object; etapa: string }
+    for (const apelido of ['dora', 'igor', 'gabi', 'helena']) {
+      const c = await contrato(apelido)
+      expect([apelido, c.etapa, c.percentualHonorarios, c.acordo]).toEqual([apelido, 'assinatura', undefined, undefined])
+    }
+    for (const apelido of ['ana', 'lauro']) {
+      const c = await contrato(apelido)
+      expect([apelido, c.percentualHonorarios, c.acordo]).toEqual([apelido, 30, { entrada: 500, parcelas: { quantidade: 4, valor: 300 } }])
+    }
+  })
+
   it('CA1 · o kit usa sempre a versão em vigor: a que vale na hora de gerar, e o kit guarda qual foi', async () => {
     const fichaId = await lead()
     const { processo } = await fechou(fichaId)

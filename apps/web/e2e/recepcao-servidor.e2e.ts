@@ -305,10 +305,11 @@ async function contratoGerado(page: Page, baseURL: string, nome: string, telefon
   return processo.id
 }
 
-test('o papel é anexado sem simular a confirmação; sem ZapSign, a opção digital não aparece', async ({ page, browser, baseURL }) => {
+test('o papel é anexado e fica ligado à assinatura, sem concluir; sem ZapSign, a opção digital não aparece', async ({ page, browser, baseURL }) => {
   test.setTimeout(120_000)
 
-  // Em papel: guarda os bytes, mas não afirma que a assinatura foi confirmada. O papel é o único caminho (GGVP-158 P4.5).
+  // Em papel: o arquivo sobe pela rota do contrato e fica ligado à assinatura (GGVP-158 E11); concluir é outro clique, que aqui
+  // ninguém dá. O papel é o único caminho (GGVP-158 P4.5).
   const papel = await contratoGerado(page, baseURL!, 'Lia Papel Teste', '11933331199', '57382914682')
   await page.goto(`/contrato/${papel}/assinatura`)
   await expect(page.getByRole('radio', { name: 'ZapSign (digital)' })).toHaveCount(0)
@@ -316,10 +317,10 @@ test('o papel é anexado sem simular a confirmação; sem ZapSign, a opção dig
   await page.getByRole('button', { name: 'Imprimir o kit' }).click()
   await page.getByLabel('PDF ou foto do contrato assinado').setInputFiles({ name: 'assinado-teste.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 contrato inventado no teste') })
   await page.getByRole('button', { name: 'Guardar arquivo', exact: true }).click()
-  await expect(page.getByText('Arquivo guardado no servidor.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeDisabled()
+  await expect(page.getByText(/✓ Contrato assinado - Lia Papel Teste - \d{4}-\d{2}-\d{2} \(papel\)\.pdf, na pasta do cliente/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Concluir a assinatura' })).toBeEnabled()
 
-  // Outra sessão lê o papel ainda pendente.
+  // Outra sessão lê o papel ainda pendente: ligado, mas não concluído.
   const outro = await browser.newContext({ baseURL: new URL(page.url()).origin })
   const advogada = await outro.newPage()
   await entrarPelaApi(advogada, 'advogada@exemplo.ggv')

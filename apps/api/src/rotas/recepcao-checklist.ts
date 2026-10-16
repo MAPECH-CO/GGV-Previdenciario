@@ -125,7 +125,6 @@ export function registrarRotasRecepcaoChecklist(app: FastifyInstance, { banco, a
   const { doCaso } = criarChecklist(banco, agora)
   const { hoje, evento, nomeDe, guardar, fichas } = criarFichario(banco, agora)
   const ver = { preHandler: exigir(banco, 'caso.ver', agora) }
-  const editar = { preHandler: exigir(banco, 'ficha.editar', agora) }
   const mandar = { preHandler: exigir(banco, 'mensagem.enviar', agora) }
 
   /** As boas-vindas do caso (GGVP-97), pela regra das telas, com os registros do banco. As cópias vão com o contrato assinado. */
@@ -147,7 +146,9 @@ export function registrarRotasRecepcaoChecklist(app: FastifyInstance, { banco, a
     return (await doCaso(pedido.params.id)) ?? negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
   })
 
-  app.post<{ Params: { id: string } }>('/api/processos/:id/checklist/conferencia', editar, async (pedido, resposta) => {
+  // GGVP-158 E10 (15/10): a conferência (D1.21) é da Documentação; o Atendimento abre a tela só para as boas-vindas.
+  const conferir = { preHandler: exigir(banco, 'checklist.conferir', agora) }
+  app.post<{ Params: { id: string } }>('/api/processos/:id/checklist/conferencia', conferir, async (pedido, resposta) => {
     const achado = await doCaso(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CASO_NAO_ENCONTRADO)
     const { ficha, processo, beneficio, checklist } = achado

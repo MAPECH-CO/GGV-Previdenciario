@@ -5,7 +5,7 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 34, digital: '4b59c136' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 35, digital: '4409e69a' })
   })
 
   it('GGVP-157 · custas: sócios, Financeiro e Sênior veem; Sênior e Financeiro lançam; só o Financeiro aprova; sem abrir o processo', () => {
@@ -13,6 +13,12 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(PERFIS.filter((p) => pode(p, 'custas.lancar'))).toEqual(['senior', 'financeiro'])
     expect(PERFIS.filter((p) => pode(p, 'custas.aprovar'))).toEqual(['financeiro'])
     expect(pode('financeiro', 'processo.abrir')).toBe(false)
+  })
+
+  it('GGVP-158 E10 (15/10) · conferir o checklist (D1.21) e o documento (D1.18) é só da Documentação; o Atendimento e o Jurídico editam a ficha, mas não conferem', () => {
+    expect(PERFIS.filter((p) => pode(p, 'checklist.conferir'))).toEqual(['documentacao'])
+    expect(PERFIS.filter((p) => pode(p, 'documento.conferir'))).toEqual(['documentacao'])
+    for (const p of ['atendimento', 'atendimento_lider', 'advogada', 'senior', 'juridico_adm'] as const) expect([p, pode(p, 'ficha.editar'), pode(p, 'checklist.conferir')]).toEqual([p, true, false])
   })
 
   it('GGVP-162 CA7 · o processo é do Jurídico e do Sócio; o Atendimento, a líder e a Documentação ficam com o caso das tarefas', () => {
@@ -220,7 +226,7 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(Object.fromEntries(PERFIS.map((p) => [p, acoesDe(p).length]))).toEqual({
       atendimento: 19,
       atendimento_lider: 23,
-      documentacao: 12,
+      documentacao: 14,
       advogada: 41,
       senior: 63,
       juridico_adm: 21,

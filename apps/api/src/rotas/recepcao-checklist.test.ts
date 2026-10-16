@@ -83,6 +83,17 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     expect(situacoes(await json('dora', 'GET', url)).rg).toBe('recebido')
   })
 
+  it('GGVP-158 E10 (15/10) · conferir o checklist é da Documentação: o Atendimento e a Sênior recebem 403 e nada é gravado; a Documentação confere', async () => {
+    const { processoId } = await casoDe('loas-idoso')
+    for (const apelido of ['ana', 'sara']) {
+      const r = await chamar(apelido, 'POST', `/api/processos/${processoId}/checklist/conferencia`)
+      expect([apelido, r.statusCode]).toEqual([apelido, 403])
+    }
+    expect(await banco.select().from(conferenciaChecklist)).toHaveLength(0)
+    expect((await chamar('dora', 'POST', `/api/processos/${processoId}/checklist/conferencia`)).statusCode).toBe(200)
+    expect(await banco.select().from(conferenciaChecklist)).toHaveLength(1)
+  })
+
   it('a conferência grava a situação calculada; a incompleta abre uma cobrança só; o checklist vai na cópia das telas', async () => {
     const { processoId } = await casoDe('loas-idoso')
     const url = `/api/processos/${processoId}/checklist/conferencia`
@@ -98,8 +109,8 @@ describe('GGVP-125 · bloco 5c: o checklist do caso no servidor', () => {
     expect(r.cobrancas).toMatchObject([{ processoId, abertaEm: '2026-10-08', tentativas: [], decisoes: [] }])
     expect(r.checklists).toMatchObject([{ processoId, conferencia: r.conferencia }])
 
-    // Conferir de novo não abre a segunda cobrança.
-    expect((await json('ana', 'POST', url)).cobrancas).toHaveLength(1)
+    // Conferir de novo não abre a segunda cobrança (GGVP-158 E10: quem confere é a Documentação).
+    expect((await json('dora', 'POST', url)).cobrancas).toHaveLength(1)
     const { checklists } = await json('ana', 'GET', '/api/recepcao')
     expect(checklists).toMatchObject([{ processoId, beneficio: 'LOAS Idoso', checklist: { temLista: true, completo: false }, conferencia: { completo: false } }])
   })

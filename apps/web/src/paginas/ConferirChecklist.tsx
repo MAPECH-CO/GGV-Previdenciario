@@ -214,6 +214,10 @@ function CartaoDoAcidente({ processoId, aoSalvar }: { processoId: string; aoSalv
 
 
 export function ConferirChecklist({ processoId }: { processoId: string }) {
+  // GGVP-158 E10 (15/10): a conferência (D1.21) é da Documentação (`checklist.conferir`); o Atendimento abre esta tela
+  // para as boas-vindas (D1.22) e não conclui a conferência. Sem sessão (testes de unidade), vale a Documentação.
+  const perfil = usePerfil('Documentação')
+  const podeConferir = perfil?.id === 'documentacao'
   // undefined: abrindo; null: o caso não existe.
   const [caso, setCaso] = useState<ChecklistDoCaso | null | undefined>(undefined)
   const [feito, setFeito] = useState<ConferenciaDoChecklist | null>(null)
@@ -357,6 +361,10 @@ export function ConferirChecklist({ processoId }: { processoId: string }) {
                 </a>
               </div>
             </section>
+          ) : !podeConferir ? (
+            <p className={styles.aviso} role="note">
+              Quem confere o checklist é a Documentação (D1.21). Esta tela, para o seu perfil, é das boas-vindas.
+            </p>
           ) : (
             <div className={styles.rodape}>
               <button type="button" className={styles.principalBotao} disabled={conferindo} onClick={concluir}>

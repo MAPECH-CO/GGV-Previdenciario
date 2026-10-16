@@ -8,6 +8,7 @@ import { formatarCpf } from '../campos.ts'
 import { nomeTipo } from '../dados/catalogos.ts'
 import { JurimetriaPerito } from '../componentes/JurimetriaPerito.tsx'
 import { autorizarRemarcacao, decidirFaltaDaPericia, hrefDoPasso, ligarPerito, peritosParaLigar, oQueAconteceAgora, obterPericia, type PericiaNaTela } from '../dados/pericia.ts'
+import { pode } from '@ggv/contratos'
 import { usePerfil } from '../dados/perfis.ts'
 import { agora } from '../dados/servidor.ts'
 import { diaCurto } from '../regras/agenda.ts'
@@ -33,8 +34,6 @@ const navegacao = (inicio: string): ItemNavegacao[] => [
 /** As etapas do processo, na ordem do Figma ("Ações do processo"). Só a etapa atual abre; as outras são de outras histórias. */
 const ETAPAS = ['Entrevista', 'Pedido ao INSS', 'Exigência INSS', 'Perícia INSS', 'Despacho', 'Petição', 'Perícia judicial', 'Exigência do juiz', 'Minuta', 'Sentença · recurso', 'Prestação de contas']
 
-const JURIDICO = ['advogada', 'senior', 'juridico-adm']
-
 const COR_DA_SITUACAO: Record<SituacaoDaPericia, string> = {
   'aguardando-inss': styles.neutro,
   marcar: styles.alerta,
@@ -57,7 +56,9 @@ function estadoDaEtapa(etapa: string, atual: string, t: PericiaNaTela): 'feita' 
 
 export function ProcessoPericia({ processoId, abrirPerito = false }: { processoId: string; /** "Ver o perfil do perito" do chat. */ abrirPerito?: boolean }) {
   const perfil = usePerfil('Advogada')
-  const juridico = JURIDICO.includes(perfil?.id ?? 'advogada')
+  // GGVP-158 E9 (15/10): o conteúdo médico é de quem tem `dado_saude.ver_detalhe` (o Jurídico e o Sócio, que lê tudo), como
+  // o servidor já entrega; os ids da tela usam hífen, a matriz, sublinhado.
+  const juridico = pode((perfil?.id ?? 'advogada').replace('-', '_'), 'dado_saude.ver_detalhe')
   const [t, setT] = useState<PericiaNaTela | null | undefined>(undefined)
   const [aberto, setAberto] = useState<'parecer' | 'anexar' | 'perito' | null>(abrirPerito ? 'perito' : null)
   const [verOrientacao, setVerOrientacao] = useState(false)

@@ -194,6 +194,18 @@ describe('GGVP-53 · agenda, página do processo e o limite na Central da Advoga
     expect(within(docs).getByText('sem arquivo no portal')).toBeTruthy()
   })
 
+  it('GGVP-158 E9 (15/10) · o Sócio lê tudo: na página da perícia, o laudo não fica "com o Jurídico" para ele, como para a advogada', async () => {
+    await enviarArquivos('antonio-exemplo', {
+      origem: 'card',
+      arquivos: ['rg', 'laudo'].map((tipo, i) => ({ nome: `${tipo}.pdf`, formato: 'pdf' as const, tamanho: 1000, tipo, hash: String(60 + i).padStart(64, '0') })),
+    })
+    entrarComo('socio')
+    render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))
+    const docs = (await screen.findByRole('heading', { name: 'Documentos (abrir cada um)' })).closest('section')!
+    expect(within(docs).queryByText('o conteúdo fica com o Jurídico')).toBeNull()
+    expect(within(docs).getAllByText('sem arquivo no portal').length).toBeGreaterThan(0)
+  })
+
   it('GGVP-158 · com sessão, o Início da página do processo é a tela inicial de quem entrou, e não a Central da advogada', async () => {
     entrarComo('atendimento')
     render(comSessao(<ProcessoPericia processoId="antonio-exemplo-1" />))

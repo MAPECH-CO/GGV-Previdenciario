@@ -27,8 +27,9 @@ const ACESSO: [RegExp, Acao][] = [
   [caso('/desfecho'), 'caso.ver'],
   // GGVP-100: a Sênior decide se recorre; a advogada responsável e o Sócio só leem.
   [caso('/recurso'), 'recurso.ver'],
-  [caso('/publicacoes'), 'caso.ver'],
-  [/^\/publicacoes\/([0-9a-f-]{36})$/, 'caso.ver'],
+  // GGVP-158 E1 (15/10): as publicações são da página do processo (GGVP-162): o Jurídico e o Sócio; a sentença pode trazer laudo.
+  [caso('/publicacoes'), 'processo.abrir'],
+  [/^\/publicacoes\/([0-9a-f-]{36})$/, 'processo.abrir'],
   [caso('/exigencia-juiz'), 'caso.ver'],
   [caso('/exigencia-juiz/setor'), 'exigencia_juiz.cumprir'],
   // A manifestação é peça jurídica: só o Jurídico (GGVP-96; o Atendimento e a Documentação nunca veem petição).
@@ -66,6 +67,12 @@ const ACESSO: [RegExp, Acao][] = [
   [/^\/clientes\/[^/]+\/cadastro$/, 'entrevista.gravar'],
   // A cobrança que passou do limite, a Sênior decide (a mesma decisão do complemento ao médico).
   [/^\/casos\/[^/]+\/cobranca\/decidir$/, 'complemento.decidir'],
+  // GGVP-158 E7 (15/10): a dispensa do parecer é da Sênior (G17); as outras telas de passo da documentação médica, do
+  // checklist, da liberação, da perícia do caso e dos roteiros abrem só para quem vê o caso (o Financeiro, não). O servidor
+  // segue decidindo o que cada perfil recebe nelas.
+  [/^\/casos\/[^/]+\/parecer\/dispensa$/, 'caso.aprovar_para_inss'],
+  [/^\/casos\/[^/]+\/(parecer|laudo-novo|complemento|deficiencia|checklist|liberar|pericia)$/, 'caso.ver'],
+  [/^\/roteiros(\/|$)/, 'caso.ver'],
   // Perícia: as mesmas ações que o servidor exige em cada passo.
   [/^\/juridico-administrativo$/, 'pericia.marcar'],
   [/^\/casos\/[^/]+\/pericia\/aberta$/, 'pericia.decidir'],

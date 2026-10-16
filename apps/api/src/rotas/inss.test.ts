@@ -22,7 +22,7 @@ import {
 import { chaveDoCofre, criarCofre } from '../cofre.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
-import { MSG_COMPROVANTE, MSG_SEM_OK_SENIOR } from './inss.ts'
+import { MSG_COMPROVANTE, MSG_SEM_OK_SENIOR, MSG_COFRE_SEM_TAREFA } from './inss.ts'
 
 const SENHA = 'senha-do-portal-1'
 const cofre = criarCofre(chaveDoCofre({}))
@@ -149,6 +149,19 @@ describe('GGVP-158 P5.4 · a espera de fora volta ao topo da advogada todo dia �
     expect((await linhasDa('gabi')).map((l: unknown[]) => l[2])).toEqual([false, false])
   })
 
+  it('GGVP-158 E5 (15/10) · "Olhei, sem novidade" é do Jurídico: o Atendimento e o Financeiro recebem 403 e a linha da advogada segue urgente', async () => {
+    await banco.insert(usuario).values({ email: 'julia@exemplo.ggv', nome: 'julia', senhaHash: await bcrypt.hash(SENHA, 4), perfis: ['financeiro'], trocarSenha: false })
+    await banco.insert(etapa).values({ casoId, diagrama: 'D2', passo: 'D2.04', situacao: 'aguardando_externo', aguardando: 'INSS decidir', iniciadaEm: new Date('2026-10-01T12:00:00Z') })
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.04', titulo: 'Trazer a resposta do INSS', perfilDono: 'advogada' })
+    for (const apelido of ['ana', 'julia']) {
+      const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/esperas/olhada`, cookies: await cookieDe(apelido) })
+      expect([apelido, r.statusCode]).toEqual([apelido, 403])
+    }
+    expect((await linhasDa('gabi'))[0]).toEqual(['D2.04', 'Trazer a resposta do INSS', true])
+    expect((await app.inject({ method: 'POST', url: `/api/casos/${casoId}/esperas/olhada`, cookies: await cookieDe('igor') })).statusCode).toBe(201)
+    expect((await linhasDa('gabi'))[0]).toEqual(['D2.03', 'Decidir perícia', false])
+  })
+
   it('a espera sem tarefa ganha a linha "Olhar a espera"; a perícia feita sem resultado também; sem espera, "Olhei" recusa', async () => {
     const gabi = await cookieDe('gabi')
     const semEspera = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/esperas/olhada`, cookies: gabi })
@@ -221,6 +234,20 @@ describe('GGVP-27 · Protocolar no Meu INSS', () => {
     const eventos = await banco.select().from(eventoAuditoria)
     expect(eventos.map((e) => e.acao)).toEqual(expect.arrayContaining(['cofre_negado', 'cofre_senha_lida']))
     expect(JSON.stringify(eventos)).not.toContain('senha-gov-da-maria')
+  })
+
+  it('GGVP-158 E6 (15/10) · a advogada e a Sênior revelam a senha só com a exigência do INSS (D2.05r) aberta; só o protocolo aberto recusa e registra', async () => {
+    await okDaSenior()
+    for (const apelido of ['gabi', 'helena']) {
+      const r = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/cofre`, cookies: await cookieDe(apelido), payload: { senhaDoPortal: SENHA } })
+      expect([apelido, r.statusCode, r.json().erro]).toEqual([apelido, 403, MSG_COFRE_SEM_TAREFA])
+    }
+    expect((await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'cofre_uso_recusado'))).length).toBe(2)
+    await banco.insert(tarefa).values({ casoId, passo: 'D2.05r', titulo: 'Responder a exigência no Meu INSS', perfilDono: 'advogada' })
+    const certa = await app.inject({ method: 'POST', url: `/api/casos/${casoId}/cofre`, cookies: await cookieDe('gabi'), payload: { senhaDoPortal: SENHA } })
+    expect(certa.json()).toEqual({ senha: 'senha-gov-da-maria', segundos: 60 })
+    const [lida] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'cofre_senha_lida'))
+    expect(lida.detalhe).toMatchObject({ passo: 'D2.05r' })
   })
 })
 
