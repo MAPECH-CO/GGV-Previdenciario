@@ -5,6 +5,7 @@ import { agora } from '../dados/servidor.ts'
 import { usePode } from '../sessao.ts'
 import { haQuanto } from '../regras/bases.ts'
 import { hojeIso } from '../regras/datas.ts'
+import { PreviaDoCliente } from '../componentes/PreviaDoCliente.tsx'
 import { CampoDaBusca, Etiqueta, Filtro, MolduraDaBase, Paginacao } from './Base.tsx'
 import styles from './Bases.module.css'
 
@@ -123,9 +124,11 @@ export function Clientes() {
             {lista?.clientes.map((c) => (
               <tr key={c.id}>
                 <td>
-                  <a className={styles.link} href={`/clientes/${c.id}`}>
-                    {c.nome}
-                  </a>
+                  <PreviaDoCliente id={c.id} nome={c.nome}>
+                    <a className={styles.link} href={`/clientes/${c.id}`}>
+                      {c.nome}
+                    </a>
+                  </PreviaDoCliente>
                 </td>
                 <td>{c.cpf ?? '—'}</td>
                 <td>{c.beneficio ?? '—'}</td>

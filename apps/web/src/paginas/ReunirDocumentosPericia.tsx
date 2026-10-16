@@ -93,7 +93,7 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
 
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Documentação">
             Reúna o que a {tipo} de {primeiro} pede: {nomes}. Digitalize o que chegar em papel e confira a leitura da IA. Se faltar algo, cobre {primeiro} todo
-            dia{ate ? ` até ${dataCurta(ate, hoje)}` : ''}; passou, sobe para a advogada responsável (G15). Não oriente o médico sobre o que escrever (G20).
+            dia{ate ? ` até ${dataCurta(ate, hoje)}` : ''}; passou, sobe para a advogada responsável. Não oriente o médico sobre o que escrever.
           </InstrucoesPasso>
 
           {aviso && (
@@ -115,7 +115,7 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
           ) : (
             documentos.passouDoLimite && (
               <p className={styles.trava}>
-                Passou do limite de {DIAS_ANTES_DOCUMENTOS} dias antes da perícia com documento faltando: a advogada responsável decide (G15). Registre a falta com
+                Passou do limite de {DIAS_ANTES_DOCUMENTOS} dias antes da perícia com documento faltando: a advogada responsável decide. Registre a falta com
                 justificativa para concluir.
               </p>
             )
@@ -240,9 +240,9 @@ export function ReunirDocumentosPericia({ processoId }: { processoId: string }) 
           <p className={styles.ladoSub}>«Concluir» só habilita com as conferências marcadas e o pendente resolvido: anexado, ou a falta registrada com justificativa.</p>
           <p className={styles.ladoSub}>
             Quem cobra é a Documentação, todo dia, até {DIAS_ANTES_DOCUMENTOS} dias antes da perícia; 3 dias antes começa a preparação do cliente. Passou,
-            sobe para a advogada responsável (G15, resposta do Lucas de 02/10).
+            sobe para a advogada responsável (resposta do Lucas de 02/10).
           </p>
-          <p className={styles.ladoSub}>Não oriente o médico sobre o que escrever (G20).</p>
+          <p className={styles.ladoSub}>Não oriente o médico sobre o que escrever.</p>
         </aside>
       </main>
       <AbaSuporte />

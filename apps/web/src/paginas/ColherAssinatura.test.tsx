@@ -49,11 +49,11 @@ describe('Colher assinatura · ZapSign (GGVP-72)', () => {
     await abrir('nair-exemplo-1')
     expect(screen.getByText('zapsign-exemplo-nair-exemplo-1')).toBeTruthy()
     expect(screen.getByText(/Hoje: tente contato de novo \(tentativa 2 de 2\)/)).toBeTruthy()
-    expect(screen.getByText('Tentativa 1 de 2 · limite (G15)')).toBeTruthy()
+    expect(screen.getByText('Tentativa 1 de 2')).toBeTruthy()
     fireEvent.click(botao('Ligar'))
     expect(screen.getByText('Ligue para (11) 90000-0003 (ligação simulada).')).toBeTruthy()
     fireEvent.click(botao('Registrar a ligação'))
-    expect(await screen.findByText(/Limite de 2 tentativas atingido \(G15\): o caso subiu para a advogada sênior/)).toBeTruthy()
+    expect(await screen.findByText(/Limite de 2 tentativas atingido: o caso subiu para a advogada sênior/)).toBeTruthy()
     expect((await obterContrato('nair-exemplo-1'))?.contrato.assinatura?.zapsign?.documentoId).toBe('zapsign-exemplo-nair-exemplo-1')
   })
 

@@ -188,7 +188,7 @@ describe('GGVP-61 · orientação da perícia, padrão ou pelo perfil do perito'
   })
 
   it('CA11 · o chat recusa pedir orientação para esconder ou mudar a situação real', () => {
-    expect(recusaDoChatNaPericia('Como faço para esconder a renda do filho na avaliação social?')).toContain('(G11). O pedido ficou registrado.')
+    expect(recusaDoChatNaPericia('Como faço para esconder a renda do filho na avaliação social?')).toContain('. O pedido ficou registrado.')
     expect(recusaDoChatNaPericia('dá para tirar os móveis novos da casa antes da visita?')).not.toBeNull()
     expect(recusaDoChatNaPericia('Qual a orientação para a perícia do Antônio?')).toBeNull()
   })

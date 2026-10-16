@@ -91,8 +91,8 @@ export function CobrarDocumento({ processoId }: { processoId: string }) {
           </div>
 
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Atendimento">
-            Cobre de {ficha.nome.split(' ')[0]} o que falta no checklist do {beneficio} (G1). É a {c.tentativa}ª{ultima ? ' e última' : ''} tentativa: são{' '}
-            {TENTATIVAS_DE_COBRANCA}, com {DIAS_ENTRE_COBRANCAS} dias entre elas; sem resposta, sobe para a sênior decidir (G15).
+            Cobre de {ficha.nome.split(' ')[0]} o que falta no checklist do {beneficio}. É a {c.tentativa}ª{ultima ? ' e última' : ''} tentativa: são{' '}
+            {TENTATIVAS_DE_COBRANCA}, com {DIAS_ENTRE_COBRANCAS} dias entre elas; sem resposta, sobe para a sênior decidir.
             {cobranca.prazo &&
               ` O prazo do ${cobranca.prazo.de} vence em ${dataCurta(cobranca.prazo.data, hoje)}: as tentativas se ajustam para caber nele, e a tarefa é urgente.`}
           </InstrucoesPasso>
@@ -143,7 +143,7 @@ export function CobrarDocumento({ processoId }: { processoId: string }) {
           </section>
 
           <p className={styles.aviso}>
-            A cobrança tem limite de {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias entre elas; passou dele, sobe para a sênior decidir (G15).
+            A cobrança tem limite de {TENTATIVAS_DE_COBRANCA} tentativas, com {DIAS_ENTRE_COBRANCAS} dias entre elas; passou dele, sobe para a sênior decidir.
           </p>
           {situacao === 'na-senior' && (
             <p className={styles.trava}>Passou do limite: a sênior decide o que fazer. A cobrança continua à vista aqui.</p>

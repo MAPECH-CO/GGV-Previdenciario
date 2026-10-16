@@ -5,6 +5,40 @@
   font-weight: 400;
 }
 
+.identificacao {
+  margin: 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-14);
+}
+
+/* O desfecho do processo: a palavra escrita, com o tom de sucesso ou de perda. */
+.desfecho {
+  padding: 3px 9px;
+  border-radius: var(--raio-6);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
+.desfechoOk {
+  background: var(--cor-ok-suave);
+  color: var(--cor-ok);
+}
+
+.desfechoErro {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+/* Sem transcrições, o botão some no texto: só o com transcrições tem o fundo cheio. */
+.semTranscricoes {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+}
+
+.naoInformado {
+  color: var(--cor-texto-suave);
+}
+
 .laudoNovo {
   padding: 3px 9px;
   border-radius: var(--raio-6);

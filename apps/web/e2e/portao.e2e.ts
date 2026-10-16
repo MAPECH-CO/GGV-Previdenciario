@@ -27,7 +27,7 @@ test('CA1, CA2 e CA4 · o Insuficiente trava a liberação; duas sêniores dispe
   await parecerInsuficiente(page)
   await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/rita-exemplo-1/liberar')
-  await expect(page.getByText(/Parecer médico Insuficiente \(G17\) · confirmado por Gabi \(exemplo\), [0-9/]+: falta o complemento do médico/)).toBeVisible()
+  await expect(page.getByText(/Parecer médico Insuficiente · confirmado por Gabi \(exemplo\), [0-9/]+: falta o complemento do médico/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Liberar ao Jurídico' })).toBeDisabled()
 
   // A Helena pede; ela mesma não aprova.
@@ -48,7 +48,7 @@ test('CA1, CA2 e CA4 · o Insuficiente trava a liberação; duas sêniores dispe
 
   await entrarPelaApi(page, 'documentacao@exemplo.ggv')
   await page.goto('/casos/rita-exemplo-1/liberar')
-  await expect(page.getByRole('checkbox', { name: /Parecer médico dispensado por duas sêniores \(G17\) · Helena \(exemplo\) e Otávio \(exemplo, segunda Sênior\)/ })).toBeChecked()
+  await expect(page.getByRole('checkbox', { name: /Parecer médico dispensado por duas sêniores · Helena \(exemplo\) e Otávio \(exemplo, segunda Sênior\)/ })).toBeChecked()
   await page.getByRole('button', { name: 'Abrir o parecer médico' }).click()
   await expect(page.getByRole('dialog', { name: 'Parecer médico de suficiência' })).toContainText(`Justificativa: ${JUSTIFICATIVA}`)
 })

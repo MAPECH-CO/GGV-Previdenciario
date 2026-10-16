@@ -34,7 +34,7 @@ Object.defineProperty(CANAIS_DO_REGISTRO, 'whatsapp', { value: { rotulo: 'WhatsA
 export const COM_QUEM: Record<ComQuem, string> = { cliente: 'Cliente', familiar: 'Familiar ou contato de apoio', medico: 'Médico ou clínica' }
 
 export const MODOS_DO_REGISTRO: Record<ModoDoRegistro, { rotulo: string; detalhe: string }> = {
-  'tempo-real': { rotulo: 'Transcrição em tempo real', detalhe: 'avise o cliente antes de gravar (G10)' },
+  'tempo-real': { rotulo: 'Transcrição em tempo real', detalhe: 'avise o cliente antes de gravar' },
   arquivo: { rotulo: 'Anexar arquivo', detalhe: 'o áudio de uma ligação já feita' },
   escrito: { rotulo: 'Sem áudio', detalhe: 'só o registro escrito' },
 }

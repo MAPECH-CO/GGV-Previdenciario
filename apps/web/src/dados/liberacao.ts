@@ -87,7 +87,7 @@ export async function liberarAoJuridico(processoId: string, pedido: PedidoDeLibe
 }
 
 const parecerCurto = (c: CasoParaLiberar) =>
-  !c.precisaParecer ? 'parecer: não se aplica' : parecerEmOrdem(c.processo.beneficio, c.parecer) ? 'parecer Suficiente (G17)' : 'parecer pendente (G17)'
+  !c.precisaParecer ? 'parecer: não se aplica' : parecerEmOrdem(c.processo.beneficio, c.parecer) ? 'parecer Suficiente' : 'parecer pendente'
 
 /** "Liberar ao Jurídico" na Central do Atendimento, onde a Documentação trabalha, com a idade na fila (CA5). */
 export function tarefasDeLiberar(): Tarefa[] {

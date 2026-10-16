@@ -127,8 +127,8 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
             <span className={styles.contagem}>{contagemDoTopo(gravacoes)}</span>
           </div>
           <p className={styles.sub}>
-            {[ficha.nome, numero].filter(Boolean).join(' · ')} · toda conversa gravada começa com o aviso (G10); a senha do gov.br nunca
-            entra na transcrição (G9)
+            {[ficha.nome, numero].filter(Boolean).join(' · ')} · toda conversa gravada começa com o aviso; a senha do gov.br nunca
+            entra na transcrição
           </p>
         </div>
         <button type="button" className={styles.botao} onClick={() => setRegistrando(true)}>
@@ -164,7 +164,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
           </ul>
           <p className={styles.nota}>
             Cada gravação tem resumo, informações extraídas e transcrição. O que a IA extrai vai para a ficha só depois de conferido
-            (G14).
+           .
           </p>
         </nav>
 
@@ -332,7 +332,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
                         ))}
                       </ul>
                     )}
-                    {/* A conversa com o cliente se confere na tela dela, por quem conversou (GGVP-84): um caminho só. */}
+                    {/* A conversa com o cliente se confere na tela dela, por quem conversou: um caminho só. */}
                     {daConversa && g.extraidas.some((e) => !e.conferidaEm) && (
                       <a className={styles.primario} href={`/conversas/${daConversa}/conferir`}>
                         Conferir na conversa
@@ -439,7 +439,7 @@ export function Transcricoes({ ficha, perfil, inicial, aoFechar, aoMudar }: Prop
               )}
               <p className={styles.nota}>
                 A IA transcreve e extrai; só muda na ficha o que foi dito, o valor antigo fica no histórico e o Jurídico pode desfazer
-                (G14). Áudio e transcrição ficam guardados para sempre no caso.
+               . Áudio e transcrição ficam guardados para sempre no caso.
               </p>
             </>
           )}

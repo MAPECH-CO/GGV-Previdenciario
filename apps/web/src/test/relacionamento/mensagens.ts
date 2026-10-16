@@ -105,7 +105,7 @@ async function textoDoModelo(banco: Banco, fichaId: string, modelo: IdDoModelo, 
     }
     case 'resultado-favoravel': {
       const ok = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'favoravel')
-      return ok ? pronto(ok.texto, false) : travado('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele (G8).')
+      return ok ? pronto(ok.texto, false) : travado('Falta o OK da Sênior na prestação de contas: o aviso só sai depois dele.')
     }
     case 'resultado-desfavoravel': {
       const aprovado = processo && avisosDo(banco).find((a) => a.processoId === processo.id && a.tipo === 'desfavoravel')

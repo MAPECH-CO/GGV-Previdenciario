@@ -79,7 +79,7 @@ test('GGVP-76 CA1, CA5 e GGVP-133 · presencial com o aviso; sem microfone, a te
   await expect(janela.getByRole('radio', { name: 'WhatsApp · indisponível', exact: true })).toBeDisabled()
   await expect(janela.getByRole('radio', { name: /Vídeo/ })).toHaveCount(0)
   await janela.getByRole('radio', { name: 'Presencial', exact: true }).click()
-  await expect(janela.getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar (G10)' })).toBeChecked()
+  await expect(janela.getByRole('radio', { name: 'Transcrição em tempo real · avise o cliente antes de gravar' })).toBeChecked()
   await janela.getByRole('button', { name: 'Iniciar conversa' }).click()
 
   await expect(page.getByRole('heading', { level: 1, name: 'Rosa Presencial Teste · Registrar conversa' })).toBeVisible()

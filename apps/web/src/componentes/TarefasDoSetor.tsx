@@ -94,7 +94,7 @@ export function TarefasDoSetor({ quadro, erro, recarregar }: { quadro: QuadroDoS
       )}
       <p className={styles.nota}>
         Você é líder do {ROTULO_DO_SETOR[quadro.setor]}: vê tudo do setor e escolhe quem faz cada tarefa (Atribuir). Tarefa sem responsável ou com
-        prazo estourado aparece aqui primeiro (G15).
+        prazo estourado aparece aqui primeiro.
       </p>
       {aberta && (
         <AtribuirTarefa

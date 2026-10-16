@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { ChatDoPortal } from '../componentes/ChatDoPortal.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { Topbar, type ItemNavegacao } from '../componentes/Topbar.tsx'
@@ -12,7 +11,7 @@ import styles from './CentralAtendimento.module.css'
 import naoConstruida from './NaoConstruida.module.css'
 
 // Figma: "Central de trabalho · Financeiro" (59:863; v2 da GGVP-44, 2456:1350). É a tela inicial de quem entra como
-// Financeiro (App.tsx). A Gestão e o painel Financeiro entram no topo pelo perfil (itensDaGestao.ts).
+// Financeiro (App.tsx). O topo vem do perfil (componentes/menuDoPerfil.ts).
 const navegacao: ItemNavegacao[] = [
   { id: 'inicio', rotulo: 'Início', href: '/' },
   { id: 'agenda', rotulo: 'Agenda', href: '/agenda' },
@@ -36,11 +35,10 @@ export function CentralFinanceiro() {
   return (
     <>
       <title>Início do Financeiro · GGV Previdenciário</title>
-      <Topbar itens={navegacao} ativo="inicio" funcao="Financeiro" />
+      <Topbar itens={navegacao} ativo="inicio" funcao="Financeiro" tarefas={tarefas ?? []} />
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início do Financeiro</h1>
-          <CampoBusca tarefas={tarefas ?? []} />
           <ChatDoPortal exemplo={CHAT.exemplo} sugestoes={CHAT.sugestoes} funcao="Financeiro" />
           {tarefas && (
             <FilasDeTarefas

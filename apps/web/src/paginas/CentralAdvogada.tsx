@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
-import { CampoBusca } from '../componentes/CampoBusca.tsx'
 import { ChatDaPericia } from '../componentes/ChatDaPericia.tsx'
 import { FilasDeTarefas } from '../componentes/FilasDeTarefas.tsx'
 import { tarefasCriadasPeloChat } from '../dados/chat.ts'
@@ -47,11 +46,10 @@ export function CentralAdvogada() {
   return (
     <>
       <title>Início da Advogada · GGV Previdenciário</title>
-      <Topbar itens={navegacao} ativo="inicio" funcao="Advogada" />
+      <Topbar itens={navegacao} ativo="inicio" funcao="Advogada" tarefas={tarefas} />
       <main className={styles.pagina}>
         <div className={styles.coluna}>
           <h1 className="so-leitor">Início da Advogada</h1>
-          <CampoBusca tarefas={tarefas} />
           <ChatDaPericia advogada exemplo={exemploChatAdvogada} sugestoes={sugestoesChatAdvogada} />
           <FilasDeTarefas tarefas={tarefas} />
         </div>

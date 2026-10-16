@@ -113,7 +113,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
       registros.push(evento(`Alterou o representante legal: «${de}» → «${para}»`, quem))
       ficha.representante = representante
     }
-    if (primeiraVez) registros.unshift(evento('Cadastrou o lead (D1.10): completou a mesma ficha do primeiro contato', quem))
+    if (primeiraVez) registros.unshift(evento('Cadastrou o lead: completou a mesma ficha do primeiro contato', quem))
     ficha.historico.push(...registros)
     await concluirTarefas(ficha.id, 'Cadastrar lead', `cadastrar-${ficha.id}`)
     await guardar(ficha)
@@ -201,13 +201,13 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     if (anterior && anterior.beneficio !== d.beneficio)
       ficha.historico.push(evento(`Trocou o benefício do caso: «${nomeBeneficio(anterior.beneficio)}» → «${nomeBeneficio(d.beneficio)}»`, quem))
     const manteveOCitado = citado === d.beneficio
-    ficha.historico.push(evento(`Definiu o benefício do caso (D1.12): ${nomeBeneficio(d.beneficio)}${manteveOCitado ? ' · o que citou na entrevista (G3)' : ''}`, quem))
+    ficha.historico.push(evento(`Definiu o benefício do caso: ${nomeBeneficio(d.beneficio)}${manteveOCitado ? ' · o que citou na entrevista' : ''}`, quem))
     if (recusou) {
       const comMotivo = motivo ? `: ${motivo}` : ''
       ficha.historico.push(
         evento(
           manteveOCitado
-            ? `Manteve o que citou na entrevista; a IA sugeria ${nomeBeneficio(sugestao.sugerido)} (G3)${comMotivo}`
+            ? `Manteve o que citou na entrevista; a IA sugeria ${nomeBeneficio(sugestao.sugerido)}${comMotivo}`
             : `Recusou a sugestão da IA (${nomeBeneficio(sugestao.sugerido)})${comMotivo}`,
           quem,
         ),
@@ -311,8 +311,8 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     ficha.historico.push(
       evento(
         anterior
-          ? `Refez o cálculo de tempo e pontos (D1.13). Antes: ${resumo(anterior)}. Agora: ${resumo(calculo)}`
-          : `Calculou tempo e pontos sobre o CNIS (D1.13): ${resumo(calculo)}`,
+          ? `Refez o cálculo de tempo e pontos. Antes: ${resumo(anterior)}. Agora: ${resumo(calculo)}`
+          : `Calculou tempo e pontos sobre o CNIS: ${resumo(calculo)}`,
         quem,
       ),
     )
@@ -364,7 +364,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     const comDetalhe = `${motivo}${detalhe ? ` (${detalhe})` : ''}`
     if (demanda) {
       Object.assign(demanda, { situacao: 'nao-fechou', motivo: envio.motivo, ...(detalhe && { detalhe }) })
-      ficha.historico.push(evento(`Nova demanda não fechou: ${comDetalhe}. Segue cliente nos outros processos (G16)`, quem))
+      ficha.historico.push(evento(`Nova demanda não fechou: ${comDetalhe}. Segue cliente nos outros processos`, quem))
     } else if (envio.recontatar) {
       const em = dataIso(envio.recontatar.data)!
       ficha.fechamento = {
@@ -382,7 +382,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
     } else {
       ficha.fechamento = { situacao: 'arquivado', motivo: envio.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
       await arquivar(ficha, envio.motivo, detalhe)
-      ficha.historico.push(evento(`Não fechou: ${comDetalhe}. Lead arquivado com o motivo (G16)`, quem))
+      ficha.historico.push(evento(`Não fechou: ${comDetalhe}. Lead arquivado com o motivo`, quem))
     }
     await guardar(ficha)
     return { fechou: false, ...(await devolver(ficha)) }
@@ -411,7 +411,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
       if (feito) feito.estado = 'realizado'
       ficha.fechamento = { ...fechamento, situacao: 'recalcular', quem, quando }
       ficha.contatos.push({ data: hoje(), canal: 'Recontato', texto: 'Quer seguir: o caso volta ao cálculo de tempo e pontos.' })
-      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos (D1.13)', quem))
+      ficha.historico.push(evento('Recontatou: o caso volta ao cálculo de tempo e pontos', quem))
     } else {
       const papel = papelDa(pedido.perfilAtivo)
       const detalhe = r.detalhe || undefined
@@ -421,7 +421,7 @@ export function registrarRotasRecepcaoDecisoes(app: FastifyInstance, { banco, ag
       ficha.fechamento = { situacao: 'arquivado', motivo: r.motivo, ...(detalhe && { detalhe }), papel, quem, quando }
       await arquivar(ficha, r.motivo, detalhe)
       ficha.contatos.push({ data: hoje(), canal: 'Recontato', texto: `Não vai seguir: ${nomeMotivo(r.motivo)}.` })
-      ficha.historico.push(evento(`Recontatou e arquivou o lead: ${nomeMotivo(r.motivo)}${detalhe ? ` (${detalhe})` : ''} (G16)`, quem))
+      ficha.historico.push(evento(`Recontatou e arquivou o lead: ${nomeMotivo(r.motivo)}${detalhe ? ` (${detalhe})` : ''}`, quem))
     }
     await guardar(ficha)
     return devolver(ficha)

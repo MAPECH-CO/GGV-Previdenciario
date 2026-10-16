@@ -38,7 +38,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     await abrirPresencial()
     expect(screen.queryByText('D5.01')).toBeNull()
     expect(screen.getByText('Auxílio por Incapacidade Temporária · veio ao escritório · presencial, com cliente')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Aviso de gravação (G10) · senha no cofre (G9)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Aviso de gravação · senha no cofre' })).toBeTruthy()
     const canal = screen.getByRole('radiogroup', { name: 'Canal da conversa' })
     expect(within(canal).getByRole('radio', { name: 'Presencial — conversar e gravar' }).getAttribute('aria-checked')).toBe('true')
     expect(within(canal).getByRole('radio', { name: 'Telefone — subir a gravação da ligação' }).getAttribute('aria-checked')).toBe('false')
@@ -47,13 +47,13 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
 
   it('CA1 e CA5 · "Gravar" lembra o aviso; só grava depois de "Avisei", com a hora do aviso (G10)', async () => {
     await abrirPresencial()
-    expect(screen.getByText('Antes de gravar · avise o cliente (G10)')).toBeTruthy()
+    expect(screen.getByText('Antes de gravar · avise o cliente')).toBeTruthy()
     fireEvent.click(botao('Gravar'))
     expect(screen.getByText('“Maria, esta conversa vai ser gravada e transcrita para atualizar a sua ficha. Tudo bem?”')).toBeTruthy()
     expect(botao('Começar a gravar').disabled).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Avisei que a conversa será gravada' }))
     fireEvent.click(botao('Começar a gravar'))
-    expect((await screen.findByText(/● Gravando/)).textContent).toMatch(/● Gravando · 00:00:\d\d · aviso de gravação feito às 14:32 \(G10\)/)
+    expect((await screen.findByText(/● Gravando/)).textContent).toMatch(/● Gravando · 00:00:\d\d · aviso de gravação feito às 14:32/)
   })
 
   it('CA9 · a página recarregou no meio: a gravação volta pausada e o cofre pausa de novo (G9)', async () => {
@@ -96,7 +96,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     const audio = new File([new Uint8Array(2048)], 'ligacao-pedro.ogg', { type: 'audio/ogg' })
     fireEvent.change(screen.getByLabelText(/Áudio da ligação/), { target: { files: [audio] } })
     expect(botao('Anexar e transcrever').disabled).toBe(true)
-    fireEvent.click(screen.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada' }))
     fireEvent.click(botao('Anexar e transcrever'))
     await screen.findByRole('heading', { name: '✓ Gravação da ligação anexada' })
     expect(await screen.findByText('Transcrição pronta: o texto está nas transcrições do card.')).toBeTruthy()
@@ -108,7 +108,7 @@ describe('Registrar conversa · tela do passo (GGVP-76)', () => {
     render(comSessao(<Conversa conversaId={c.id} passo={PASSO} simular="falha-da-transcricao" />))
     await screen.findByRole('heading', { level: 1, name: 'Maria Exemplo · Registrar conversa' })
     fireEvent.change(screen.getByLabelText(/Áudio da ligação/), { target: { files: [new File(['x'], 'ligacao.mp3', { type: 'audio/mpeg' })] } })
-    fireEvent.click(screen.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada' }))
     fireEvent.click(botao('Anexar e transcrever'))
     expect(await screen.findByText('A transcrição falhou: o serviço de transcrição não respondeu. O áudio está guardado; nada se perdeu.')).toBeTruthy()
     fireEvent.click(botao('Tentar de novo'))

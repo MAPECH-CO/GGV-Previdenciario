@@ -37,7 +37,7 @@ describe('Definir benefício · tela do passo', () => {
     expect(sugestao().getByText(/^Parecido com 2 casos deferidos/)).toBeTruthy()
     expect(sugestao().getByText('LOAS Idoso')).toBeTruthy()
     const requisitos = screen.getByRole('region', { name: 'Requisitos de Auxílio por Incapacidade Temporária' })
-    expect(requisitos.textContent).toContain('Carência: 147 contribuições no CNIS; o mínimo é 12 (calculado por código, G19)')
+    expect(requisitos.textContent).toContain('Carência: 147 contribuições no CNIS; o mínimo é 12 (calculado por código)')
     expect(requisitos.textContent).toContain('Afastamento: 126 dias desde 06/2026')
     expect(botao('Confirmar benefício').disabled).toBe(true)
     expect(screen.getByText('Escolha o benefício.')).toBeTruthy()
@@ -68,7 +68,7 @@ describe('Definir benefício · tela do passo', () => {
   it('CA1 · o benefício citado pela advogada vem escolhido e prevalece; o do acervo é só sugestão', async () => {
     await entrevista('natalia-entrevista')
     await abrir('natalia-entrevista')
-    expect(sugestao().getByText('Citado por você').nextElementSibling?.textContent).toBe('Aposentadoria por Incapacidade Permanente · prevalece (G3)')
+    expect(sugestao().getByText('Citado por você').nextElementSibling?.textContent).toBe('Aposentadoria por Incapacidade Permanente · prevalece')
     expect(sugestao().getByText('Auxílio por Incapacidade Temporária · só como sugestão')).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'O que você citou: Aposentadoria por Incapacidade Permanente' }).getAttribute('aria-checked')).toBe('true')
     expect(screen.getByRole('region', { name: 'Requisitos de Aposentadoria por Incapacidade Permanente' }).textContent).toContain('Carência: 63 contribuições')

@@ -124,7 +124,7 @@ export function RegistrarFechamento({ fichaId, antesDaEntrevista = false }: { fi
               'Registre o motivo real: preço, desistiu, não tem direito, foi a outro escritório, sem retorno, contato inválido, fez o ' +
               'processo sozinho, falecido ou recusado pelo escritório. Quando o escritório recusa o caso, quem registra é o Atendimento ' +
               `sênior ou o advogado do atendimento. Se ficou de pensar, o recontato sugerido é em ${DIAS_PARA_PENSAR} dias; se pediu para ` +
-              `esperar, em ${DIAS_PARA_ESPERAR}. Sem motivo registrado o lead não pode ser encerrado (G16).`
+              `esperar, em ${DIAS_PARA_ESPERAR}. Sem motivo registrado o lead não pode ser encerrado.`
             }
           />
 
@@ -247,7 +247,7 @@ export function RegistrarFechamento({ fichaId, antesDaEntrevista = false }: { fi
               )}
 
               <p className={styles.trava}>
-                {porDemanda ? 'Toda demanda que não fecha fica com o motivo registrado (G16).' : 'Todo lead que não vira cliente fica com o motivo registrado (G16).'}
+                {porDemanda ? 'Toda demanda que não fecha fica com o motivo registrado.' : 'Todo lead que não vira cliente fica com o motivo registrado.'}
               </p>
 
               <div className={styles.rodape}>
@@ -323,7 +323,7 @@ export function RegistrarFechamento({ fichaId, antesDaEntrevista = false }: { fi
               para esperar)
             </li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.ladoSub}>«Registrar e agendar retorno» só habilita com as decisões respondidas e os campos com * preenchidos.</p>
         </aside>
       </main>

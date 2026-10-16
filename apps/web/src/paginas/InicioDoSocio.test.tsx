@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { PainelDeResultados } from '@ggv/contratos'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { comSessao, entrarComo } from '../dados/sessaoDeTeste.tsx'
@@ -62,16 +62,12 @@ describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75,
       'Estudos de caso',
       'Roteiros de laudos',
       'Vigília',
-      'Tentativas bloqueadas',
-      'Prazos',
-      'Uso do cofre',
-      'Resultados',
-      'Configuração',
-      'Importar planilha',
       'Financeiro',
       // GGVP-157: as custas dos processos, para quem vê valores.
       'Custas',
     ])
+    // A Gestão, com a importação da planilha, abre num menu só.
+    fireEvent.click(screen.getByRole('button', { name: 'Gestão' }))
     expect(screen.getByRole('link', { name: /Importar planilha/ }).getAttribute('href')).toBe('/gestao/importar')
     expect(screen.queryByRole('link', { name: '← Voltar ao início' })).toBeNull()
     // Sem tarefa do Sócio, a fila não ocupa a tela.

@@ -73,7 +73,7 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
         <a className={styles.primario} href={processo}>
           {abreProcesso ? 'Abrir o processo' : 'Abrir a perícia'}
         </a>
-        {/* O comparecimento (DP.07, GGVP-66): depois do dia e da hora, a tela registra se o cliente foi. */}
+        {/* O comparecimento (DP.07): depois do dia e da hora, a tela registra se o cliente foi. */}
         <a className={styles.botao} href={`/casos/${evento.processoId}/pericia/comparecimento`}>
           Marcar como realizado
         </a>
@@ -81,7 +81,7 @@ export function DetalhePericia({ evento, aoFechar }: { evento: EventoDaAgenda; a
           Remarcar
         </a>
       </div>
-      <p className={styles.nota}>Remarcar a perícia é com o Jurídico administrativo. Remarcação tem limite (G15): passou dele, sobe para a advogada.</p>
+      <p className={styles.nota}>Remarcar a perícia é com o Jurídico administrativo. Remarcação tem limite: passou dele, sobe para a advogada.</p>
     </dialog>
   )
 }

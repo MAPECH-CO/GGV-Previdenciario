@@ -64,7 +64,7 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
     eventosDaAgenda(de, ate).then((lista) => {
       if (valendo) setConsulta({ faixa, eventos: lista, erro: '' })
     }).catch(() => {
-      if (valendo) setConsulta({ faixa, eventos: [], erro: 'Agenda indisponível: não foi possível consultar o servidor. Reabra a agenda para tentar novamente.' })
+      if (valendo) setConsulta({ faixa, eventos: [], erro: 'Não deu para carregar a agenda agora.' })
     })
     return () => {
       valendo = false
@@ -97,7 +97,7 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
             <h1 className={styles.titulo}>Agenda</h1>
             <p className={styles.subtitulo}>
               {vista === 'lista'
-                ? 'Tudo o que vem pela frente, em ordem de data. Os prazos aparecem no dia final (G12).'
+                ? 'Tudo o que vem pela frente, em ordem de data. Os prazos aparecem no dia final.'
                 : 'Visitas, perícias, audiências, protocolos, prazos, idas ao banco e retornos. Cada evento nasce de uma etapa do processo.'}
             </p>
           </div>
@@ -142,7 +142,14 @@ export function Agenda({ vistaInicial = 'semana', navegar = (url) => window.loca
         <label className={styles.nota}>
           <input type="checkbox" checked={soMinhas} disabled={!sessao} onChange={e => setSoMinhas(e.target.checked)} /> Só as minhas
         </label>
-        {erro && <p role="alert">{erro}</p>}
+        {erro && (
+          <p role="alert" className={styles.erro}>
+            {erro}{' '}
+            <button type="button" className={styles.tentar} onClick={() => setVersao((v) => v + 1)}>
+              Tentar de novo
+            </button>
+          </p>
+        )}
         <FiltrosDaAgenda eventos={doResponsavel} ativas={ativas} aoMudar={setAtivas} />
 
         <section role="tabpanel" id={`painel-${vista}`} aria-labelledby={`aba-${vista}`} className={styles.painel}>

@@ -31,7 +31,7 @@ test('CA1, CA2, CA7 e CA9 · da análise sem senha à tarefa na Central; renovar
   await tarefa.click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Josefa Exemplo · Renovar senha do gov.br')
   await page.getByRole('radio', { name: 'Sim' }).click()
-  await page.getByLabel('Nova senha do gov.br (vai direto ao cofre, G9)').fill(SENHA_DE_TESTE)
+  await page.getByLabel('Nova senha do gov.br (vai direto ao cofre)').fill(SENHA_DE_TESTE)
   await expect(page.getByRole('button', { name: 'Guardar no cofre' })).toBeDisabled()
   await page.getByRole('checkbox', { name: 'Conferi que o Meu INSS abre e que o CNIS aparece' }).check()
   await page.getByRole('button', { name: 'Guardar no cofre' }).click()

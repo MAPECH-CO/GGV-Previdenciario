@@ -64,7 +64,7 @@ test('CA6 · duas tentativas sem resposta, com 3 dias entre elas: a tarefa vai p
 
   await page.goto('/')
   await page.getByRole('link', { name: 'Natália Exemplo · Confirmar agendamento' }).click()
-  await expect(page.getByText('Tentativa 1 de 2 · a próxima em 3 dias · sem resposta na segunda, sobe para a sênior (G15)')).toBeVisible()
+  await expect(page.getByText('Tentativa 1 de 2 · a próxima em 3 dias · sem resposta na segunda, sobe para a sênior')).toBeVisible()
   await ligarERegistrar(page, 'Sem resposta')
   await expect(page.getByText('Sem resposta: a próxima tentativa é em 08/10.')).toBeVisible()
   await page.reload()
@@ -72,7 +72,7 @@ test('CA6 · duas tentativas sem resposta, com 3 dias entre elas: a tarefa vai p
 
   await page.clock.setFixedTime(new Date(2026, 9, 8, 9, 0))
   await page.reload()
-  await expect(page.getByText('Tentativa 2 de 2 · sem resposta na segunda, sobe para a sênior (G15)')).toBeVisible()
+  await expect(page.getByText('Tentativa 2 de 2 · sem resposta na segunda, sobe para a sênior')).toBeVisible()
   await ligarERegistrar(page, 'Sem resposta')
   await expect(page.getByText(/a tarefa passou para a advogada sênior/)).toBeVisible()
   await page.goto('/')

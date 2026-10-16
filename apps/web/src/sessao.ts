@@ -3,6 +3,7 @@ import { createContext, useContext } from 'react'
 import { pode, type Acao, type UsuarioDaSessao } from '@ggv/contratos'
 import { chamarApi } from './api.ts'
 import { limparCopiaDaSessao } from './dados/copiaDaSessao.ts'
+import { podeAbrir } from './regras/acesso.ts'
 
 export const SessaoContexto = createContext<UsuarioDaSessao | null>(null)
 
@@ -13,6 +14,11 @@ export function useSessao() {
 /** A tela esconde o que o perfil ativo não pode (CA9). Quem protege é o servidor. */
 export function usePode(acao: Acao) {
   return pode(useSessao()?.perfilAtivo, acao)
+}
+
+/** O link para o endereço só aparece se o perfil abre a tela dele: nada de caminho que acaba em "Sem permissão". */
+export function usePodeAbrir(href: string) {
+  return podeAbrir(useSessao()?.perfilAtivo, href)
 }
 
 /**
