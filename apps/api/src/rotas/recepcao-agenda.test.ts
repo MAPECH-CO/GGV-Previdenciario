@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, configuracao, gravacaoRecepcao, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, configuracao, gravacaoRecepcao, mensagem, usuario } from '../banco/esquema.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
 
@@ -26,6 +26,9 @@ async function lead(nome: string, telefone: string) {
 }
 const MARCACAO = { tipo: 'presencial', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false }
 const marcar = (fichaId: string, extra: object = {}) => json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, { ...MARCACAO, ...extra })
+/** A mensagem como o correio do cliente grava quando ela sai pelo Chatwoot (rotas/mensagens.ts). */
+const enviadaHoje = (pessoaId: string, modelo: string, conteudo: string, status = 'entregue') =>
+  banco.insert(mensagem).values({ pessoaId, canal: 'whatsapp', modelo, conteudo, status, enviadaEm: relogio })
 const tarefasAbertas = async (apelido = 'ana') => (await json(apelido, 'GET', '/api/recepcao')).tarefas.map((t: { acao: string; setor: string }) => `${t.acao} · ${t.setor}`)
 
 beforeEach(async () => {
@@ -74,6 +77,8 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
   it('confirmou sem ficha: a pendência do Atendimento; a ficha salva abre o "Preparar entrevista" da advogada', async () => {
     const joana = await lead('Joana Ribeiro', '11987654321')
     const { agendamento } = await marcar(joana)
+    // GGVP-158 I3: o convite só se registra com a mensagem que saiu pelo correio do cliente (rotas/mensagens.ts).
+    await enviadaHoje(joana, 'convite', 'Olá, Joana! Sua entrevista é sexta às 14h.')
     const convite = await json('ana', 'POST', `/api/agendamentos/${agendamento.id}/convite`, { mensagem: 'Olá, Joana! Sua entrevista é sexta às 14h.' })
     expect(convite.ficha.contatos.at(-1)).toMatchObject({ canal: 'Chatwoot', texto: 'Convite da entrevista de 09/10 às 14:00: Olá, Joana! Sua entrevista é sexta às 14h.' })
     expect(convite.ficha.agendamentos[0].conviteEnviadoEm).toBeDefined()
@@ -90,6 +95,26 @@ describe('GGVP-125 · bloco 2: agenda e confirmação no servidor', () => {
     ])
     expect(await tarefasAbertas('gabi')).toEqual(['Preparar entrevista · Jurídico'])
     expect(salva.ficha.historico.at(-1).oQue).toBe('Mandou ao Jurídico: preparar a entrevista de 09/10 às 14:00')
+  })
+
+  it('GGVP-158 I3 · o convite e a confirmação pelo Chatwoot só se registram com a mensagem que saiu hoje', async () => {
+    const joana = await lead('Joana Ribeiro', '11987654321')
+    const { agendamento } = await marcar(joana)
+    const texto = 'Olá, Joana! Sua entrevista é sexta às 14h.'
+    const convite = () => chamar('ana', 'POST', `/api/agendamentos/${agendamento.id}/convite`, { mensagem: texto })
+    const confirmacao = () => chamar('ana', 'POST', `/api/agendamentos/${agendamento.id}/confirmacao/mensagem`, { mensagem: texto })
+    const sem = await convite()
+    expect([sem.statusCode, sem.json().erro]).toEqual([409, 'Envie o convite pelo Chatwoot antes de registrar.'])
+    await enviadaHoje(joana, 'convite', texto, 'falhou')
+    const naoSaiu = await convite()
+    expect([naoSaiu.statusCode, naoSaiu.json().erro]).toEqual([409, 'O convite não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.'])
+    expect((await confirmacao()).statusCode).toBe(409)
+    const ficha = await json('ana', 'GET', `/api/fichas/${joana}`)
+    expect(ficha.historico.map((e: { oQue: string }) => e.oQue)).not.toContain('Enviou o convite da entrevista pelo Chatwoot')
+    expect(ficha.agendamentos[0].conviteEnviadoEm).toBeUndefined()
+    await enviadaHoje(joana, 'convite', texto)
+    await enviadaHoje(joana, 'confirmacao', texto)
+    expect([(await convite()).statusCode, (await confirmacao()).statusCode]).toEqual([200, 200])
   })
 
   it('entrevista iniciada na hora segue o BPMN: sem ficha, "Preencher ficha"; a ficha salva abre o "Preparar entrevista"', async () => {

@@ -243,6 +243,19 @@ describe('GGVP-125 · bloco 5b+: o arquivo do card guardado e o laudo novo no pa
     app = criarServidor({ banco, agora: () => relogio, armazenamento: armazenamentoLocal(mkdtempSync(join(tmpdir(), 'arq-'))), leituraSimulada: true })
   })
 
+  it('GGVP-158 I7 · o registro digital só conta o arquivo cujo conteúdo chegou; o que não chegou segura a tarefa', async () => {
+    const fichaId = await lead()
+    const { tarefa } = await json('ana', 'POST', `/api/fichas/${fichaId}/encaminhamentos`, { motivo: 'documento', setor: 'Documentação · ADM' })
+    await enviar(fichaId, doc('RG.pdf', 'rg', sha(PDF_RG)))
+    const registrar = () => chamar('dora', 'POST', `/api/tarefas/${tarefa.id}/registro`, { forma: 'digital', conferiTipos: true, conferiPapel: false })
+    const semConteudo = await registrar()
+    expect([semConteudo.statusCode, semConteudo.json().erro]).toEqual([409, '1 arquivo anexado ao card não chegou ao portal: envie de novo antes de registrar.'])
+    expect((await banco.select().from(tarefaRecepcao).where(eq(tarefaRecepcao.id, tarefa.id)))[0].concluidaEm).toBeNull()
+    expect((await conteudo(fichaId, PDF_RG)).statusCode).toBe(201)
+    const ok = await registrar()
+    expect([ok.statusCode, ok.json().evento.oQue]).toEqual([200, 'Registrou o recebimento de 1 documento digitais, anexados ao card; conferiu o tipo de cada documento'])
+  })
+
   it('laudo com caso: guardado como documento sensível do caso e documento médico não conferido; o mesmo conteúdo não duplica', async () => {
     const fichaId = await lead()
     const [c] = await banco.insert(caso).values({ pessoaId: fichaId, beneficio: 'bpc_loas_deficiente', fase: 'administrativa' }).returning()

@@ -12,7 +12,7 @@ import type { Drive } from '../drive.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE } from '../sessao/rotas.ts'
-import { MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE, criarFichario } from './recepcao.ts'
+import { MSG_DRIVE_FORA, MSG_DRIVE_SO_LEITURA, MSG_FICHA_DIGITALIZADA, MSG_PASTA_SEM_CPF, MSG_SEM_DRIVE, criarFichario } from './recepcao.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -327,6 +327,18 @@ describe('GGVP-158 P4.7 · a pasta do cliente no Drive', () => {
     const outra = await cadastrar({ ...LEAD, nome: 'Lia Exemplo', cpf: '61374825964', telefone: '11955552222', outraPessoa: true })
     expect(await pasta(outra.id, 'nova')).toEqual({ erro: MSG_DRIVE_SO_LEITURA })
     expect(soLeitura.criadas).toEqual([])
+  })
+
+  it('GGVP-158 I8 · com o Drive fora, a lista não vira "nenhuma pasta": a pasta nova não nasce, e o motivo diz que o Drive não respondeu', async () => {
+    const { drive, criadas } = driveFalso()
+    drive.drive.pastas = async () => {
+      throw new Error('Drive: 503 Backend Error')
+    }
+    await reabrir(drive)
+    const criada = await cadastrar({ ...LEAD, nome: 'Marta Exemplo', cpf: '11144477735', telefone: '11955553333', outraPessoa: true })
+    const r = await chamar('ana', 'POST', `/api/fichas/${criada.id}/pasta`, { pasta: 'nova' })
+    expect([r.statusCode, r.json().erro]).toEqual([503, MSG_DRIVE_FORA])
+    expect(criadas).toEqual([])
   })
 
   it('sem o Drive, a ficha nova não traz pasta, e ligar recusa', async () => {

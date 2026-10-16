@@ -20,7 +20,7 @@ const publicacoes = [
 const fonte: Fonte = {
   nome: 'aasp',
   async buscar() {
-    if (falhar) throw new Error('API fora do ar (503)')
+    if (falhar) throw new Error('api: a AASP respondeu 503')
     return publicacoes
   },
 }
@@ -47,8 +47,25 @@ describe('GGVP-30 · alarme e reprocessamento', () => {
     await batida(banco, [fonte], relogio)
     const [l] = (await chamar('helena', 'GET', '/api/tarefas')).json()
     expect([l.titulo, l.contexto, l.cliente, l.urgente, l.tela]).toEqual(['Reprocessar vigília', 'Vigília das publicações', null, true, '/vigilia'])
-    expect(l.detalhe).toBe('a rodada falhou · 08:00 · AASP · API fora do ar (503)')
+    expect(l.detalhe).toBe('a rodada falhou · 08:00 · AASP · api: a AASP respondeu 503')
     expect((await chamar('gabi', 'GET', '/api/tarefas')).json()).toEqual([])
+  })
+
+  it('GGVP-158 I14 · "Vigília sem fonte ligada" só diz que o suporte foi avisado quando o canal ou o Jira receberam', async () => {
+    const desligado = async () => ({ canal: 'desligado' as const, jira: 'falhou' as const })
+    await batida(banco, [], relogio, desligado)
+    const linha = async () => (await chamar('helena', 'GET', '/api/tarefas')).json().find((l: { titulo: string }) => l.titulo === 'Vigília sem fonte ligada')
+    expect((await linha()).detalhe).toBe(
+      'Nenhuma fonte de publicação ligada: nenhuma publicação chega ao portal. O alarme ficou só no portal e no log: o aviso ao suporte técnico não saiu.',
+    )
+    agora = new Date('2026-10-06T11:05:00Z')
+    await batida(banco, [], relogio, async () => ({ canal: 'enviado', jira: 'falhou' }))
+    expect((await linha()).detalhe).toBe('Nenhuma fonte de publicação ligada: nenhuma publicação chega ao portal. O suporte técnico foi avisado.')
+  })
+
+  it('GGVP-158 I19 · sem fonte ligada, o painel diz "sem fonte", e não "em andamento"', async () => {
+    await batida(banco, [], relogio, async () => ({ canal: 'desligado', jira: 'desligado' }))
+    expect((await chamar('helena', 'GET', '/api/vigilia')).json()).toMatchObject({ situacaoDoDia: 'sem_fonte', previstas: 0 })
   })
 
   it('CA9 · a rodada que não rodou também alarma', async () => {

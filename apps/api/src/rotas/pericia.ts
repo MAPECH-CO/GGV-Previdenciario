@@ -6,7 +6,7 @@
 // (rotas/mensagens.ts, GGVP-146); aqui fica só o registro.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, desc, eq, inArray, isNull, lte, or } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import {
   AnexoNaPericia,
@@ -38,6 +38,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { acessoDadoSensivel, caso, chamadaIa, documento, etapa, exigencia, mensagem, pericia, perito, pessoa, publicacao, tarefa, usuario } from '../banco/esquema.ts'
 import { avancarExigencia, parametroDoEscritorio } from '../fluxo/exigencia.ts'
 import { anonimizar } from '../ia/acervo.ts'
@@ -385,16 +386,18 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
    * (rotas/mensagens.ts): da pessoa do caso, do modelo e com o mesmo texto. Com o id, vale aquela; sem ele, a mais nova que
    * saiu (a tela envia antes e registra depois). A que ficou como "não saiu" não serve.
    * ponytail: casa pelo texto, que já traz a data da perícia; um id obrigatório fecha de vez quando a tela mandar.
+   * GGVP-158 I2: sem o id, só as de hoje (em Brasília), e a mais nova decide: a de ontem não vale pela de hoje, que falhou.
    */
   async function envioDe(casoId: string, mensagemId: string | undefined, modelo: IdDoModelo, texto: string, oQue: string): Promise<{ erro: string } | { id: string }> {
+    const desdeHoje = gte(mensagem.enviadaEm, new Date(`${hojeEmBrasilia(agora())}T00:00:00-03:00`))
     const linhas = await banco
       .select({ id: mensagem.id, status: mensagem.status })
       .from(mensagem)
       .innerJoin(caso, eq(caso.pessoaId, mensagem.pessoaId))
-      .where(and(eq(caso.id, casoId), eq(mensagem.modelo, modelo), eq(mensagem.conteudo, texto.trim()), mensagemId ? eq(mensagem.id, mensagemId) : undefined))
-      .orderBy(desc(mensagem.criadoEm))
-    const saiu = linhas.find((l) => l.status !== 'falhou')
-    if (saiu) return { id: saiu.id }
+      .where(and(eq(caso.id, casoId), eq(mensagem.modelo, modelo), eq(mensagem.conteudo, texto.trim()), mensagemId ? eq(mensagem.id, mensagemId) : desdeHoje))
+      .orderBy(desc(mensagem.enviadaEm), desc(mensagem.criadoEm))
+    const [saiu] = linhas
+    if (saiu && saiu.status !== 'falhou') return { id: saiu.id }
     if (linhas.length) return { erro: `${oQue[0].toUpperCase()}${oQue.slice(1)} não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.` }
     return { erro: mensagemId ? 'Esta não é a mensagem enviada: registre com a mensagem que saiu pelo Chatwoot.' : `Envie ${oQue} pelo Chatwoot antes de registrar.` }
   }

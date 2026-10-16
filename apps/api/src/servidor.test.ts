@@ -45,6 +45,11 @@ describe('GGVP-158 P4.10 · a leitura de exemplo só nos testes de tela', () => 
     }
     vi.unstubAllEnvs()
     expect(() => criarServidor({ leituraSimulada: true })).not.toThrow()
+    // GGVP-158 A8: a imagem de produção (NODE_ENV=production) também não sobe com ela, mesmo sem AMBIENTE.
+    vi.stubEnv('AMBIENTE', '')
+    vi.stubEnv('NODE_ENV', 'production')
+    expect(() => criarServidor({ leituraSimulada: true })).toThrow(MSG_LEITURA_SO_NO_TESTE)
+    vi.unstubAllEnvs()
   })
 
   it('sem ela, as rotas que simulam o lote do scanner e a leitura do contrato não existem; com ela, existem', async () => {

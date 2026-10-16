@@ -15,7 +15,10 @@ export function conversorGotenberg(url: string, buscar: typeof fetch = fetch): C
     corpo.append('files', new Blob([new Uint8Array(docx)], { type: TIPO_DO_DOCX }), 'kit.docx')
     const r = await buscar(endereco, { method: 'POST', body: corpo, signal: AbortSignal.timeout(ESPERA_MAXIMA_EM_MS) })
     if (!r.ok) throw new Error(`O Gotenberg respondeu ${r.status}.`)
-    return Buffer.from(await r.arrayBuffer())
+    const pdf = Buffer.from(await r.arrayBuffer())
+    // GGVP-158 I11: o 200 vazio, ou a página de erro de um proxy no meio, não é o kit: quem chama oferece o Word.
+    if (!pdf.subarray(0, 5).equals(Buffer.from('%PDF-'))) throw new Error('O Gotenberg respondeu sem o PDF.')
+    return pdf
   }
 }
 

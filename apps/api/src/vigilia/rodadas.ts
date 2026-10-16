@@ -47,6 +47,19 @@ export async function planejarDia(banco: Banco, fontes: Fonte[], agora: Date) {
       await banco.insert(rodadaVigilia).values({ fonte: f.nome, previstaPara: momentoDoHorario(dia, hora) }).onConflictDoNothing()
 }
 
+/**
+ * GGVP-158 I13: o motivo que vai à rodada, ao alarme e ao log. O que as fontes escrevem (a API, a credencial, o tempo) passa;
+ * o resto (o erro do banco traz o SQL e os parâmetros, com o texto da publicação; o da leitura da resposta, um trecho dela)
+ * vira um motivo fixo, com o tipo e o código do erro.
+ */
+export function motivoSeguro(e: unknown): string {
+  const mensagem = e instanceof Error ? e.message : ''
+  if (/^(api|credencial|tempo esgotado)\b/.test(mensagem)) return mensagem.slice(0, 300)
+  const erro = e as { name?: string; code?: unknown; cause?: { code?: unknown } } | null
+  const codigo = erro?.code ?? erro?.cause?.code
+  return `erro inesperado ao ler ou gravar as publicações (${erro?.name ?? 'erro'}${typeof codigo === 'string' || typeof codigo === 'number' ? `, código ${codigo}` : ''})`
+}
+
 const comTempoLimite = <T>(promessa: Promise<T>, ms: number) =>
   Promise.race([promessa, new Promise<never>((_, falhar) => setTimeout(() => falhar(new Error(`tempo esgotado: a fonte não respondeu em ${ms / 1000} s`)), ms))])
 
@@ -62,7 +75,7 @@ export async function rodar(banco: Banco, rodadaId: string, fonte: Fonte, agora:
     await banco.update(rodadaVigilia).set({ situacao: 'ok', fim: agora(), capturadas: novas }).where(eq(rodadaVigilia.id, rodadaId))
     return { situacao: 'ok' as const, capturadas: novas }
   } catch (e) {
-    const erro = e instanceof Error ? e.message : String(e)
+    const erro = motivoSeguro(e)
     await banco.update(rodadaVigilia).set({ situacao: 'falhou', fim: agora(), erro }).where(eq(rodadaVigilia.id, rodadaId))
     // CA8 e GGVP-158 P5.10: falha de qualquer tipo vai ao suporte técnico.
     await alarmar(banco, suporte, agora(), `rodada:${rodadaId}`, { fonte: fonte.nome, erro, previstaPara: r.previstaPara })
@@ -97,14 +110,19 @@ export async function alarmarSemFonte(banco: Banco, agora: Date, suporte: Suport
   if (!ja) await alarmar(banco, suporte, agora, alvo, { fonte: 'sem fonte', erro: MSG_SEM_FONTE })
 }
 
-/** O alarme de hoje da vigília sem fonte, para a Central da Sênior. */
+/**
+ * O alarme de hoje da vigília sem fonte, para a Central da Sênior. GGVP-158 I14: `avisado` diz se o canal ou o Jira do
+ * suporte receberam, pelas entregas gravadas no alarme.
+ */
 export async function semFonteHoje(banco: Banco, agora: Date) {
   const [e] = await banco
-    .select({ id: eventoAuditoria.id })
+    .select({ id: eventoAuditoria.id, detalhe: eventoAuditoria.detalhe })
     .from(eventoAuditoria)
     .where(and(eq(eventoAuditoria.acao, 'alarme_suporte'), eq(eventoAuditoria.alvo, `vigilia:sem-fonte:${hojeEmBrasilia(agora)}`), gte(eventoAuditoria.quando, new Date(agora.getTime() - 86_400_000))))
     .limit(1)
-  return e?.id ?? null
+  if (!e) return null
+  const entregas = e.detalhe as { canal?: string; jira?: string } | null
+  return { id: e.id, avisado: entregas?.canal === 'enviado' || entregas?.jira === 'enviado' }
 }
 
 /** Uma batida do relógio: planeja o dia, marca as perdidas e roda as que chegaram na hora. */
@@ -139,7 +157,8 @@ export function ligarRelogio(banco: Banco, fontes: Fonte[], suporte: Suporte = c
     try {
       await batida(banco, fontes, () => new Date(), suporte)
     } catch (e) {
-      console.error('[vigília] batida falhou', e)
+      // GGVP-158 I13: o erro do banco traz o SQL e os parâmetros (texto de publicação): no log, só o motivo seguro.
+      console.error(`[vigília] batida falhou: ${motivoSeguro(e)}`)
     } finally {
       ocupado = false
     }

@@ -16,7 +16,8 @@
     "usuario:destravar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/usuarios.ts destravar",
     "homologacao:preparar": "node --experimental-strip-types --env-file-if-exists=../../.env src/banco/homologacao.ts preparar",
     "modelos:subir": "node --experimental-strip-types src/kit/subir-modelos.ts",
-    "monitor": "node --experimental-strip-types src/monitor.ts"
+    "monitor": "node --experimental-strip-types src/monitor.ts",
+    "eval:leitura": "node --experimental-strip-types --env-file-if-exists=../../.env --env-file-if-exists=../../.env.ia src/ia/eval/rodar.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",

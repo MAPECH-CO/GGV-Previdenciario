@@ -6,6 +6,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply } from 'fastify'
 import { AdiamentoDaCobranca, DecisaoDaCobranca, TentativaDaCobranca, type Erro } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
+import { motivoSemEnvio } from './mensagens.ts'
 import { cobrancaDocumento } from '../banco/esquema.ts'
 import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir } from '../sessao/rotas.ts'
@@ -135,6 +136,9 @@ export function registrarRotasRecepcaoCobranca(app: FastifyInstance, { banco, ag
     const quem = await nomeDe(pedido)
     const dia = hoje()
     const { canal, resultado } = entrada.data
+    // GGVP-158 I3: pelo Chatwoot, a tentativa só conta com a cobrança que saiu hoje pelo correio do cliente.
+    const semEnvio = canal === 'chatwoot' ? await motivoSemEnvio(banco, agora(), { pessoaId: achou.achado.ficha.id, modelo: 'cobranca', oQue: 'a cobrança' }) : null
+    if (semEnvio) return negar(resposta, 409, semEnvio)
     const r = await mudar(achou.id, achou.achado, achou.lim, (atual) =>
       atual.motivoParado ? { status: 409, erro: atual.motivoParado } : { ...atual.cobranca, tentativas: [...atual.cobranca.tentativas, { dia, canal, resultado, quem }] },
     )

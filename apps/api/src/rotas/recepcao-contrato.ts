@@ -19,6 +19,7 @@ import {
 } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { resumoDoErro } from '../servidor.ts'
 import { caso, contratoRecepcao, documento, documentoMedico, pessoa } from '../banco/esquema.ts'
 import { lerModelo, preencherModelo } from '../kit/docx.ts'
 import type { ConversorDePdf } from '../kit/pdf.ts'
@@ -457,7 +458,7 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     await guardar(ficha)
     if (!leitor.simulada) {
       const hash = ficha.arquivos.find((a) => a.nome === assinatura.arquivo)?.hash
-      const lido = await lerContrato(processo.id, await assinadoGuardado(processo.id, hash), pedido.usuario!.id)
+      const lido = await lerContrato(processo.id, await assinadoParaLer(pedido, processo.id, hash), pedido.usuario!.id)
       if (lido) return { contrato: lido.contrato, ficha: await fichaPeloId(ficha.id) }
     }
     return { contrato, ficha: await fichaPeloId(ficha.id) }
@@ -473,6 +474,15 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
       .limit(1)
     return d && !d.chave.startsWith('drive:') ? { bytes: await armazenamento.ler(d.chave), mime: d.mime } : undefined
   }
+  /**
+   * GGVP-158 I10: para a leitura do contrato, o armazenamento que falha não derruba o pedido depois de gravar a etapa: sem o
+   * conteúdo, o contrato vai à conferência do Atendimento, com o motivo, e o erro fica no log (o código e o tipo).
+   */
+  const assinadoParaLer = (pedido: FastifyRequest, casoId: string, hash?: string) =>
+    assinadoGuardado(casoId, hash).catch((e: unknown) => {
+      pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(e) }, 'o contrato assinado não foi lido no armazenamento')
+      return undefined
+    })
 
   // GGVP-158 P4.4: o contrato assinado guardado, para imprimir a cópia do cliente (GGVP-89). Sai como o kit: o navegador
   // não adivinha o tipo nem roda script do arquivo.
@@ -542,15 +552,16 @@ export function registrarRotasRecepcaoContrato(app: FastifyInstance, { banco, ar
     return { contrato, ficha: await fichaPeloId(ficha.id), ...(arquivo && { arquivo }) }
   })
 
-  // GGVP-85: o aviso ao cliente pelo WhatsApp, da tela de conferir, fica em "Últimos contatos" (Chatwoot simulado).
+  // GGVP-85: o aviso ao cliente da pendência, da tela de conferir, fica em "Últimos contatos". GGVP-158 I4: o portal não envia
+  // este aviso pelo Chatwoot (não há modelo de mensagem para ele; decisão do Pedro), então o registro não diz que avisou.
   app.post<{ Params: { id: string } }>('/api/processos/:id/contrato/conferencia/aviso', conduzir, async (pedido, resposta) => {
     const entrada = MensagemEnviada.safeParse(pedido.body)
     if (!entrada.success || !entrada.data.mensagem) return negar(resposta, 400, 'Escreva a mensagem.')
     const achado = await acharContrato(pedido.params.id)
     if (!achado) return negar(resposta, 404, MSG_CONTRATO_NAO_ENCONTRADO)
     const { ficha } = achado
-    ficha.contatos.push({ data: hoje(), canal: 'WhatsApp', texto: 'Avisado da pendência no contrato assinado.' })
-    ficha.historico.push(evento('Avisou o cliente pelo WhatsApp da pendência no contrato assinado', await quem(pedido)))
+    ficha.contatos.push({ data: hoje(), canal: 'Registro, sem envio pelo portal', texto: `Aviso da pendência no contrato assinado: ${entrada.data.mensagem.trim()}` })
+    ficha.historico.push(evento('Registrou o aviso da pendência no contrato assinado; o portal não o enviou ao cliente', await quem(pedido)))
     await guardar(ficha)
     return { ficha: await fichaPeloId(ficha.id) }
   })

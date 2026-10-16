@@ -29,13 +29,14 @@ export async function alarmesDaVigilia(banco: Banco, agora: Date) {
   const linhaSemFonte = semFonte
     ? [
         TarefaDaCentral.parse({
-          id: semFonte,
+          id: semFonte.id,
           casoId: null,
           passo: 'D4.01',
           cliente: null,
           contexto: 'Vigília das publicações',
           titulo: 'Vigília sem fonte ligada',
-          detalhe: `${MSG_SEM_FONTE[0].toUpperCase()}${MSG_SEM_FONTE.slice(1)}. O suporte técnico foi avisado.`,
+          // GGVP-158 I14: "avisado" só quando o canal ou o Jira receberam; sem eles, o alarme ficou no portal e no log.
+          detalhe: `${MSG_SEM_FONTE[0].toUpperCase()}${MSG_SEM_FONTE.slice(1)}. ${semFonte.avisado ? 'O suporte técnico foi avisado.' : 'O alarme ficou só no portal e no log: o aviso ao suporte técnico não saiu.'}`,
           tela: '/vigilia',
           prazo: hojeEmBrasilia(agora),
           urgente: true,
@@ -77,9 +78,13 @@ export function registrarRotasVigiliaDiario(app: FastifyInstance, { banco, fonte
     const falhas = rodadas.filter((r) => (PENDENTES as readonly string[]).includes(r.situacao)).length
     const concluidas = rodadas.filter((r) => r.situacao === 'ok').length
     const capturadas = rodadas.reduce((s, r) => s + r.capturadas, 0)
-    // CA5: com falha pendente, "incompleta", nunca "sem publicações". CA12: tudo OK, dia útil e nada capturado.
+    // CA5: com falha pendente, "incompleta", nunca "sem publicações". CA12: tudo OK, dia útil e nada capturado. GGVP-158
+    // I19: sem fonte ligada (o alarme de hoje) e sem rodada, "sem fonte", e não "em andamento".
+    const semFonte = rodadas.length === 0 && (await semFonteHoje(banco, agora())) !== null
     const situacaoDoDia =
-      falhas > 0
+      semFonte
+        ? 'sem_fonte'
+        : falhas > 0
         ? 'incompleta'
         : rodadas.length > 0 && concluidas === rodadas.length
           ? capturadas === 0 && ehDiaUtil(dia, await feriadosDoProcesso(banco, null))

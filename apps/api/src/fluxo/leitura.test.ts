@@ -79,3 +79,15 @@ describe('GGVP-158 P4.1 · a IA lê o conteúdo do documento do balcão', () => 
     expect([exemplo?.situacao, fetch.mock.calls.length]).toEqual(['ilegivel', 0])
   })
 })
+
+describe('GGVP-158 A7 · a ficha em papel lida fora do formato vira falha', () => {
+  it('a resposta solta da IA não vira leitura vazia "ok" guardada: fica como falha, e a mesma ficha é lida de novo', async () => {
+    const fetch = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => new Response(JSON.stringify({ choices: [{ message: { content: 'Não consigo ler esta ficha.' } }] })))
+    const leitor = criarLeitor({ ia: criarIa({ banco, ambiente: CHAVES, fetch }), agora: () => AGORA })
+    const lida = await leitor.fichaDeAtendimento({ ficha, conteudo: PDF, quem })
+    expect([lida.campos, lida.senha]).toEqual([{}, null])
+    expect((await banco.select().from(chamadaIa)).map((c) => [c.finalidade, c.situacao])).toEqual([['ler_ficha_atendimento', 'falhou']])
+    await leitor.fichaDeAtendimento({ ficha, conteudo: PDF, quem })
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+})

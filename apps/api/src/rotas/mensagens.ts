@@ -8,13 +8,14 @@
 // do convite, da confirmação e da cobrança seguir. Fora de produção, o Chatwoot de verdade só fala com os telefones da lista de teste (`permite`, em
 // `../chatwoot.ts`): fora dela, nem a consulta nem o envio vão a ele, e o envio fica como não enviado.
 // ponytail: as regras vêm de apps/web; mover para um pacote comum quando a ligação terminar.
-import { and, desc, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, gte, ne } from 'drizzle-orm'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { normalizarTelefone } from '@ggv/campos'
 import { IdDoModelo, PedidoDeMensagem, type Erro, type MensagemAoCliente, type MensagemPronta } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { cobrancaDocumento, decisao, mensagem, usuario } from '../banco/esquema.ts'
 import { MSG_CHATWOOT_FORA, abrirChatwoot } from '../chatwoot.ts'
+import { hojeEmBrasilia } from '../vigilia/fila.ts'
 import { criarCasoMedico } from '../fluxo/documentacao-medica.ts'
 import { limitesDeCobranca } from '../fluxo/exigencia.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
@@ -28,6 +29,29 @@ import { camposDoProcessoEmVigor } from './conversa.ts'
 import { criarChecklist } from './recepcao-checklist.ts'
 import { TITULO_AVISO } from './prestacao.ts'
 import { MSG_FICHA_NAO_ENCONTRADA, UUID, criarFichario, horaEmBrasilia } from './recepcao.ts'
+
+/**
+ * GGVP-158 I3: o registro do que foi pelo Chatwoot (o convite, a confirmação, a tentativa da cobrança) pede a mensagem que o
+ * correio do cliente mandou hoje (em Brasília), do mesmo modelo, para a pessoa, e com o mesmo texto quando ele vem. A mais
+ * nova decide: se ela não saiu, nada se registra. Devolve o motivo da recusa, ou nulo.
+ */
+export async function motivoSemEnvio(banco: Banco, agora: Date, p: { pessoaId: string; modelo: IdDoModelo; texto?: string; oQue: string }): Promise<string | null> {
+  const [m] = await banco
+    .select({ status: mensagem.status })
+    .from(mensagem)
+    .where(
+      and(
+        eq(mensagem.pessoaId, p.pessoaId),
+        eq(mensagem.modelo, p.modelo),
+        p.texto === undefined ? undefined : eq(mensagem.conteudo, p.texto.trim()),
+        gte(mensagem.enviadaEm, new Date(`${hojeEmBrasilia(agora)}T00:00:00-03:00`)),
+      ),
+    )
+    .orderBy(desc(mensagem.enviadaEm), desc(mensagem.criadoEm))
+    .limit(1)
+  if (!m) return `Envie ${p.oQue} pelo Chatwoot antes de registrar.`
+  return m.status === 'falhou' ? `${p.oQue[0].toUpperCase()}${p.oQue.slice(1)} não saiu pelo Chatwoot: envie de novo ou ligue para o cliente.` : null
+}
 
 export const MSG_CHATWOOT_DESLIGADO = 'o Chatwoot de verdade ainda não está ligado'
 export const MSG_SEM_CONTATO = 'o Chatwoot não achou o contato deste telefone'
@@ -59,6 +83,8 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
   const entregaDeMentira = simulado && ambiente.RELACIONAMENTO_SIMULADO === 'entrega' && ambiente.NODE_ENV !== 'production'
   const historico = registrarHistorico(banco, agora)
   const { hoje, evento, nomeDe, guardar } = criarFichario(banco, agora)
+  /** O começo de hoje em Brasília, para "o mesmo dia" do envio. */
+  const inicioDeHoje = () => new Date(`${hoje()}T00:00:00-03:00`)
   const { lerParte, gravarParte } = criarCasoMedico(banco, agora)
   const { doCaso } = criarChecklist(banco, agora)
 
@@ -221,7 +247,7 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
    * Sai pelo Chatwoot de verdade, com a trava da homologação; sem ele, nada sai (GGVP-158). A conversa 0 pede ao Chatwoot a
    * conversa aberta do cliente, ou uma nova. Devolve a conversa, o status, o motivo de não sair e o id no Chatwoot.
    */
-  async function sair(ficha: Ficha, texto: string, conversa: number, cliente: Pick<MensagemPronta, 'contato' | 'consulta'>) {
+  async function sair(ficha: Ficha, texto: string, conversa: number, cliente: Pick<MensagemPronta, 'contato' | 'consulta'>, incertaDesde?: Date) {
     let destino = conversa
     let status: MensagemAoCliente['status'] = 'falhou'
     let erro: string | undefined
@@ -236,7 +262,8 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
         // Sem resposta da consulta, a conversa escolhida não se confere, e outra não entra no lugar dela.
         if (cliente.consulta) throw new Error(MSG_CHATWOOT_FORA)
         destino ||= await chatwoot.abrirConversa(telefone, ficha.nome)
-        const saiu = await chatwoot.enviar(destino, texto)
+        // GGVP-158 I5: a tentativa de hoje esgotou o tempo; antes de reenviar, a conversa diz se ela saiu mesmo assim.
+        const saiu = (incertaDesde && (await chatwoot.jaSaiu(destino, texto, incertaDesde))) || (await chatwoot.enviar(destino, texto))
         ;({ status, erro } = saiu)
         chatwootId = saiu.id ?? null
       } catch (e) {
@@ -274,13 +301,37 @@ export function criarCorreio(banco: Banco, agora: () => Date, ambiente: Record<s
     // consulta caída, a conversa pedida vale para achar o envio repetido, mas nada sai (abaixo).
     if (pronta.conversas.length && !pronta.conversas.some((c) => c.id === p.conversa)) return { erro: 'Escolha a conversa do cliente no Chatwoot.' }
     const conversa = pronta.conversas.length || pronta.consulta ? p.conversa : 0
+    // GGVP-158 I1: repetida é só a de hoje (em Brasília); a mesma mensagem de outro dia (a cobrança diária) sai de novo.
     const [repetida] = await banco
       .select()
       .from(mensagem)
-      .where(and(eq(mensagem.pessoaId, ficha.id), eq(mensagem.conversaChatwoot, conversa), eq(mensagem.conteudo, texto), ne(mensagem.status, 'falhou')))
+      .where(
+        and(
+          eq(mensagem.pessoaId, ficha.id),
+          eq(mensagem.conversaChatwoot, conversa),
+          eq(mensagem.conteudo, texto),
+          ne(mensagem.status, 'falhou'),
+          gte(mensagem.enviadaEm, inicioDeHoje()),
+        ),
+      )
     const quem = await nomeDe(pedido)
     if (repetida) return { mensagem: paraTela(repetida, quem) }
-    const { destino, status, erro, chatwootId } = await sair(ficha, texto, conversa, pronta)
+    // GGVP-158 I5: a de hoje que não saiu porque o Chatwoot não respondeu pode ter saído: o envio confere antes.
+    const [incerta] = await banco
+      .select({ enviadaEm: mensagem.enviadaEm })
+      .from(mensagem)
+      .where(
+        and(
+          eq(mensagem.pessoaId, ficha.id),
+          eq(mensagem.conversaChatwoot, conversa),
+          eq(mensagem.conteudo, texto),
+          eq(mensagem.erro, MSG_CHATWOOT_FORA),
+          gte(mensagem.enviadaEm, inicioDeHoje()),
+        ),
+      )
+      .orderBy(desc(mensagem.enviadaEm))
+      .limit(1)
+    const { destino, status, erro, chatwootId } = await sair(ficha, texto, conversa, pronta, incerta?.enviadaEm ?? undefined)
     const [linha] = await banco
       .insert(mensagem)
       .values({

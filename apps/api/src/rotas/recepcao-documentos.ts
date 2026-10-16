@@ -8,6 +8,7 @@ import { dataParaIso, normalizarCpf, validarCpf, validarNome } from '@ggv/campos
 import { ArquivamentoDosLidos, CampoLidoNoCadastro, EnvioDeArquivos, MudancaDeCaso, RegistroDoRecebimento, type Erro } from '@ggv/contratos'
 import type { Armazenamento } from '../armazenamento.ts'
 import type { Banco } from '../banco/conexao.ts'
+import { resumoDoErro } from '../servidor.ts'
 import { caso as tabelaCaso, contratoRecepcao, documento, documentoMedico, exigencia, exigenciaItem, leituraDocumento, tarefaRecepcao } from '../banco/esquema.ts'
 import { exigir, registrarHistorico } from '../sessao/rotas.ts'
 import { TIPOS_DE_ANEXO, guardarArquivo, lerFormulario } from './formulario.ts'
@@ -274,9 +275,24 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
       const revisao = tarefa.lote.status === 'revisao' ? ' (o lote foi para A REVISAR)' : ''
       texto = `Registrou o recebimento de ${documentos(tarefa.lote.arquivos.length)} em papel, pelo scanner${revisao}`
     } else {
-      const anexados = ficha.arquivos.filter((a) => a.origem === 'card' && a.data === hoje()).length
-      if (anexados === 0) return negar(resposta, 400, 'Nenhum arquivo anexado ao card.')
-      texto = `Registrou o recebimento de ${documentos(anexados)} digitais, anexados ao card`
+      const anexados = ficha.arquivos.filter((a) => a.origem === 'card' && a.data === hoje())
+      if (anexados.length === 0) return negar(resposta, 400, 'Nenhum arquivo anexado ao card.')
+      // GGVP-158 I7: o anúncio entra antes do conteúdo; só conta o arquivo cujo conteúdo foi guardado no portal.
+      const hashes = [...new Set(anexados.flatMap((a) => (a.hash ? [a.hash] : [])))]
+      const guardados = new Set(
+        hashes.length
+          ? (
+              await banco
+                .select({ hash: documento.hashSha256 })
+                .from(documento)
+                .where(and(eq(documento.pessoaId, ficha.id), inArray(documento.hashSha256, hashes), isNull(documento.excluidoEm)))
+            ).map((d) => d.hash)
+          : [],
+      )
+      const faltam = anexados.filter((a) => !a.hash || !guardados.has(a.hash)).length
+      if (faltam)
+        return negar(resposta, 409, `${faltam === 1 ? '1 arquivo anexado ao card não chegou' : `${faltam} arquivos anexados ao card não chegaram`} ao portal: envie de novo antes de registrar.`)
+      texto = `Registrou o recebimento de ${documentos(anexados.length)} digitais, anexados ao card`
     }
     await concluirTarefas(ficha.id, tarefa.acao, tarefa.id)
     const registrado = evento(`${texto}; conferiu o tipo de cada documento`, await nomeDe(pedido))
@@ -391,7 +407,12 @@ export function registrarRotasRecepcaoDocumentos(app: FastifyInstance, { banco, 
     // guardado no portal (GGVP-158 P4.4); o do scanner fica no Drive, e sem ele o contrato vai à conferência.
     for (const l of contratosLidos) {
       const arquivo = ficha.arquivos.find((a) => a.nome === l.arquivo)
-      if (arquivo) await lerContrato(arquivo.local, await conteudoGuardado(ficha.id, arquivo.hash), pedido.usuario!.id)
+      // GGVP-158 I10: o armazenamento que falha aqui não derruba o arquivamento já gravado: sem o conteúdo, a conferência.
+      const conteudo = await conteudoGuardado(ficha.id, arquivo?.hash).catch((e: unknown) => {
+        pedido.log.error({ rota: pedido.routeOptions.url, ...resumoDoErro(e) }, 'o contrato assinado não foi lido no armazenamento')
+        return undefined
+      })
+      if (arquivo) await lerContrato(arquivo.local, conteudo, pedido.usuario!.id)
     }
     return {
       arquivados: arquivados.length,

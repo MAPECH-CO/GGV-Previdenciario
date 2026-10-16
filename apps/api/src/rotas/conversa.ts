@@ -1092,7 +1092,9 @@ export function registrarRotasConversa(app: FastifyInstance, { banco, agora = ()
       // G9: a senha mandada por mensagem sai do texto e não fica guardada.
       const aos = Math.max(0, Math.round((m.quando.getTime() - new Date(c.abertaEm).getTime()) / 1000))
       const quem = m.papel === 'cliente' ? ficha.nome : 'Escritório (WhatsApp)'
-      g.trechos.push(...tirarSenhas([{ aos, quem, papel: m.papel === 'cliente' ? 'cliente' : 'atendimento', texto: m.texto }]))
+      // GGVP-158 A2: com a mensagem anterior junto, a regra vale também para "qual a senha?" e, na seguinte, só a senha.
+      const fala = { aos, quem, papel: m.papel === 'cliente' ? ('cliente' as const) : ('atendimento' as const), texto: m.texto }
+      g.trechos.push(...tirarSenhas([...g.trechos.slice(-1), fala]).slice(-1))
       if (m.chatwootId !== null) c.chatwoot = [...(c.chatwoot ?? []), m.chatwootId]
       c.ultimaEm = m.quando.toISOString()
       await guardarGravacao(g)
