@@ -253,13 +253,16 @@ export function registrarRotasCustas(app: FastifyInstance, { banco, agora = () =
   // regra da busca do balcão. ponytail: lê todos os casos e filtra aqui, como a base de Clientes; buscar no SQL quando forem milhares.
   app.get<{ Querystring: { busca?: string } }>('/api/custas/processos', { preHandler: exigir(banco, 'custas.lancar', agora) }, async (pedido) => {
     const termo = (pedido.query.busca ?? '').trim()
-    if (termo.length < 2) return []
+    // O Financeiro não lê a base de clientes: o nome vai por pedaço (ele já vê os nomes nas custas), mas o CPF e o
+    // telefone só inteiros, para a busca não virar um jeito de descobrir quem é cliente digitando pedaços de número.
+    const digitos = /\p{L}/u.test(termo) ? null : termo.replace(/\D/g, '')
+    if (digitos === null ? termo.length < 2 : digitos.length < 10) return []
     const casos = await banco
       .select({ casoId: caso.id, cliente: pessoa.nome, cpf: pessoa.cpf, telefone: pessoa.telefone, beneficio: caso.beneficio, fase: caso.fase })
       .from(caso)
       .innerJoin(pessoa, eq(caso.pessoaId, pessoa.id))
     return casos
-      .filter((c) => bateNaBusca({ nome: c.cliente, cpf: c.cpf ?? undefined, telefone: c.telefone ?? '' }, termo))
+      .filter((c) => (digitos === null ? bateNaBusca({ nome: c.cliente, telefone: '' }, termo) : c.cpf === digitos || (c.telefone ?? '').replace(/\D/g, '') === digitos))
       .sort((a, b) => a.cliente.localeCompare(b.cliente, 'pt-BR'))
       .slice(0, 20)
       .map((c) =>

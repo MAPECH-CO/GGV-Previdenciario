@@ -94,7 +94,7 @@ export function NovoCusto({ podeAprovar, aoFechar, aoLancar }: Props) {
               autoComplete="off"
               aria-label="Buscar o processo pelo nome, CPF ou telefone do cliente"
               aria-controls={ids.lista}
-              placeholder="Nome, CPF ou telefone do cliente"
+              placeholder="Nome do cliente, ou CPF ou telefone completo"
               value={termo}
               onChange={(e) => setTermo(e.target.value)}
             />

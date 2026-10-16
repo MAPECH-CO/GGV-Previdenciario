@@ -76,8 +76,8 @@ export const CustasDoProcesso = z.object({
 export type CustasDoProcesso = z.infer<typeof CustasDoProcesso>
 
 /**
- * GET /api/custas/processos?busca= (`custas.lancar`; Pedro, 16/10): o processo do "Novo custo", achado pelo nome, CPF ou
- * telefone do cliente. Só o que a escolha precisa: nada de CPF nem telefone na resposta.
+ * GET /api/custas/processos?busca= (`custas.lancar`; Pedro, 16/10): o processo do "Novo custo", achado pelo nome do cliente
+ * (por pedaço) ou pelo CPF ou telefone inteiros. Só o que a escolha precisa: nada de CPF nem telefone na resposta.
  */
 export const ProcessoParaCusto = z.object({ casoId: z.uuid(), cliente: z.string(), beneficio: z.string().nullable(), fase: z.string() })
 export type ProcessoParaCusto = z.infer<typeof ProcessoParaCusto>

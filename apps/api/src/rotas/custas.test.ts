@@ -212,7 +212,10 @@ describe('Novo custo na visão das custas (Pedro, 16/10)', () => {
       const r = await buscar(apelido, 'cliente inven')
       expect(r.json(), apelido).toEqual([{ casoId, cliente: 'Cliente Inventada', beneficio: 'BPC/LOAS Idoso', fase: 'Judicial' }])
     }
-    expect((await buscar('julia', '27183946509')).json()).toHaveLength(1)
+    // CPF e telefone só inteiros: pedaço de número não diz quem é cliente.
+    expect((await buscar('julia', '271.839.465-09')).json()).toHaveLength(1)
+    expect((await buscar('julia', '(11) 98888-7777')).json()).toHaveLength(1)
+    for (const pedaco of ['2718394', '27183946508', '98888']) expect((await buscar('julia', pedaco)).json(), pedaco).toEqual([])
     expect((await buscar('julia', 'x')).json()).toEqual([])
     expect((await buscar('julia', 'Ninguém Assim')).json()).toEqual([])
   })
