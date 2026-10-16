@@ -5,13 +5,17 @@
 
 ## GGVP-158 · Lacunas graves do servidor sem PR (16/10)
 
-- [ ] 1.1 L1 · O teste primeiro, em `apps/api/src/rotas/chat.test.ts`:
+- [x] 1.1 L1 · O teste primeiro, em `apps/api/src/rotas/chat.test.ts`:
   - o acervo com uma transcrição conferida de entrevista que não é só do Jurídico e um modelo de petição;
   - o Financeiro, a Documentação e o Atendimento perguntam, e o modelo pede `buscar_no_acervo`;
   - nada do acervo chega ao modelo.
 
   Rodar sem a correção e colar a saída (prova ou desprova). Verifica com `pnpm --filter @ggv/api exec vitest run src/rotas/chat.test.ts`.
-- [ ] 1.2 L1 · Se o 1.1 falhou: `apps/api/src/rotas/chat.ts`, a ferramenta só com `peticao.ver`. O teste 16.4 passa a esperar três ferramentas para o Atendimento; o da advogada segue achando o trecho. Verifica com o mesmo comando.
+
+  Verificado em 16/10, sem a correção: o teste falhou e provou o vazamento. Para os três perfis, a ferramenta ia ao modelo, e o trecho da transcrição ("roça em março") e o modelo de petição chegavam a ele (`acervo`, `transcricao` e `modelo` vieram `true` para `julia`, `dora` e `ana`).
+- [x] 1.2 L1 · Se o 1.1 falhou: `apps/api/src/rotas/chat.ts`, a ferramenta só com `peticao.ver`. O teste 16.4 passa a esperar três ferramentas para o Atendimento; o da advogada segue achando o trecho. Verifica com o mesmo comando.
+
+  Verificado em 16/10: `chat.test.ts` e `ia/acervo.test.ts` 53/53.
 - [ ] 1.3 L2 · `packages/contratos/src/prestacao.ts`:
   - `SalvarPrestacao` com `conferiHonorarios`, `conferiDadosBancarios` e `revisouAviso`;
   - `PrestacaoDoCaso` com `aviso`.
