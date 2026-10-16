@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
 import { caso, chamadaIa, fichaRecepcao, gravacaoRecepcao, pessoa, resultadoInss, tarefa, usuario } from '../banco/esquema.ts'
@@ -423,5 +423,53 @@ describe('GGVP-158 P7.2 · o fechamento do lead é linha da Central, da pessoa, 
     await noDia.sincronizarRecepcao()
     await noDia.close()
     expect(await doLead()).toContainEqual({ titulo: 'Recontatar lead', casoId: null, prazo: '2026-10-20', situacao: 'aberta' })
+  })
+})
+
+describe('GGVP-158 P7.2 · a entrevista que passou sem registro é linha da Central (teste do Pedro, 14/10)', () => {
+  const MARCACAO = { tipo: 'presencial', data: '2026-10-09', hora: '14:00', duracao: 45, com: 'paula', gravar: false, levar: false, pedirFicha: false, confirmarHorarioOcupado: true }
+  const confirmar = (fichaId: string) =>
+    banco
+      .select({ prazo: tarefa.prazo, situacao: tarefa.situacao, detalhe: tarefa.detalhe })
+      .from(tarefa)
+      .where(and(eq(tarefa.pessoaId, fichaId), eq(tarefa.titulo, 'Confirmar se a entrevista aconteceu')))
+  /** O mesmo banco, com o relógio em 14/10 (o dia do teste do Pedro). */
+  const em14 = () => criarServidor({ banco, agora: () => new Date('2026-10-14T15:00:00Z') })
+
+  it('abre na virada do dia, pela rodada, atrasada na Central do Atendimento; marcar realizado fecha', async () => {
+    const fichaId = await lead()
+    const agendamentoId = (await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, MARCACAO)).agendamento.id as string
+    expect(await confirmar(fichaId), 'antes do dia, nada').toEqual([])
+
+    const depois = em14()
+    await depois.sincronizarRecepcao()
+    expect(await confirmar(fichaId)).toEqual([{ prazo: '2026-10-09', situacao: 'aberta', detalhe: 'fazer entrevista de 09/10 às 14:00 · marcar realizado ou faltou' }])
+    const sessao = await depois.inject({ method: 'POST', url: '/api/sessao', payload: { email: 'ana@exemplo.ggv', senha: SENHA } })
+    const cookies = { [COOKIE]: sessao.cookies.find((c) => c.name === COOKIE)!.value }
+    const central = (await depois.inject({ method: 'GET', url: '/api/tarefas', cookies })).json() as { id: string }[]
+    expect(central.find((t) => t.id === `confirmar-${fichaId}`)).toMatchObject({
+      passo: 'D1.03',
+      cliente: { id: fichaId, nome: 'Joana Ribeiro' },
+      titulo: 'Confirmar se a entrevista aconteceu',
+      prazo: '2026-10-09',
+      urgente: true,
+      tela: '/agenda?ver=lista',
+    })
+
+    const r = await depois.inject({ method: 'POST', url: `/api/agendamentos/${agendamentoId}/resultado`, cookies, payload: { resultado: 'realizado' } })
+    expect(r.statusCode, r.body).toBe(200)
+    expect((await confirmar(fichaId)).map((t) => t.situacao)).toEqual(['concluida'])
+    await depois.close()
+  })
+
+  it('o compromisso remarcado não abre a linha; o novo, ainda no futuro, também não', async () => {
+    const fichaId = await lead()
+    const agendamentoId = (await json('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, MARCACAO)).agendamento.id as string
+    const remarcou = await chamar('ana', 'POST', `/api/fichas/${fichaId}/agendamentos`, { ...MARCACAO, data: '2026-10-20', remarcar: { agendamentoId, motivo: 'o cliente pediu outro dia' } })
+    expect(remarcou.statusCode, remarcou.body).toBe(200)
+    const depois = em14()
+    await depois.sincronizarRecepcao()
+    await depois.close()
+    expect(await confirmar(fichaId)).toEqual([])
   })
 })

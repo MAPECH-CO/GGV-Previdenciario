@@ -6,7 +6,7 @@
 // Com o servidor ligado (homologação), `perguntar`, `confirmarAcao` e `cancelarAcao` vão ao servidor (GGVP-142): o
 // motor de IA de verdade, com as recusas, os portões, a regra do responsável e os números no servidor, como código, antes
 // e depois do modelo. O que está aqui fica para os testes e para a semente.
-import type { CartaoDeAcao, FonteDaIa, LinkDoChat, RespostaDoChat, SugestaoDaIa, TextoDaFala } from '@ggv/contratos'
+import type { CartaoDeAcao, FonteDaIa, LinkDoChat, MensagemAnterior, RespostaDoChat, SugestaoDaIa, TextoDaFala } from '@ggv/contratos'
 import { dataParaIso, normalizarData } from '../campos.ts'
 import { somarDias } from '../regras/agenda.ts'
 import { formatoDoArquivo, hashDoConteudo, problemaDoArquivo } from '../regras/arquivos.ts'
@@ -523,9 +523,14 @@ async function vaiAoServidor(p: { texto: string; processoId?: string }) {
  * POST /api/chat: o caminho único do chat (CA1 a CA12). Na ordem: as recusas, os portões, os anexos, o que é de outro
  * perfil, as ações (com cartão) e as consultas. Nada executa aqui.
  */
-export async function perguntar(p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string }, quem: QuemPergunta): Promise<RespostaDoChat> {
+export async function perguntar(
+  p: { texto: string; anexos?: AnexoNaPergunta[]; processoId?: string; anteriores?: MensagemAnterior[] },
+  quem: QuemPergunta,
+): Promise<RespostaDoChat> {
   if (servidorLigado() && (await vaiAoServidor(p))) {
-    return noBanco<RespostaDoChat>('/chat', { method: 'POST', corpo: { texto: p.texto, anexos: p.anexos ?? [], ...(p.processoId ? { processoId: p.processoId } : {}) } })
+    // GGVP-142 CA5 (Pedro, 14/10): a conversa vai junto, para a IA entender "é ele" e o cliente citado antes.
+    const corpo = { texto: p.texto, anexos: p.anexos ?? [], ...(p.processoId ? { processoId: p.processoId } : {}), ...(p.anteriores?.length ? { anteriores: p.anteriores } : {}) }
+    return noBanco<RespostaDoChat>('/chat', { method: 'POST', corpo })
   }
   await esperar()
   const texto = p.texto.trim()

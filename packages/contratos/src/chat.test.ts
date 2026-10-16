@@ -13,9 +13,17 @@ const sugestao = {
 
 describe('GGVP-82 · contrato do chat', () => {
   it('a pergunta pede texto ou anexo', () => {
-    expect(PerguntaDoChat.parse({ texto: '  o que falta no caso da Maria?  ' })).toEqual({ texto: 'o que falta no caso da Maria?', anexos: [] })
+    expect(PerguntaDoChat.parse({ texto: '  o que falta no caso da Maria?  ' })).toEqual({ texto: 'o que falta no caso da Maria?', anexos: [], anteriores: [] })
     expect(PerguntaDoChat.safeParse({ texto: ' ' }).success).toBe(false)
     expect(PerguntaDoChat.safeParse({ texto: '', anexos: [{ nome: 'laudo.pdf', tamanho: 10 }] }).success).toBe(true)
+  })
+
+  it('GGVP-142 CA5 · a pergunta leva até 10 mensagens anteriores, da pessoa ou do chat', () => {
+    const msg = { de: 'pessoa' as const, texto: 'é o Pedro Grigorio de Jesus' }
+    expect(PerguntaDoChat.parse({ texto: 'qual passo ele está?', anteriores: [msg, { de: 'chat', texto: 'Qual cliente?' }] }).anteriores).toHaveLength(2)
+    expect(PerguntaDoChat.safeParse({ texto: 'oi', anteriores: Array(11).fill(msg) }).success, 'mais de 10').toBe(false)
+    expect(PerguntaDoChat.safeParse({ texto: 'oi', anteriores: [{ de: 'sistema', texto: 'x' }] }).success, 'só pessoa ou chat').toBe(false)
+    expect(PerguntaDoChat.safeParse({ texto: 'oi', anteriores: [{ de: 'pessoa', texto: 'x'.repeat(2001) }] }).success, 'até 2000').toBe(false)
   })
 
   it('a resposta traz a sugestão com fontes; a recusa traz o portão', () => {

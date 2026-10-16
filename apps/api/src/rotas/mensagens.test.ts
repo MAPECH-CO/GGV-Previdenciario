@@ -9,6 +9,7 @@ import { COOKIE } from '../sessao/rotas.ts'
 import type { Complemento } from '../../../web/src/regras/complemento.ts'
 import {
   MSG_A_ADVOGADA_FALA,
+  MSG_BOAS_VINDAS_SEM_CASO,
   MSG_CHATWOOT_DESLIGADO,
   MSG_FAVORAVEL_PELO_FINANCEIRO,
   MSG_FORA_DA_LISTA,
@@ -17,6 +18,7 @@ import {
   MSG_SIMULADO,
 } from './mensagens.ts'
 import { abrirExplicacaoDoResultado } from './resultado.ts'
+import { MSG_DADO_EM_ABERTO } from '../../../web/src/regras/mensagens.ts'
 
 const SENHA = 'senha-do-portal-1'
 let banco: Banco
@@ -496,5 +498,31 @@ describe('GGVP-146 · mensagens pelo Chatwoot de verdade, no servidor', () => {
     expect(pronta.foraDaLista).toBeUndefined()
     expect(await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'boas-vindas', texto: pronta.texto, conversa: 502 })).toMatchObject({ status: 'enviada', conversa: 502 })
     expect(posts(chamadas).map((c) => c.caminho)).toEqual(['/conversations/502/messages'])
+  })
+})
+
+describe('GGVP-102 CA11 · nenhum dado em aberto no texto ao cliente (Pedro, 14/10)', () => {
+  /** O lead do balcão, sem caso, com o benefício de interesse "Não sei ainda". */
+  const lead = async () =>
+    (await json('ana', 'POST', '/api/fichas', { nome: 'Rui Exemplo Lead', idade: 45, pretende: 'Quer saber da aposentadoria.', telefone: '11900001234', beneficioInteresse: 'nao-sei', outraPessoa: false })).id as string
+
+  it('sem caso, as boas-vindas ficam travadas; a cobrança fala do caso sem o nome do benefício', async () => {
+    const fichaId = await lead()
+    expect(await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)).toMatchObject({ editavel: false, trava: MSG_BOAS_VINDAS_SEM_CASO })
+    const cobranca = (await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/cobranca`)).texto as string
+    expect(cobranca).toMatch(/^Olá, Rui! Para seguir com o seu caso, faltam documentos\./)
+    expect(cobranca).not.toMatch(/Não sei ainda|caso de benefício/)
+  })
+
+  it('com o benefício conhecido, o texto é o de sempre', async () => {
+    const { fichaId } = await cliente()
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/boas-vindas`)).texto).toMatch(/^Olá, Maria! Boas-vindas ao escritório GGV\. Seu caso de LOAS Idoso começou\./)
+  })
+
+  it('o envio recusa o texto com o benefício em aberto', async () => {
+    const fichaId = await lead()
+    const { conversas } = await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/cobranca`)
+    const r = await json('ana', 'POST', `/api/fichas/${fichaId}/mensagens`, { modelo: 'cobranca', texto: 'Olá, Rui! Seu caso de Não sei ainda começou.', conversa: conversas[0].id })
+    expect(r.erro).toBe(MSG_DADO_EM_ABERTO)
   })
 })

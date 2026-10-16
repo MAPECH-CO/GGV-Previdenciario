@@ -8,7 +8,7 @@ export type Oferta = { widget: WidgetDoChat; descricao: string }
 export const MAX_WIDGETS = 4
 
 /** A data do dia: a data pura como veio; o instante com hora (UTC) vira o dia em Brasília. */
-const dataDe = (s: string | null | undefined) => {
+export const dataDe = (s: string | null | undefined) => {
   if (!s || !/^\d{4}-\d{2}-\d{2}/.test(s)) return null
   if (s.length <= 10) return s
   const instante = new Date(s)

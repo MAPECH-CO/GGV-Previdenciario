@@ -6,12 +6,17 @@ import { SugestaoDaIa } from './ia.ts'
 /** Um arquivo anexado ao chat: só o nome e o tamanho viajam na pergunta; o conteúdo sobe pelo envio de arquivos. */
 export const AnexoDoChat = z.object({ nome: z.string().min(1).max(200), tamanho: z.number().int().min(0) })
 
-/** POST /api/chat: a pergunta. `processoId` quando o chat foi aberto de dentro de um caso. */
+/** GGVP-142 CA5 (Pedro, 14/10): uma mensagem anterior da conversa, que o chat lê como histórico. */
+export const MensagemAnterior = z.object({ de: z.enum(['pessoa', 'chat']), texto: z.string().max(2000) })
+export type MensagemAnterior = z.infer<typeof MensagemAnterior>
+
+/** POST /api/chat: a pergunta. `processoId` quando o chat foi aberto de dentro de um caso; `anteriores`, as últimas 10 mensagens. */
 export const PerguntaDoChat = z
   .object({
     texto: z.string().trim().max(2000),
     anexos: z.array(AnexoDoChat).max(500).default([]),
     processoId: z.string().optional(),
+    anteriores: z.array(MensagemAnterior).max(10).default([]),
   })
   .refine((p) => p.texto.length > 0 || p.anexos.length > 0, { message: 'Escreva a pergunta ou anexe um arquivo', path: ['texto'] })
 export type PerguntaDoChat = z.infer<typeof PerguntaDoChat>

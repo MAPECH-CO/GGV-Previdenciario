@@ -1,0 +1,180 @@
+/* Custas do processo (GGVP-157): o cartão do processo e o detalhe do Financeiro. Só tokens de design/. */
+.custas {
+  gap: 14px;
+}
+
+.cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.restrito {
+  padding: 3px 9px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-pilula);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  white-space: nowrap;
+}
+
+.totais {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.totais > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--raio-10);
+  background: var(--cor-painel-neutro);
+}
+
+.totais dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+}
+
+.totais dd {
+  margin: 0;
+  font-size: var(--fonte-18);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lucro dd {
+  color: var(--cor-ok);
+}
+
+.prejuizo dd {
+  color: var(--cor-erro);
+}
+
+.esperando dd {
+  color: var(--cor-alerta);
+}
+
+/* No celular a tabela rola de lado dentro do cartão; a página não. */
+.rolagem {
+  overflow-x: auto;
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fonte-13);
+}
+
+.tabela th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--cor-linha);
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-11);
+  font-weight: 600;
+  text-align: left;
+}
+
+.tabela td {
+  padding: 8px;
+  border-bottom: 1px solid var(--cor-linha-2);
+  vertical-align: top;
+}
+
+.tabela .valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.descricao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clipe {
+  text-decoration: none;
+}
+
+.motivo {
+  display: block;
+  color: var(--cor-erro);
+  font-size: var(--fonte-11);
+}
+
+.erro {
+  background: var(--cor-erro-suave);
+  color: var(--cor-erro);
+}
+
+.botoes,
+.recusa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.recusa {
+  min-width: 220px;
+}
+
+.lancar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--cor-linha);
+}
+
+.campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.campos > :first-child {
+  flex-basis: 260px;
+  flex-grow: 2;
+}
+
+.campos > * {
+  min-width: 130px;
+}
+
+.anexo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.anexo label {
+  cursor: pointer;
+}
+
+/* O seletor do navegador fica escondido; o botão é o rótulo dele, e o teclado chega pelo campo. */
+.arquivo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.anexo:focus-within label {
+  outline: 2px solid var(--cor-acento);
+  outline-offset: 2px;
+}
+
+.erroCampo {
+  color: var(--cor-erro);
+  font-size: var(--fonte-11);
+}

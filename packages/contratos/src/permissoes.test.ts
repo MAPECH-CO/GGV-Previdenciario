@@ -5,7 +5,14 @@ const acoesDe = (perfil: Perfil) => (Object.keys(MATRIZ) as Acao[]).filter((a) =
 
 describe('matriz de permissões (GGVP-96)', () => {
   it('CA15 · mudou a matriz, mudou a versão: atualize os dois juntos', () => {
-    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 33, digital: 'c2d996dd' })
+    expect({ versao: VERSAO_MATRIZ, digital: digitalDaMatriz() }).toEqual({ versao: 34, digital: '4b59c136' })
+  })
+
+  it('GGVP-157 · custas: sócios, Financeiro e Sênior veem; Sênior e Financeiro lançam; só o Financeiro aprova; sem abrir o processo', () => {
+    expect(PERFIS.filter((p) => pode(p, 'custas.ver'))).toEqual(['senior', 'financeiro', 'socio'])
+    expect(PERFIS.filter((p) => pode(p, 'custas.lancar'))).toEqual(['senior', 'financeiro'])
+    expect(PERFIS.filter((p) => pode(p, 'custas.aprovar'))).toEqual(['financeiro'])
+    expect(pode('financeiro', 'processo.abrir')).toBe(false)
   })
 
   it('GGVP-162 CA7 · o processo é do Jurídico e do Sócio; o Atendimento, a líder e a Documentação ficam com o caso das tarefas', () => {
@@ -72,6 +79,9 @@ describe('matriz de permissões (GGVP-96)', () => {
     expect(acoesDe('financeiro')).toEqual([
       'banco.agendar',
       'chat.usar',
+      'custas.aprovar',
+      'custas.lancar',
+      'custas.ver',
       'dados_bancarios.ver',
       'prestacao.registrar_recebimento',
       'prestacao.ver',
@@ -212,10 +222,10 @@ describe('matriz de permissões (GGVP-96)', () => {
       atendimento_lider: 23,
       documentacao: 12,
       advogada: 41,
-      senior: 61,
+      senior: 63,
       juridico_adm: 21,
-      financeiro: 11,
-      socio: 23,
+      financeiro: 14,
+      socio: 24,
     })
   })
 })

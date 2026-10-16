@@ -7,3 +7,4 @@ export { normalizarTelefone, validarTelefone, formatarTelefone } from './telefon
 export { normalizarCnj, validarCnj, formatarCnj, gerarDvCnj } from './cnj.ts';
 export { normalizarNb, validarNb, formatarNb } from './nb.ts';
 export { normalizarNome, validarNome, validarEmail } from './texto.ts';
+export { formatarConta, validarConta, formatarAgencia, validarAgencia } from './bancario.ts';

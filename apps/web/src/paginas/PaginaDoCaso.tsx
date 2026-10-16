@@ -5,6 +5,7 @@ import { chamarApi } from '../api.ts'
 import { AbaSuporte } from '../componentes/AbaSuporte.tsx'
 import { AbrirDocumento } from '../componentes/AbrirDocumento.tsx'
 import { ComplementosDoProcesso } from '../componentes/ComplementosDoProcesso.tsx'
+import { CustasDoProcesso } from '../componentes/CustasDoProcesso.tsx'
 import { JusticaDoCaso } from '../componentes/JusticaDoCaso.tsx'
 import { ExplicacaoDoDesfecho } from '../componentes/ExplicacaoDoDesfecho.tsx'
 import { JurimetriaDoCaso } from '../componentes/JurimetriaDoCaso.tsx'
@@ -56,6 +57,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
   // caminho até ela continua aqui.
   const veJurimetria = usePode('estudo.ver')
   const vePrestacao = usePode('prestacao.ver')
+  // As custas do processo (GGVP-157): a Sênior e os sócios; o Financeiro vê na visão dele, sem abrir o processo.
+  const veCustas = usePode('custas.ver')
   const [temPrestacao, setTemPrestacao] = useState(false)
   useEffect(() => {
     if (!vePrestacao || !doServidor(processoId)) return
@@ -297,6 +300,8 @@ export function PaginaDoCaso({ processoId }: { processoId: string }) {
             {aviso}
           </p>
         )}
+
+        {doServidor(processoId) && veCustas && <CustasDoProcesso key={processoId} casoId={processoId} />}
 
         <div className={base.grade}>
           <section className={`${base.cartao} ${styles.cartao}`} aria-labelledby="linha">

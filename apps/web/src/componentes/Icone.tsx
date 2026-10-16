@@ -113,6 +113,14 @@ const DESENHOS = {
       <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
     </>
   ),
+  // GGVP-157: as custas dos processos, um recibo.
+  custas: (
+    <>
+      <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+      <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+      <path d="M12 17.5v-11" />
+    </>
+  ),
   vigilia: (
     <>
       <path d="M19.07 4.93A10 10 0 0 0 6.99 3.34" />

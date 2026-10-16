@@ -74,6 +74,7 @@ import { registrarRotasFeriados } from './rotas/feriados.ts'
 import { registrarRotasProcesso } from './rotas/processo.ts'
 import { registrarRotasBases } from './rotas/bases.ts'
 import { registrarRotasFinanceiro } from './rotas/financeiro.ts'
+import { registrarRotasCustas } from './rotas/custas.ts'
 import { registrarRotasChat } from './rotas/chat.ts'
 
 type Opcoes = {
@@ -311,6 +312,8 @@ export function criarServidor({
     registrarRotasBases(app, { banco, agora })
     // GGVP-78: o painel Financeiro, das prestações de contas.
     registrarRotasFinanceiro(app, { banco, agora })
+    // GGVP-157: as custas do processo, com o comprovante no armazenamento privado.
+    registrarRotasCustas(app, { banco, agora, armazenamento: arquivos })
     // GGVP-142: o chat das Centrais e a aba Suporte pelo servidor.
     registrarRotasChat(app, { banco, agora, ia: motorIa })
     alimentar = async () => {

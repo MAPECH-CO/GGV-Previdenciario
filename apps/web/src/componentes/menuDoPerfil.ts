@@ -10,6 +10,7 @@ const ITEM = {
   roteiros: { id: 'roteiros', rotulo: 'Roteiros de laudos', href: '/roteiros' },
   vigilia: { id: 'vigilia', rotulo: 'Vigília', href: '/vigilia' },
   financeiro: { id: 'financeiro', rotulo: 'Financeiro', href: '/financeiro' },
+  custas: { id: 'custas', rotulo: 'Custas', href: '/custas' },
   tentativas: { id: 'tentativas', rotulo: 'Tentativas bloqueadas', href: '/gestao/tentativas' },
   prazos: { id: 'prazos', rotulo: 'Prazos', href: '/gestao/prazos' },
   cofre: { id: 'cofre', rotulo: 'Uso do cofre', href: '/gestao/cofre' },
@@ -47,6 +48,8 @@ export function menuDoPerfil(perfil: string | null | undefined): { principais: I
     ...(bases && p('processo.abrir') ? [ITEM.processos] : []),
     ...(DE_CONSULTA[perfil ?? ''] ?? []).map((id) => ITEM[id]),
     ...(p('valores.ver_totais') ? [ITEM.financeiro] : []),
+    // GGVP-157: as custas dos processos, ao lado do painel Financeiro, para quem vê valores (o Financeiro e o Sócio).
+    ...(p('valores.ver') ? [ITEM.custas] : []),
   ]
   const gestao = [
     ...(p('gestao.ver') ? [ITEM.tentativas, ITEM.prazos, ITEM.cofre] : []),

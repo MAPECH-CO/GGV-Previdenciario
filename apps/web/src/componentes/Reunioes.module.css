@@ -3,3 +3,18 @@
   font-size: var(--fonte-12);
 }
 
+.botao {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 14px;
+  text-align: center;
+  text-decoration: none;
+  border: 0;
+  border-radius: var(--raio-8);
+  background: var(--cor-acento);
+  color: var(--cor-superficie);
+  font-size: var(--fonte-13);
+  font-weight: 600;
+  box-shadow: var(--sombra-acento);
+}

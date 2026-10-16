@@ -2,7 +2,7 @@
 // rota, como o de verdade, e a conferência é do lado da tela (a cópia local, a busca juntando os dois lados, a ficha de
 // atendimento). As regras do servidor têm os testes dele, na API.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista } from './agenda.ts'
+import { criarCompromissoInterno, eventosDaAgenda, marcarEntrevista, tarefasDeConfirmar } from './agenda.ts'
 import { definirBeneficio } from './beneficio.ts'
 import { guardarSenhaNoCofre } from './cofre.ts'
 import {
@@ -222,6 +222,14 @@ const entrevista = (id: string, extra: Partial<Agendamento> = {}): Agendamento =
 const MARCACAO: Marcacao = { tipo: 'presencial', data: '2026-10-06', hora: '14:00', duracao: 45, com: 'paula', gravar: true, levar: true, pedirFicha: true, confirmarHorarioOcupado: false }
 
 describe('GGVP-125 · bloco 2: agenda e confirmação no servidor, em modo misto', () => {
+  it('GGVP-158 P7.2 · a entrevista do servidor que passou sem registro vem pela linha do servidor: a tela não repete (Pedro, 14/10)', async () => {
+    const passada = { id: `${ID}-ag-1`, data: '2026-10-01', hora: '10:00', oQue: 'Entrevista', com: 'Dra. Paula', estado: 'marcado' as const }
+    ligarServidor({ 'GET /api/recepcao': () => ({ fichas: [doBanco({ agendamentos: [passada] })], tarefas: [], internos: [], gravacoes: [], contratos: [] }), 'GET /api/pericias': () => [] })
+    await sincronizarRecepcao()
+    expect(ler().fichas.find((f) => f.id === ID)?.agendamentos, 'a cópia tem a entrevista passada').toHaveLength(1)
+    expect(tarefasDeConfirmar().map((t) => t.cliente?.id)).not.toContain(ID)
+  })
+
   it('ao abrir a tela, a cópia recebe fichas, tarefas e compromissos; a tarefa que sumiu lá foi concluída', async () => {
     let doServidor = { fichas: [doBanco()], tarefas: [tarefa('preparar-x', 'Preparar entrevista', 'Jurídico')], internos: [{ id: OUTRO, titulo: 'Gravação', data: '2026-10-06', hora: '10:00', duracao: 60, responsavel: 'atendimento', estado: 'marcado' as const }], gravacoes: [], contratos: [] }
     ligarServidor({ 'GET /api/recepcao': () => doServidor, 'GET /api/pericias': () => [] })

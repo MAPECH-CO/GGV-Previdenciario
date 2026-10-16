@@ -31,3 +31,9 @@ export function dataHora(isoDataHora: string): string {
 export function hora(isoDataHora: string): string {
   return dataHora(isoDataHora).slice(-5)
 }
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+/** "2026-09" → "setembro" (o painel Financeiro e as custas). */
+export const nomeDoMes = (mes: string) => MESES[Number(mes.slice(5, 7)) - 1]
+/** "2026-09" → "set/2026". */
+export const rotuloDoMes = (mes: string) => `${nomeDoMes(mes).slice(0, 3)}/${mes.slice(0, 4)}`

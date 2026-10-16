@@ -83,16 +83,23 @@ describe('GGVP-78 · o topo pelo perfil da sessão, igual em toda tela', () => {
 
   it('o Atendimento tem a Agenda; o Financeiro, que não vê o caso, fica sem ela e com os Resultados e o painel Financeiro', () => {
     expect(ids('atendimento')).toEqual({ principais: ['inicio', 'agenda'], gestao: [] })
-    expect(ids('financeiro')).toEqual({ principais: ['inicio', 'financeiro'], gestao: ['resultados'] })
+    expect(ids('financeiro')).toEqual({ principais: ['inicio', 'financeiro', 'custas'], gestao: ['resultados'] })
     expect(ids(null)).toEqual({ principais: ['inicio'], gestao: [] })
   })
 
   it('GGVP-162 CA8 e CA9 · o Sócio tem as bases e as telas de consulta; a vigília no topo é só dele', () => {
     expect(ids('socio')).toEqual({
-      principais: ['inicio', 'agenda', 'clientes', 'processos', 'estudos', 'roteiros', 'vigilia', 'financeiro'],
+      principais: ['inicio', 'agenda', 'clientes', 'processos', 'estudos', 'roteiros', 'vigilia', 'financeiro', 'custas'],
       gestao: ['tentativas', 'prazos', 'cofre', 'resultados', 'configuracao', 'importar'],
     })
     for (const perfil of ['advogada', 'senior', 'juridico_adm', 'atendimento_lider']) expect(ids(perfil).principais).not.toContain('vigilia')
+  })
+
+  it('GGVP-157 · as Custas ao lado do painel Financeiro, para quem vê valores: o Financeiro e o Sócio; os outros, não', () => {
+    expect(ids('financeiro').principais.at(-1)).toBe('custas')
+    expect(ids('socio').principais.at(-1)).toBe('custas')
+    for (const perfil of ['senior', 'atendimento_lider', 'advogada', 'juridico_adm', 'atendimento', 'documentacao'])
+      expect(ids(perfil).principais, perfil).not.toContain('custas')
   })
 
   it('com sessão, o topo ignora a lista da tela: o mesmo menu em qualquer página; a Gestão abre num menu só', () => {

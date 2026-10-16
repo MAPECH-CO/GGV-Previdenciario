@@ -327,6 +327,12 @@ novo a trava do modelo e o texto.
    Chatwoot devolve; em "Últimos contatos", "Chatwoot · 14:32 · entregue". A falha aparece na tela em que a pessoa está e
    fica no histórico; nada é reenviado sozinho, e a mesma mensagem já entregue na mesma conversa não sai de novo.
 6. **Perícia** (CA9): os modelos da perícia usam a data da perícia em vigor no processo (a mesma que a conversa atualiza).
+7. **Nenhum dado em aberto** (CA11, teste do Pedro, 14/10): `beneficioParaOCliente` (`regras/mensagens.ts`) devolve o nome do
+   benefício só quando ele é conhecido; "nao-sei" e o vazio viram "", e a frase dos modelos (boas-vindas e cobrança) segue sem
+   o nome. As boas-vindas sem caso aberto ficam travadas ("As boas-vindas saem quando o caso começa, depois do fechamento."),
+   como o convite sem entrevista. `problemasDaMensagem` bloqueia "de Não sei ainda", na tela e no envio do servidor. O selo
+   da janela diz "O portal preencheu": os modelos são do código, sem IA. O servidor falso dos testes de tela
+   (`apps/web/src/test/relacionamento/mensagens.ts`) segue o mesmo texto.
 
 ### Ponta para ligar no Chatwoot (estudada na documentação da API, developers.chatwoot.com)
 
@@ -384,7 +390,7 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
 |---|---|
 | Como confirmou que é o cliente | lista fixa: chamada de vídeo ou no escritório |
 | A alteração vai em contrato novo | caixa de marcar, obrigatória |
-| Banco, agência, conta, Pix | texto; agência com 4 números (e o dígito), conta com números e o dígito; o servidor confere de novo |
+| Banco, agência, conta, Pix | texto; agência com 4 números (e o dígito), conta com números e o dígito; o servidor confere de novo. Agência e conta pela biblioteca `campos` (CA9): o traço entra sozinho ao digitar |
 
 ### Decisões da história
 
@@ -395,7 +401,9 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
    com a verificação marcada na conferência. Na ficha, mudar telefone ou e-mail pede a verificação. O servidor recusa sem.
    Completar o telefone ou o e-mail que estava em branco (a ficha que o scanner criou) não é mudança: não pede a verificação.
 3. **Dados bancários** (CA2, CA5): a mudança nasce como pedido, com a verificação; outra pessoa (Atendimento líder, advogada
-   ou Sênior) confirma; a confirmação avisa o contato anterior pelo Chatwoot e, com o caso perto da prestação de contas
+   ou Sênior) confirma. Desde 15/10 (decisão do Pedro), a confirmação fica só no histórico: não manda mensagem ao cliente
+   nem abre tarefa para o Atendimento (a opção B do Mateus, de 14/10, que abria a tarefa "Avisar o cliente da mudança
+   bancária", saiu). Com o caso perto da prestação de contas
    (sentença procedente, RPV ou benefício deferido), alerta a advogada e o Financeiro. A Central do Financeiro não existe
    ainda: o alerta dele fica guardado para ela.
 4. **Retorno pelo contato cadastrado** (CA3, CA6): na tela da conversa por ligação, ou com quem não é o cliente, o roteiro
@@ -404,6 +412,10 @@ export const PedidoDeMudancaBancaria = z.object({ dados: DadosBancarios, verific
 5. **Nunca a senha** (CA4): todo modelo termina com a frase do escritório; o texto que pede a senha não sai (G9, GGVP-102).
 6. **O chat** (CA7): "o cliente me ligou" responde com a próxima tarefa do cliente e lembra de confirmar a identidade. O
    resto do chat é da GGVP-82.
+7. **Agência e conta pela biblioteca** (CA9, teste do Pedro, 14/10): `packages/campos` ganha `formatarConta`/`validarConta`
+   (só números e o dígito no fim, que pode ser X; o traço antes do último; de 3 a 12 números mais o dígito) e
+   `formatarAgencia`/`validarAgencia` (4 números; com 5, o último é o dígito, depois do traço). O cartão formata a cada
+   tecla; `erroDosDadosBancarios` confere pela biblioteca, com as mesmas mensagens, na tela e no servidor.
 
 ## Risks / Trade-offs
 

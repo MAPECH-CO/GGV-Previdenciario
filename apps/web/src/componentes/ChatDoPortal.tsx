@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { CartaoDeAcao, RespostaDoChat } from '@ggv/contratos'
+import type { CartaoDeAcao, MensagemAnterior, RespostaDoChat } from '@ggv/contratos'
 import { cancelarAcao, confirmarAcao, perguntar, type ResultadoDaAcao } from '../dados/chat.ts'
 import { pessoasDoEscritorio } from '../dados/conversa.ts'
 import { usePerfil } from '../dados/perfis.ts'
@@ -16,6 +16,13 @@ type EstadoDoCartao = { estado: EstadoAcao; escolha?: string; responsavel?: stri
 type Mensagem = { id: number; de: 'voce' | 'ia'; texto: string; anexos?: string[]; arquivos?: File[]; resposta?: RespostaDoChat; cartao?: EstadoDoCartao; pensando?: boolean }
 
 let proximoId = 0
+
+/** GGVP-142 CA5 (Pedro, 14/10): as últimas 10 mensagens da conversa, que o servidor passa à IA como histórico. */
+const anterioresDe = (mensagens: Mensagem[]): MensagemAnterior[] =>
+  mensagens
+    .map((m) => ({ de: m.de === 'voce' ? ('pessoa' as const) : ('chat' as const), texto: (m.resposta?.sugestao.texto ?? m.texto).trim().slice(0, 2000) }))
+    .filter((m) => m.texto)
+    .slice(-10)
 
 const FONTE: Record<string, string> = { documento: 'documento', publicacao: 'publicação', acervo: 'acervo', regra: 'regra do sistema', caso: 'caso' }
 
@@ -47,9 +54,10 @@ export function ChatDoPortal({ exemplo, sugestoes, funcao, processoId }: Props) 
   async function enviar(texto: string, arquivos: File[] = []) {
     const pedido = { id: ++proximoId, de: 'voce' as const, texto, anexos: arquivos.map((a) => a.name) }
     const id = ++proximoId
+    const anteriores = anterioresDe(mensagens)
     setMensagens((m) => [...m, pedido, { id, de: 'ia', texto: '', pensando: true, arquivos }])
     try {
-      const resposta = await perguntar({ texto, anexos: arquivos.map((a) => ({ nome: a.name, tamanho: a.size })), processoId }, quem)
+      const resposta = await perguntar({ texto, anexos: arquivos.map((a) => ({ nome: a.name, tamanho: a.size })), processoId, anteriores }, quem)
       mudar(id, { pensando: false, resposta, cartao: resposta.acao ? { estado: 'esperando' } : undefined })
     } catch (e) {
       mudar(id, { pensando: false, texto: e instanceof Error ? e.message : 'Não deu para responder agora. Tente de novo.' })

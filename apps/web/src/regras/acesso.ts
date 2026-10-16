@@ -51,6 +51,9 @@ const ACESSO: [RegExp, Acao][] = [
   [caso('/historico'), 'processo.abrir'],
   // GGVP-78: o painel Financeiro, para quem vê os totais em dinheiro (o Financeiro e o Sócio).
   [/^\/financeiro$/, 'valores.ver_totais'],
+  // GGVP-157: as custas dos processos, para quem vê valores (o Financeiro e o Sócio), e o detalhe de um processo.
+  [/^\/custas$/, 'valores.ver'],
+  [new RegExp(`^/custas/${CASO}$`), 'custas.ver'],
   // A agenda lê a Recepção e as perícias do servidor, que pedem o caso: sem ele, a tela só daria erro.
   [/^\/agenda$/, 'caso.ver'],
 

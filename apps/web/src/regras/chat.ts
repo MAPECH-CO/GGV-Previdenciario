@@ -45,6 +45,8 @@ export function entenderPedido(texto: string): Intencao {
   if (!/\btarefa\b/.test(t) && /\b(avisa|avisar|avise|manda|mandar|envia|enviar|fala|falar|escreve|escrever)\b.{0,30}\b(cliente|mensagem|whatsapp)\b/.test(t)) return 'avisar-cliente'
   if (/\b(cri|abr)\w* (uma |a )?tarefa|\btarefa (para|pra|pro)\b/.test(t)) return 'criar-tarefa'
   if (/\b(faz|faca|fazer|ger|escrev|redig|pede|pedir|peca|monta)\w*\b.*\b(peticao|peca|manifestac|minuta|recurso|quesitos|impugnac)/.test(t)) return 'pedir-peca'
+  // GGVP-142 CA8 (Pedro, 14/10): "criar uma minuta" também é pedir a peça; as palavras inteiras, para "criança" não contar.
+  if (/\b(cria|criar|crie|prepara|preparar|prepare|elabora|elaborar|elabore)\b.*\b(peticao|peca|manifestac|minuta|recurso|quesitos|impugnac)/.test(t)) return 'pedir-peca'
   if (/\b(estour|limite)/.test(t)) return 'limite'
   if (/\bacervo\b/.test(t)) return 'subir-acervo'
   if (/\bdica\b|orientac/.test(t)) return 'dica-pericia'

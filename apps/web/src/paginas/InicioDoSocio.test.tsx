@@ -63,6 +63,8 @@ describe('GGVP-78 · a tela inicial do Sócio é o painel de resultado (GGVP-75,
       'Roteiros de laudos',
       'Vigília',
       'Financeiro',
+      // GGVP-157: as custas dos processos, para quem vê valores.
+      'Custas',
     ])
     // A Gestão, com a importação da planilha, abre num menu só.
     fireEvent.click(screen.getByRole('button', { name: 'Gestão' }))

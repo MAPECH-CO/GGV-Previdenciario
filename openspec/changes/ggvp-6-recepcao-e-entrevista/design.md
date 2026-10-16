@@ -146,7 +146,7 @@ A tela normaliza ao digitar (letra não entra em CPF, telefone e idade), valida 
 6. **Duplicidade** (CA6, CA9): CPF repetido nunca grava, abre a ficha existente. Telefone ou nome igual mostra o aviso no bloco "Já existe?" com a ficha parecida; "Salvar" só grava depois de "É outra pessoa".
 7. **Clique duplo** (CA16): o botão vira "salvando…" e fica desabilitado no mesmo clique, com trava por `ref`, antes de o React redesenhar.
 8. **Histórico** (CA8): a ficha ganha o bloco "Histórico" embaixo de "Últimos contatos", com quem, data e hora e o quê. Não está desenhado no Figma; o cartão pede.
-9. **Ficha na visão do Atendimento** (`73:199`): tudo o que o frame mostra. "Trocar foto", "Registrar contato", "▶ Transcrições", o arrastar documentos e "Marcar e iniciar reunião" são de outras histórias e ficam indisponíveis ou levam à rota delas. "Salvar alterações" grava com as mesmas validações e escreve no histórico o que mudou.
+9. **Ficha na visão do Atendimento** (`73:199`): tudo o que o frame mostra. "Trocar foto", "Registrar contato", "▶ Transcrições", o arrastar documentos e "Marcar e iniciar reunião" são de outras histórias e ficam indisponíveis ou levam à rota delas. Desde 14/10 (teste do Pedro, GGVP-123 CA10), o botão do cartão "Reuniões" é "Marcar reunião (com transcrição)" e leva à marcação (`/agenda/marcar/:id`), só para quem tem `ficha.editar`; iniciar na hora segue em "Iniciar conversa" e na tela da entrevista. "Salvar alterações" grava com as mesmas validações e escreve no histórico o que mudou.
 
 ## GGVP-17 · Receber documento entregue no balcão
 

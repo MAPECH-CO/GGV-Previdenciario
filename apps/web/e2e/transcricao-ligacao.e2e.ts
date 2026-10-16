@@ -59,3 +59,66 @@ test('a Atendimento sobe a gravação da ligação na conversa do Relacionamento
   await expect(page.getByRole('region', { name: 'O que a IA encontrou na conversa' })).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('Rua Exemplo das Acácias')
 })
+
+// GGVP-133 (teste do Pedro, 14/10): no Atendimento, o player da ligação abria em 0:00 / 0:00, como se o áudio estivesse
+// vazio. O áudio daqui é um WebM do gravador do próprio Chromium, como o da gravação ao vivo do portal (o da homologação
+// era `parte-1.webm`, `audio/webm`). Sem a chave do serviço, a transcrição falha, e o player aparece mesmo assim. O código
+// vai como texto porque os testes de tela compilam sem os tipos do navegador.
+/** O que o teste lê do <audio> (os testes de tela compilam sem os tipos do navegador). */
+type Player = { duration: number; currentTime: number; muted: boolean; play(): Promise<void>; addEventListener(evento: string, f: () => void): void }
+const WEBM_DO_GRAVADOR = `(async () => {
+  const ctx = new AudioContext()
+  const osc = ctx.createOscillator()
+  const destino = ctx.createMediaStreamDestination()
+  osc.connect(destino)
+  osc.start()
+  const gravador = new MediaRecorder(destino.stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 32000 })
+  const pedacos = []
+  gravador.ondataavailable = (e) => pedacos.push(e.data)
+  const fim = new Promise((pronto) => (gravador.onstop = pronto))
+  gravador.start()
+  await new Promise((p) => setTimeout(p, 3000))
+  gravador.stop()
+  await fim
+  const bytes = new Uint8Array(await new Blob(pedacos, { type: 'audio/webm' }).arrayBuffer())
+  let s = ''
+  for (const b of bytes) s += String.fromCharCode(b)
+  return btoa(s)
+})()`
+
+test('a Atendimento abre o áudio da ligação: o player já mostra a duração e toca, mesmo com a transcrição falhada', async ({ page }) => {
+  await page.goto('/')
+  const webm = Buffer.from((await page.evaluate(WEBM_DO_GRAVADOR)) as string, 'base64')
+  const r = await page.request.post('/api/fichas', { data: { nome: 'Rosa Player Teste', idade: 66, pretende: 'Quer saber do BPC do idoso.', telefone: '11933337799', beneficioInteresse: 'loas-idoso', outraPessoa: false } })
+  expect(r.ok()).toBe(true)
+  const ficha = `/clientes/${(await r.json()).id}`
+  await page.goto(ficha)
+  await page.getByRole('button', { name: 'Iniciar conversa' }).click()
+  const janela = page.getByRole('dialog', { name: /Registrar conversa com o cliente/ })
+  await janela.getByRole('radio', { name: 'Ligação', exact: true }).click()
+  await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
+  await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'parte-1.webm', mimeType: 'audio/webm', buffer: webm })
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
+  await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
+
+  await page.goto(ficha)
+  await page.getByRole('button', { name: /Transcrições/ }).click()
+  const transcricoes = page.getByRole('dialog', { name: 'Transcrições do caso' })
+  await expect(transcricoes.getByText(/^A transcrição falhou: /)).toBeVisible()
+  await transcricoes.getByRole('button', { name: 'Abrir áudio' }).click()
+  const audio = transcricoes.locator('audio')
+  await expect(audio).toHaveAttribute('preload', 'metadata')
+  // Antes do play, o player já sabe a duração (antes, NaN: o 0:00 / 0:00 da tela do Pedro).
+  await expect.poll(() => audio.evaluate((e) => (e as unknown as Player).duration)).toBeGreaterThan(1)
+  const tocou = await audio.evaluate(
+    (e) =>
+      new Promise<number>((pronto) => {
+        const a = e as unknown as Player
+        a.muted = true
+        a.addEventListener('timeupdate', () => a.currentTime > 0.3 && pronto(a.currentTime))
+        void a.play()
+      }),
+  )
+  expect(tocou).toBeGreaterThan(0.3)
+})

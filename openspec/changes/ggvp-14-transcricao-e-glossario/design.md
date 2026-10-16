@@ -112,3 +112,16 @@ Achados da varredura de 09/10: com a transcrição de verdade, a IA não extraí
 - Sem a chave do serviço, a conversa segue a transcrição e a análise de exemplo do Relacionamento; o Playwright roda assim e cobre o caminho manual. A leitura da IA de verdade é testada na API com `fetch` falso e na tela com a resposta do servidor posta por cima.
 - A análise roda uma vez, junto da transcrição. Se a IA falhou, a pessoa segue pela leitura; não há "Tentar de novo" só da análise.
 
+
+## GGVP-133 · Ajuste do teste do Pedro: o player das Transcrições (14/10)
+
+### Context
+
+No Atendimento, o player da "Ligação · cliente" abria em 0:00 / 0:00. Consulta só de leitura na homologação (autorizada pelo Mateus): o áudio é `parte-1.webm`, `audio/webm`, 194 KB, gravado ao vivo. Reproduzido no Chromium do Playwright com um WebM do próprio gravador: com `preload="none"`, o player parado tem duração `NaN` e nada carregado (o 0:00 / 0:00 da tela); dando play, toca. Com `preload="metadata"`, já abre com a duração. A rota serve o arquivo certo (200, `audio/webm`).
+
+### Decisões
+
+- **O player sai da seção da transcrição pronta** (`Transcricoes.tsx`): com `g.audio.documentos`, "Abrir áudio" mostra o player com qualquer situação da transcrição. Hoje ele só existe dentro da transcrição pronta, e com a transcrição falhada o botão não mostrava nada.
+- **`preload="metadata"`**: o player só nasce depois do clique em "Abrir áudio", então carregar a duração nessa hora não pesa a tela.
+- **Áudio que não toca**: o `onError` de cada `<audio>` troca aquele player pelo aviso "Não deu para tocar este áudio aqui" e pelo link "Baixar o áudio" (o mesmo endereço, com `download`). A frase não fala em formato porque o navegador dá o mesmo erro para o formato que não toca e para o arquivo que não veio (recusa ou falta no armazenamento).
+- Nada muda no servidor.
