@@ -394,7 +394,7 @@ describe('GGVP-158 P7.2 · as tarefas da Recepção são linhas da tabela de tar
       detalhe: 'LOAS Idoso · 2 tentativas sem resposta · passou do limite',
       tela: `/casos/${processoId}/cobranca/decidir`,
     })
-    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({ prazo: null, urgente: false, detalhe: expect.stringMatching(/ · na sênior: decidir \(G15\)$/) })
+    expect(await linha('ana', `cobrar-${processoId}`)).toMatchObject({ prazo: null, urgente: false, detalhe: expect.stringMatching(/ · na sênior: decidir$/) })
 
     const decisao = { opcao: 'nova-tentativa', justificativa: 'A cliente está viajando e volta no dia 20', prazo: '2026-10-20' }
     expect((await chamar('sara', 'POST', `/api/processos/${processoId}/cobranca/decisao`, decisao)).statusCode).toBe(200)

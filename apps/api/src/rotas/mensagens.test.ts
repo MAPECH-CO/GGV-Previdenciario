@@ -159,7 +159,7 @@ describe('GGVP-102 · os modelos do complemento e do resultado destravam pela re
     const { fichaId, processoId } = await cliente()
     const tentativas = ['2026-09-30', '2026-10-03'].map((dia) => ({ dia, canal: 'chatwoot' as const, resultado: 'sem-resposta' as const, quem: 'ana' }))
     await banco.insert(documentacaoMedica).values({ casoId: processoId, parte: 'complemento', documento: [pedidoDeComplemento(fichaId, processoId, { abertaEm: '2026-09-29T13:00:00.000Z', tentativas })] })
-    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide \(G15\)\.$/)
+    expect((await json('ana', 'GET', `/api/fichas/${fichaId}/mensagens/complemento?processo=${processoId}`)).trava).toMatch(/a sênior decide\.$/)
   })
 
   it('o resultado desfavorável: só com o resumo aprovado pelo Jurídico, e o texto aprovado não muda', async () => {

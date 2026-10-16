@@ -30,7 +30,7 @@ test('P13 · a Sênior abre os roteiros de laudos pelo topo e o histórico de um
 
   await page.goto('/')
   const resultado = await buscar(page, 'Ulisses')
-  await resultado.getByRole('link', { name: 'Ulisses Rocha (exemplo)' }).click()
+  await resultado.getByRole('link', { name: 'Ulisses Rocha (exemplo)', exact: true }).click()
   await page.getByRole('link', { name: 'Histórico do processo' }).click()
   await expect(page).toHaveURL(/\/casos\/[0-9a-f-]{36}\/historico$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Histórico do processo')

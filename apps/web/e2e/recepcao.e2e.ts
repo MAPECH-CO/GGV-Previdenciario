@@ -96,6 +96,7 @@ test('CA15 · letra não entra no CPF, no telefone nem na idade', async ({ page 
   await expect(page.getByLabel('Idade *')).toHaveValue('58')
 
   await page.goto('/clientes/josefa-exemplo')
+  await page.getByRole('button', { name: 'Editar dados' }).click()
   await page.getByLabel('Telefone / WhatsApp *').fill('')
   await page.getByLabel('Telefone / WhatsApp *').pressSequentially('z9')
   await expect(page.getByLabel('Telefone / WhatsApp *')).toHaveValue('9')

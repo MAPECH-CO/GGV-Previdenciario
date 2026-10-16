@@ -178,7 +178,7 @@ describe('GGVP-138 · a conversa com o cliente no servidor', () => {
     expect(r.conversa).toMatchObject({ registro: 'Contou que mudou de casa; traz o comprovante.' })
     expect(r.ficha.historico.at(-1).oQue).toBe('Registrou a conversa sem áudio (presencial, com cliente): o microfone não gravou')
     // Falta só a conferência de quem conversou, como na conversa escrita.
-    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0].detalhe).toMatch(/conferir a conversa \(D5\.04\)$/)
+    expect((await json('ana', 'GET', '/api/conversas/tarefas'))[0].detalhe).toMatch(/conferir a conversa$/)
   })
 
   it('G10 na ligação já feita: só sobe o áudio com o aviso nela, só arquivo de áudio, e só com o arquivo (o nome sozinho não é áudio)', async () => {

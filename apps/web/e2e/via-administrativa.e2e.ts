@@ -201,7 +201,7 @@ test('GGVP-39 · a advogada decide "Documentos"; a Documentação cobra, junta a
   await page.getByRole('link', { name: 'Ulisses Rocha (exemplo) · Cumprir exigência do INSS' }).click()
   await expect(page.getByRole('button', { name: 'Entregar ao Jurídico' })).toBeDisabled()
   await page.getByLabel('Canal').selectOption('whatsapp')
-  await page.getByLabel('Resultado').selectOption('vai_entregar')
+  await page.getByLabel('Resultado', { exact: true }).selectOption('vai_entregar')
   await page.getByRole('button', { name: 'Registrar cobrança' }).click()
   await expect(page.getByText(/Cobranças: 1 de 2/)).toBeVisible()
   for (const item of ['CadÚnico atualizado', 'Comprovante de renda']) {

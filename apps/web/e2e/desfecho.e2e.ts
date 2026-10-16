@@ -30,7 +30,7 @@ test('GGVP-100 · a Sênior decide recorrer, com justificativa; o recurso fica c
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
   await page.getByRole('link', { name: 'Sérgio Nunes (exemplo) · Decidir recurso' }).click()
-  await expect(page.getByText('contado pelo sistema')).toBeVisible()
+  await expect(page.getByText('· contado pelo sistema')).toBeVisible()
   const registrar = page.getByRole('button', { name: 'Registrar' })
   await expect(registrar).toBeDisabled()
   await page.getByRole('radio', { name: 'Sim, recorrer' }).click()

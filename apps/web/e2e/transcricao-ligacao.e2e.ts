@@ -98,7 +98,7 @@ test('a Atendimento abre o áudio da ligação: o player já mostra a duração 
   await janela.getByRole('radio', { name: 'Ligação', exact: true }).click()
   await janela.getByRole('button', { name: 'Anexar o áudio' }).click()
   await page.getByLabel(/Áudio da ligação/).setInputFiles({ name: 'parte-1.webm', mimeType: 'audio/webm', buffer: webm })
-  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada (G10)' }).check()
+  await page.getByRole('checkbox', { name: 'A ligação começou com o aviso de que seria gravada' }).check()
   await page.getByRole('button', { name: 'Anexar e transcrever' }).click()
   await expect(page.getByRole('heading', { name: '✓ Gravação da ligação anexada' })).toBeVisible()
 
