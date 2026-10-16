@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
+import { instalarConhecimentoDeTeste } from '../banco/conhecimento-de-teste.ts'
 import { caso, identificadorCaso, juizo as juizoTabela, pericia, perito, pessoa, processoAcervo, usuario } from '../banco/esquema.ts'
 import { SENHA_DE_EXEMPLO } from '../banco/exemplo.ts'
 import { criarServidor } from '../servidor.ts'
@@ -54,6 +55,21 @@ describe('GGVP-64 · GET /api/casos/:id/juizo', () => {
     const entendimentos = [{ texto: 'Exige o estudo social atualizado.', processos: ['00000011220204036301'] }]
     await banco.insert(juizoTabela).values({ tribunal: 'TRF3', nome: 'TRF3 · 6301', entendimentos, entendimentosEm: AGORA })
     expect((await juizo('gabi')).json()).toMatchObject({ vara: '1ª Vara-Gabinete do JEF de São Paulo', juiz: 'Dra. Exemplo', entendimentos })
+  })
+
+  it('GGVP-163 R3, CA2 · os fundamentos históricos do juízo, contados em código: 552 processos no "TRF3 · 6301", por tipo e benefício, com exemplos; a rodada da IA lê o juízo com fundamentos', async () => {
+    expect((await juizo('gabi')).json().fundamentos).toBeNull()
+    await instalarConhecimentoDeTeste(banco)
+    const f = (await juizo('gabi')).json().fundamentos
+    expect(f.processos).toBe(552)
+    expect(f.grupos).toHaveLength(6)
+    expect(f.grupos[0]).toMatchObject({ tipo: 'fundamento', beneficio: 'auxilio_incapacidade_temporaria', nome: 'Auxílio por Incapacidade Temporária', processos: 184 })
+    expect(f.grupos[0].exemplos).toHaveLength(3)
+    expect(f.grupos[0].exemplos[0].texto).toContain('Fundamento de teste')
+    // O juízo com fundamentos e sem entendimentos entra na rodada; lido, sai.
+    expect((await juizosParaLer(banco)).sort()).toEqual(['TRF3 · 6100', 'TRF3 · 6301'])
+    await banco.insert(juizoTabela).values({ tribunal: 'TRF3', nome: 'TRF3 · 6301', entendimentos: [], entendimentosEm: AGORA })
+    expect(await juizosParaLer(banco)).toEqual(['TRF3 · 6100'])
   })
 
   it('G22 · a jurimetria é interna: o Atendimento e o Financeiro não veem', async () => {

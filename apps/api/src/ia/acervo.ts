@@ -9,6 +9,7 @@ import { and, eq, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { FonteDaIa } from '@ggv/contratos'
 import type { Banco } from '../banco/conexao.ts'
 import { acervoTrecho } from '../banco/esquema.ts'
+import { temBaseHistorica, trechosHistoricos } from '../fluxo/conhecimento.ts'
 import type { Ia } from './ia.ts'
 
 export const MSG_SEM_REFERENCIA = 'Sem referência na casa: nada parecido no acervo; a IA usou só o caso.'
@@ -124,6 +125,18 @@ const FONTES = sql`
         from pericia p cross join lateral (select p.documento -> 'resultado' -> 'laudo' -> 'leitura' as l) x
        where p.documento -> 'resultado' -> 'registrado' is not null`
 
+/**
+ * GGVP-163 R4: os trechos da base histórica (anonimizados na origem) como fonte, com a origem visível e o processo na
+ * referência; só entram quando o schema `conhecimento` está de pé.
+ */
+const FONTES_HISTORICAS = sql`
+      select 'Base histórica · ' || coalesce(t.tipo, 'trecho') as de, null::uuid as caso_id, null::uuid as modelo_id, t.texto, t.so_juridico, null::uuid as pessoa_id,
+             case when t.referencia ~ '^\\d{7}-\\d{2}\\.\\d{4}\\.\\d\\.\\d{2}\\.\\d{4}$' then 'processo:' || regexp_replace(t.referencia, '\\D', '', 'g') else 'conhecimento:' || t.referencia end as referencia,
+             t.beneficio
+        from conhecimento.portal_trecho t`
+/** As fontes do portal (sem benefício próprio: o do caso) e, com a base, as históricas (com o benefício da vista). */
+const fontes = (comBase: boolean) => (comBase ? sql`select f.*, null::text as beneficio from (${FONTES}) f union all ${FONTES_HISTORICAS}` : sql`select f.*, null::text as beneficio from (${FONTES}) f`)
+
 /** RRF: cada lista dá 1/(k + posição) a cada item; k = 60, o valor de referência do método. */
 const K_DO_RRF = 60
 
@@ -136,9 +149,10 @@ export async function buscarNoAcervo(banco: Banco, { casoId, beneficio, consulta
   const termos = palavras(consulta)
   if (!termos.length) return []
   const candidatos = limite * 3
+  const comBase = await temBaseHistorica(banco)
   // PGlite e node-postgres devolvem `rows`; o tipo genérico do Drizzle não diz.
   const { rows } = (await banco.execute(sql`
-    with fonte as (${FONTES}),
+    with fonte as (${fontes(comBase)}),
     achados as (
       select f.*, pe.nome, ts_rank(to_tsvector('portuguese', f.texto), q) as nota
         from fonte f
@@ -147,7 +161,7 @@ export async function buscarNoAcervo(banco: Banco, { casoId, beneficio, consulta
         to_tsquery('portuguese', ${termos.join(' | ')}) q
        where to_tsvector('portuguese', f.texto) @@ q
          and (${saude}::boolean or not f.so_juridico)
-         and (f.modelo_id is not null or (f.caso_id <> ${casoId} and (${beneficio}::text is null or c.beneficio = ${beneficio})))
+         and (f.modelo_id is not null or ((f.caso_id is null or f.caso_id <> ${casoId}) and (${beneficio}::text is null or coalesce(f.beneficio, c.beneficio) = ${beneficio})))
        order by nota desc
        limit ${candidatos}
     )
@@ -183,7 +197,7 @@ async function buscarPorSentido(
       from acervo_trecho t
      where t.embedding is not null
        and (${saude}::boolean or not t.so_juridico)
-       and (t.referencia like 'modelo:%' or (t.caso_id <> ${casoId} and (${beneficio}::text is null or t.beneficio = ${beneficio})))
+       and (t.referencia like 'modelo:%' or ((t.caso_id is null or t.caso_id <> ${casoId}) and (${beneficio}::text is null or t.beneficio = ${beneficio})))
      order by t.embedding <=> ${JSON.stringify(v)}::vector
      limit ${candidatos}`)) as unknown as { rows: { de: string; referencia: string; texto: string }[] }
   return rows.map((r) => ({ chave: `${r.de}|${r.referencia}`, de: r.de, referencia: r.referencia, texto: r.texto }))
@@ -214,7 +228,10 @@ export async function alimentarAcervo(banco: Banco, ia: Ia) {
     const hash = createHash('sha256').update(`${r.de}\n${r.referencia}\n${texto}`).digest('hex')
     return { origem: r.de, referencia: r.referencia, casoId: r.caso_id, beneficio: r.beneficio, texto, soJuridico: r.so_juridico, hash }
   })
-  const novos = trechos.length ? await banco.insert(acervoTrecho).values(trechos).onConflictDoNothing({ target: acervoTrecho.hash }).returning({ id: acervoTrecho.id }) : []
+  // GGVP-163 R4: os trechos da base histórica entram pelo `hash` da vista, anonimizados de novo por garantia, sem caso.
+  const historicos = (await trechosHistoricos(banco)).map((t) => ({ origem: t.origem, referencia: t.referencia, casoId: null, beneficio: t.beneficio, texto: anonimizar(t.texto, null), soJuridico: t.soJuridico, hash: t.hash }))
+  const todos = [...trechos, ...historicos]
+  const novos = todos.length ? await banco.insert(acervoTrecho).values(todos).onConflictDoNothing({ target: acervoTrecho.hash }).returning({ id: acervoTrecho.id }) : []
   const semVetor = await banco
     .select({ id: acervoTrecho.id, casoId: acervoTrecho.casoId, referencia: acervoTrecho.referencia, texto: acervoTrecho.texto, soJuridico: acervoTrecho.soJuridico })
     .from(acervoTrecho)

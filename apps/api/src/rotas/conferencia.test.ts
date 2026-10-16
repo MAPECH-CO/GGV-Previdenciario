@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { abrirBancoEmbutido, type Banco } from '../banco/conexao.ts'
-import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, fichaRecepcao, kitDocumento, parecerMedico, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
+import { acessoDadoSensivel, caso, chamadaIa, contrato, contratoRecepcao, decisao, documento, documentoMedico, eventoAuditoria, fichaRecepcao, kitDocumento, parecerMedico, pericia, pessoa, processoAcervo, tarefa, usuario } from '../banco/esquema.ts'
 import { criarIa } from '../ia/ia.ts'
 import { criarServidor } from '../servidor.ts'
 import { COOKIE, MSG_SEM_PERMISSAO } from '../sessao/rotas.ts'
@@ -307,7 +307,8 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     await parecer('suficiente')
     const r = (await chance('helena')).json()
     expect([r.casos, r.favoraveis, r.porcentagem, typeof r.baseEm, r.fatores.texto, r.fatores.sugestao]).toEqual([4, 3, 75, 'string', FATORES, true])
-    expect(enviado).toContain('Chance calculada pelo sistema: 75% em 4 casos parecidos')
+    expect([r.etapa, r.aviso]).toEqual(['antes_da_pericia', null])
+    expect(enviado).toContain('Chance calculada pelo sistema: 75% em 4 casos parecidos, antes da perícia')
     expect(enviado).toContain('Parecer médico: suficiente')
     const [ev] = await banco.select().from(eventoAuditoria).where(eq(eventoAuditoria.acao, 'chance_mostrada'))
     expect(ev.detalhe).toMatchObject({ casos: 4, porcentagem: 75, chamada: r.fatores.chamadaId })
@@ -330,6 +331,31 @@ describe('GGVP-131 · chance de êxito na conferência (recorte de 07/10)', () =
     expect(enviado).toContain('sem casos parecidos na casa ainda')
     expect(enviado).toContain('Nenhum laudo médico novo esperando conferência')
     expect((await chance('ana')).statusCode).toBe(403)
+  })
+
+  it('GGVP-163 R6 · a chance é por etapa: com o laudo do caso, só entre os casos do acervo com o mesmo laudo; o acordo é ganho e a extinção fica fora', async () => {
+    const conferido = { beneficio: 'bpc_loas_deficiente', fonte: 'portal', desfechoConferidoPor: ids.helena }
+    await banco.insert(processoAcervo).values([
+      { ...conferido, desfecho: 'acordo', laudoFavoravel: true },
+      { ...conferido, desfecho: 'procedente_total', laudoFavoravel: true },
+      { ...conferido, desfecho: 'improcedente', laudoFavoravel: true },
+      { ...conferido, desfecho: 'improcedente', laudoFavoravel: false },
+      { ...conferido, desfecho: 'improcedente', laudoFavoravel: false },
+      { ...conferido, desfecho: 'extinto_sem_merito', laudoFavoravel: false },
+      { ...conferido, desfecho: 'procedente_parcial', laudoFavoravel: null },
+    ])
+    // Antes da perícia: 3 ganhos (o acordo incluído) em 6 decididos no mérito; a extinção fica fora.
+    const antes = (await chance('helena')).json()
+    expect([antes.casos, antes.favoraveis, antes.porcentagem, antes.etapa, antes.aviso]).toEqual([6, 3, 50, 'antes_da_pericia', null])
+    // Depois do laudo favorável: 2 de 3.
+    await banco.insert(pericia).values({ casoId, tipo: 'medica', resultado: 'favoravel' })
+    const depois = (await chance('helena')).json()
+    expect([depois.casos, depois.favoraveis, depois.porcentagem, depois.etapa]).toEqual([3, 2, 67, 'depois_do_laudo'])
+    expect(enviado).toContain('67% em 3 casos parecidos, depois do laudo')
+    // Nenhum caso com laudo desfavorável decidido no mérito além dos dois: 0 de 2.
+    await banco.update(pericia).set({ resultado: 'desfavoravel' }).where(eq(pericia.casoId, casoId))
+    const desfavoravel = (await chance('helena')).json()
+    expect([desfavoravel.casos, desfavoravel.favoraveis, desfavoravel.porcentagem, desfavoravel.etapa]).toEqual([2, 0, 0, 'depois_do_laudo'])
   })
 
   it('GGVP-150 CA2, CA3, CA4 · a cor pela faixa, a sugestão abaixo de 15% e o que falta saber', async () => {

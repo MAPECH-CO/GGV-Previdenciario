@@ -46,6 +46,7 @@ import { lerJson, type Ia } from '../ia/ia.ts'
 import type { Preparo } from '../ia/preparo.ts'
 import { avancarJuncaoD2 } from '../fluxo/juncao-d2.ts'
 import { peritoPeloNome } from '../vigilia/perito.ts'
+import { historicoDosPeritos } from '../fluxo/conhecimento.ts'
 import { exigir, registrarBloqueio, registrarHistorico } from '../sessao/rotas.ts'
 import type { TarefasPorArea } from '../fluxo/tarefasPorArea.ts'
 import type { Perito } from '../../../web/src/dados/peritos.ts'
@@ -155,11 +156,22 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
 
   async function peritos(): Promise<Perito[]> {
     const linhas = await banco.select().from(perito).orderBy(asc(perito.nome))
+    // GGVP-163 R2: os laudos históricos da base entram no perfil pelo nome ou pelas grafias, sem regravar o perito.
+    const historico = await historicoDosPeritos(banco, linhas)
     return linhas
       .filter((l) => l.perfil)
       .map((l) => {
         const p = l.perfil as PerfilGuardado
-        return { id: l.id, nome: l.nome, especialidade: l.especialidade ?? '', tipo: p.tipo, onde: p.onde, laudos: p.laudos ?? [] }
+        const h = historico.get(l.id)
+        return {
+          id: l.id,
+          nome: l.nome,
+          especialidade: l.especialidade ?? '',
+          tipo: p.tipo,
+          onde: p.onde,
+          laudos: h ? juntarLaudos(p.laudos ?? [], h.laudos) : (p.laudos ?? []),
+          ...(h?.registro && { registro: h.registro }),
+        }
       })
   }
 
@@ -372,10 +384,12 @@ export function registrarRotasPericia(app: FastifyInstance, { banco, armazenamen
     if (p.peritoId) return p.peritoId
     const achado = await peritoPeloNome(banco, p.nome!, n.pericia.tipo)
     if (!n.mundo.peritos?.some((x) => x.id === achado.id)) {
-      const [linha] = await banco.select({ especialidade: perito.especialidade, perfil: perito.perfil }).from(perito).where(eq(perito.id, achado.id))
+      const [linha] = await banco.select().from(perito).where(eq(perito.id, achado.id))
       const perfil = linha?.perfil as PerfilGuardado | null
-      const laudos = perfil?.laudos ?? []
-      ;(n.mundo.peritos ??= []).push({ id: achado.id, nome: achado.nome, especialidade: linha?.especialidade ?? '', tipo: perfil?.tipo ?? n.pericia.tipo, onde: perfil?.onde ?? '', laudos })
+      // GGVP-163 R2: o perito recém-escolhido também ganha os laudos históricos da base.
+      const h = linha ? (await historicoDosPeritos(banco, [linha])).get(linha.id) : undefined
+      const laudos = h ? juntarLaudos(perfil?.laudos ?? [], h.laudos) : (perfil?.laudos ?? [])
+      ;(n.mundo.peritos ??= []).push({ id: achado.id, nome: achado.nome, especialidade: linha?.especialidade ?? '', tipo: perfil?.tipo ?? n.pericia.tipo, onde: perfil?.onde ?? '', laudos, ...(h?.registro && { registro: h.registro }) })
       d.laudosAntes.set(achado.id, laudos.length)
     }
     return achado.id

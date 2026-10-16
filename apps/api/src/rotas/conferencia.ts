@@ -10,6 +10,7 @@ import {
   DispensarParecer,
   LiberarAoJuridico,
   ROTULO_BENEFICIO,
+  ROTULO_ETAPA_DA_CHANCE,
   ResponderDispensa,
   pode,
   travaDoParecer,
@@ -38,7 +39,7 @@ import {
   tarefa,
   usuario,
 } from '../banco/esquema.ts'
-import { REGRA_DA_CHANCE, calcularChance, corDaChance, oQueFaltaSaber } from '../fluxo/chance.ts'
+import { REGRA_DA_CHANCE, calcularChancePorEtapa, corDaChance, oQueFaltaSaber, type EtapaDoCaso } from '../fluxo/chance.ts'
 import { juizoDoCaso } from '../fluxo/juizo.ts'
 import { NO_SERVIDOR } from './recepcao.ts'
 import type { ComoSugerir, Ia } from '../ia/ia.ts'
@@ -391,17 +392,40 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
     })
   })
 
-  /** GGVP-150 CA1, CA5: o número da chance pelo acervo conferido do mesmo benefício, com os casos usados (ids do acervo). */
-  async function contaDoCaso(beneficio: string | null) {
+  /**
+   * GGVP-150 CA1, CA5: o número da chance pelo acervo conferido do mesmo benefício, com os casos usados (ids do acervo).
+   * GGVP-163 R6: por etapa do caso; sem caso (a entrevista), antes da perícia.
+   */
+  async function contaDoCaso(beneficio: string | null, casoId?: string) {
     const acervo = beneficio
       ? await banco
-          .select({ id: processoAcervo.id, desfecho: processoAcervo.desfecho, criadoEm: processoAcervo.criadoEm })
+          .select({
+            id: processoAcervo.id,
+            desfecho: processoAcervo.desfecho,
+            criadoEm: processoAcervo.criadoEm,
+            laudoFavoravel: processoAcervo.laudoFavoravel,
+            estudoSocialFavoravel: processoAcervo.estudoSocialFavoravel,
+          })
           .from(processoAcervo)
           .where(and(eq(processoAcervo.beneficio, beneficio), isNotNull(processoAcervo.desfechoConferidoPor)))
       : []
-    const conta = calcularChance(acervo.map((a) => a.desfecho))
+    const conta = calcularChancePorEtapa(beneficio, acervo, casoId ? await etapaDoCaso(casoId) : {})
     const baseEm = conta.casos ? new Date(Math.max(...acervo.map((a) => a.criadoEm.getTime()))).toISOString() : null
     return { conta, baseEm, casosUsados: acervo.map((a) => a.id) }
+  }
+
+  /** GGVP-163 R6: o que o caso já sabe: o resultado da perícia médica mais nova e o do estudo social (a perícia social). */
+  async function etapaDoCaso(casoId: string): Promise<EtapaDoCaso> {
+    const linhas = await banco
+      .select({ tipo: pericia.tipo, resultado: pericia.resultado })
+      .from(pericia)
+      .where(and(eq(pericia.casoId, casoId), isNotNull(pericia.resultado)))
+      .orderBy(desc(pericia.criadoEm))
+    const favoravel = (tipo: string) => {
+      const p = linhas.find((l) => l.tipo === tipo && (l.resultado === 'favoravel' || l.resultado === 'desfavoravel'))
+      return p ? p.resultado === 'favoravel' : null
+    }
+    return { laudoFavoravel: favoravel('medica'), estudoSocialFavoravel: favoravel('social') }
   }
   // Sugestão pronta (07/10): os fatores ficam prontos em segundo plano para a Sênior; a rodada não registra "mostrada".
   preparo.registrar(
@@ -412,7 +436,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
   async function chanceDoCaso(casoId: string, perfil: string | null, quem: string | null, como: ComoSugerir = {}) {
     const dados = await montar(casoId, perfil)
     if (!dados) return null
-    const { conta, baseEm, casosUsados } = await contaDoCaso(dados.beneficio)
+    const { conta, baseEm, casosUsados } = await contaDoCaso(dados.beneficio, casoId)
     const [indeferido] = await banco
       .select({ motivo: resultadoInss.motivoEscrito, motivoInss: resultadoInss.motivoIndeferimento })
       .from(resultadoInss)
@@ -428,7 +452,7 @@ export function registrarRotasConferencia(app: FastifyInstance, { banco, agora =
       // Frase inteira: com "sim/não" a IA lia "laudo novo não disponível".
       dados.laudoNovoEsperando ? 'Chegou um laudo médico novo que ainda espera a conferência' : 'Nenhum laudo médico novo esperando conferência',
       `Indeferimento anterior: ${indeferido ? (indeferido.motivo ?? indeferido.motivoInss ?? 'sem motivo registrado') : 'não há'}`,
-      `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos`}`,
+      `Chance calculada pelo sistema: ${conta.porcentagem === null ? 'sem casos parecidos na casa ainda' : `${conta.porcentagem}% em ${conta.casos} casos parecidos, ${ROTULO_ETAPA_DA_CHANCE[conta.etapa]}`}`,
     ].join('\n')
     const fatores = await ia.sugerir('fatores_da_chance', { casoId, quem, conteudo, fontes: [{ tipo: 'regra', referencia: REGRA_DA_CHANCE }] }, como)
     const [comPerito] = await banco

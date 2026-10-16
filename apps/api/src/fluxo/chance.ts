@@ -1,15 +1,39 @@
-// Chance de êxito (GGVP-131, primeiro recorte): número é código com teste (G19). Favoráveis sobre decididos, entre os
-// desfechos conferidos do acervo com o mesmo benefício (proposta até o Lucas responder quais fatores contam).
-// Desistência não é decisão e não conta. Sem caso decidido, não há número (G22: toda amostra conta, mas zero não é amostra).
+// Chance de êxito (GGVP-131; GGVP-163 R6, regra do Lucas em 16/10): número é código com teste (G19). Por etapa do caso,
+// sobre os desfechos conferidos do acervo com o mesmo benefício. Antes da perícia é o êxito no mérito: ganho é
+// procedente (total ou em parte), deferido e acordo; perda é improcedente; extinção sem mérito e desistência ficam fora,
+// porque são falha de condução e não chance da tese. Depois do laudo é a mesma conta, só entre os casos com o mesmo
+// resultado de laudo; no LOAS idoso, quem decide é o estudo social. Recorte vazio: a etapa anterior, com aviso. O
+// benefício "outro" mistura matérias e não tem chance. Sem caso decidido, não há número (G22: zero não é amostra).
+import type { EtapaDaChance } from '@ggv/contratos'
 
-export const REGRA_DA_CHANCE = 'Desfechos conferidos do acervo com o mesmo benefício: favoráveis sobre decididos; desistência não conta'
-const FAVORAVEIS = new Set(['deferido', 'procedente_total', 'procedente_parcial'])
-const DESFAVORAVEIS = new Set(['improcedente', 'extinto_sem_merito'])
+export const REGRA_DA_CHANCE =
+  'Desfechos conferidos do acervo com o mesmo benefício, por etapa do caso: antes da perícia, ganhos (procedente, em parte, deferido ou acordo) sobre os decididos no mérito, com a extinção e a desistência fora; depois do laudo, só entre os casos com o mesmo resultado de laudo; no LOAS idoso, pelo estudo social'
+export const MSG_CHANCE_DO_OUTRO = 'O benefício "outro" mistura matérias: sem chance.'
 
-export function calcularChance(desfechos: (string | null)[]) {
-  const favoraveis = desfechos.filter((d) => d !== null && FAVORAVEIS.has(d)).length
-  const casos = favoraveis + desfechos.filter((d) => d !== null && DESFAVORAVEIS.has(d)).length
-  return { casos, favoraveis, porcentagem: casos ? Math.round((favoraveis / casos) * 100) : null }
+const GANHO = new Set(['procedente_total', 'procedente_parcial', 'deferido', 'acordo'])
+const PERDA = new Set(['improcedente'])
+
+/** Um processo do acervo conferido, com o que a etapa precisa. */
+export type ProcessoParaAChance = { desfecho: string | null; laudoFavoravel: boolean | null; estudoSocialFavoravel: boolean | null }
+/** O que o caso já sabe: o resultado do laudo (e do estudo social no LOAS idoso); indefinido ou nulo é "antes da perícia". */
+export type EtapaDoCaso = { laudoFavoravel?: boolean | null; estudoSocialFavoravel?: boolean | null }
+export type Chance = { casos: number; favoraveis: number; porcentagem: number | null; etapa: EtapaDaChance; aviso: string | null }
+
+const contar = (lista: ProcessoParaAChance[]) => {
+  const favoraveis = lista.filter((p) => GANHO.has(p.desfecho!)).length
+  return { casos: lista.length, favoraveis, porcentagem: lista.length ? Math.round((favoraveis / lista.length) * 100) : null }
+}
+
+export function calcularChancePorEtapa(beneficio: string | null, acervo: ProcessoParaAChance[], caso: EtapaDoCaso = {}): Chance {
+  if (!beneficio || beneficio === 'outro') return { casos: 0, favoraveis: 0, porcentagem: null, etapa: 'antes_da_pericia', aviso: beneficio === 'outro' ? MSG_CHANCE_DO_OUTRO : null }
+  const decididos = acervo.filter((p) => p.desfecho !== null && (GANHO.has(p.desfecho) || PERDA.has(p.desfecho)))
+  const peloEstudo = beneficio === 'bpc_loas_idoso'
+  const resultado = peloEstudo ? caso.estudoSocialFavoravel : caso.laudoFavoravel
+  if (resultado === undefined || resultado === null) return { ...contar(decididos), etapa: 'antes_da_pericia', aviso: null }
+  const mesmos = decididos.filter((p) => (peloEstudo ? p.estudoSocialFavoravel : p.laudoFavoravel) === resultado)
+  if (!mesmos.length)
+    return { ...contar(decididos), etapa: 'antes_da_pericia', aviso: `Nenhum caso da base com o mesmo ${peloEstudo ? 'estudo social' : 'laudo'}: a chance é a de antes da perícia.` }
+  return { ...contar(mesmos), etapa: peloEstudo ? 'depois_do_estudo_social' : 'depois_do_laudo', aviso: null }
 }
 
 export const REGRA_DA_CHANCE_DO_RECURSO = 'Recursos julgados no acervo conferido, do mesmo benefício: providos (no todo ou em parte) sobre julgados'

@@ -19,6 +19,8 @@ export type LaudoDoPerfil = {
   resultado: 'favoravel' | 'desfavoravel'
   /** Dias da perícia até o laudo. */
   dias: number
+  /** GGVP-163 R2: o laudo da base histórica, sem data e sem o tempo até o laudo; conta nos laudos e nos favoráveis. */
+  historico?: boolean
   observou: string[]
   perguntou: string[]
   pediu: string[]
@@ -32,6 +34,8 @@ export type Perito = {
   tipo: TipoDePericia
   /** Onde costuma atuar. */
   onde: string
+  /** GGVP-163 R2: o registro (CRM ou CRESS) que a base histórica tem; o portal não pede. */
+  registro?: string
   /** O perfil: um laudo por linha, sem sobrescrever (GGVP-73, CA3). A versão é quantos laudos formam o perfil. */
   laudos: LaudoDoPerfil[]
 }

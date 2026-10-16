@@ -80,6 +80,7 @@ export function registrarRotasRaioX(app: FastifyInstance, { banco, agora = () =>
         dataDecisao: processoAcervo.dataDecisao,
         falhaNossa: processoAcervo.falhaNossa,
         laudoFavoravel: processoAcervo.laudoFavoravel,
+        estudoSocialFavoravel: processoAcervo.estudoSocialFavoravel,
         extintoPorDeterminacao: processoAcervo.extintoPorDeterminacao,
         faltouPericia: processoAcervo.faltouPericia,
         resultadoRecurso: processoAcervo.resultadoRecurso,

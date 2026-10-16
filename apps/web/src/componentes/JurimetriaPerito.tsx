@@ -41,7 +41,7 @@ export function JurimetriaPerito({ perfil, aoFechar }: { perfil: PerfilDoPerito;
             </span>
           </p>
           <p className={styles.sub}>
-            {perito.especialidade} · aparece em {jurimetria.laudos} laudos do acervo · perfil versão {perfil.versao}
+            {perito.especialidade}{perito.registro ? ` · registro ${perito.registro}` : ''} · aparece em {jurimetria.laudos} laudos do acervo · perfil versão {perfil.versao}
           </p>
         </div>
         <button type="button" className={janelas.fechar} aria-label="Fechar" onClick={aoFechar}>

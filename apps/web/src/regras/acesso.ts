@@ -40,6 +40,8 @@ const ACESSO: [RegExp, Acao][] = [
   [/^\/vigilia$/, 'vigilia.ver'],
   [/^\/peritos$/, 'estudo.ver'],
   [/^\/estudos$/, 'estudo.ver'],
+  // GGVP-163 R5: a base histórica por benefício é jurimetria: o Jurídico e o Sócio.
+  [/^\/beneficios(\/|$)/, 'estudo.ver'],
   [caso('/pericias'), 'dado_saude.ver_detalhe'],
   [/^\/gestao\/(tentativas|prazos|cofre)$/, 'gestao.ver'],
   // GGVP-96: o Financeiro vê só os Resultados da Gestão.

@@ -225,6 +225,15 @@ export type VigiliaDoCaso = z.infer<typeof VigiliaDoCaso>
 export const EncerrarCaso = z.object({ motivo: z.string().trim().min(1, 'Escreva por que o caso é encerrado') })
 export type EncerrarCaso = z.infer<typeof EncerrarCaso>
 
+/** GGVP-163 R6 (Lucas, 16/10): a chance é por etapa do caso. */
+export const ETAPAS_DA_CHANCE = ['antes_da_pericia', 'depois_do_laudo', 'depois_do_estudo_social'] as const
+export type EtapaDaChance = (typeof ETAPAS_DA_CHANCE)[number]
+export const ROTULO_ETAPA_DA_CHANCE: Record<EtapaDaChance, string> = {
+  antes_da_pericia: 'antes da perícia',
+  depois_do_laudo: 'depois do laudo',
+  depois_do_estudo_social: 'depois do estudo social',
+}
+
 /**
  * POST /api/casos/:id/chance (GGVP-131, recorte da conferência da Sênior). O número é do código, com os casos e a data
  * da base (G22); sem caso decidido, `porcentagem` nulo. Os fatores são sugestão da IA: ela explica, não calcula.
@@ -243,6 +252,10 @@ export const ChanceDeExito = z.object({
   faltaSaber: z.array(z.string()),
   fatores: SugestaoDaIa.nullable(),
   motivoIa: z.string().nullable(),
+  /** GGVP-163 R6: a etapa do caso em que a conta foi feita; no LOAS idoso, o estudo social faz o papel do laudo. */
+  etapa: z.enum(ETAPAS_DA_CHANCE).default('antes_da_pericia'),
+  /** GGVP-163 R6: o recorte da etapa sem caso cai na etapa anterior, com este aviso; "outro" não tem chance. */
+  aviso: z.string().nullable().default(null),
 })
 export type ChanceDeExito = z.infer<typeof ChanceDeExito>
 

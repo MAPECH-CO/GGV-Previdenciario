@@ -2,6 +2,7 @@
 // entendimentos recorrentes, que a IA tira das decisões (parte 2). Só para o Jurídico; toda taxa com o número de
 // processos e a data da base, sem amostra mínima (G22, regra de 07/10).
 import { z } from 'zod'
+import { FundamentosDoJuizo } from './conhecimento.ts'
 
 /** CA2, CA5: um entendimento que se repete nas decisões de mérito do juízo, com os processos de exemplo; sem porcentagem. */
 export const EntendimentoDoJuizo = z.object({ texto: z.string().trim().min(1), processos: z.array(z.string().trim().min(1)).min(1) })
@@ -30,5 +31,7 @@ export const JurimetriaDoJuizo = z.object({
   tempoAteASentenca: z.object({ meses: z.number().int(), processos: z.number().int() }).nullable(),
   /** Os processos do juízo que entraram na conta. */
   processos: z.array(z.object({ numeroCnj: z.string(), desfecho: z.string() })),
+  /** GGVP-163 R3: os fundamentos históricos do juízo (CA2); nulo sem a base histórica. */
+  fundamentos: FundamentosDoJuizo.nullable().default(null),
 })
 export type JurimetriaDoJuizo = z.infer<typeof JurimetriaDoJuizo>

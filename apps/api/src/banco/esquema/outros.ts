@@ -140,6 +140,8 @@ export const processoAcervo = pgTable('processo_acervo', {
   juiz: text('juiz'),
   falhaNossa: boolean('falha_nossa'),
   laudoFavoravel: boolean('laudo_favoravel'),
+  /** GGVP-163 R7: o resultado do estudo social, que o CSV do Raio-X traz; no LOAS idoso ele faz o papel do laudo na chance. */
+  estudoSocialFavoravel: boolean('estudo_social_favoravel'),
   extintoPorDeterminacao: boolean('extinto_por_determinacao'),
   faltouPericia: boolean('faltou_pericia'),
   cartorioCobrou: jsonb('cartorio_cobrou'),

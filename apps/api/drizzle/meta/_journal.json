@@ -260,6 +260,13 @@
       "when": 1792074934228,
       "tag": "0036_custas_do_processo",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792176704261,
+      "tag": "0037_estudo_social_no_acervo",
+      "breakpoints": true
     }
   ]
 }

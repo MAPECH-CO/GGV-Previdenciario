@@ -1,0 +1,1 @@
+ALTER TABLE "processo_acervo" ADD COLUMN "estudo_social_favoravel" boolean;

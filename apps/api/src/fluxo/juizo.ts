@@ -9,6 +9,7 @@ import { caso, identificadorCaso, juizo as tabelaDoJuizo, pericia, perito, pesso
 import { anonimizar } from '../ia/acervo.ts'
 import { lerJson, type ComoSugerir, type Ia } from '../ia/ia.ts'
 import { hojeEmBrasilia } from '../vigilia/fila.ts'
+import { fundamentosDoJuizo, juizosComFundamentos, textosDosFundamentos } from './conhecimento.ts'
 
 /** Procedência: procedente, total ou em parte, sobre os decididos no mérito (a regra do painel e do juízo). */
 export const PROCEDENTES = new Set(['procedente_total', 'procedente_parcial'])
@@ -127,6 +128,8 @@ export async function jurimetriaDoJuizo(
     porBeneficio: [...porBeneficio].map(([beneficio, x]) => ({ beneficio, nome: ROTULO_BENEFICIO[beneficio as Beneficio] ?? beneficio, ...x, texto: textoDaTaxa(x.procedentes, x.decididos, base) })),
     tempoAteASentenca: dias.length ? { meses: Math.round(dias.reduce((s, d) => s + d, 0) / dias.length / DIAS_POR_MES), processos: dias.length } : null,
     processos: doJuizo.map((p) => ({ numeroCnj: p.numeroCnj, desfecho: p.desfecho })).sort((a, b) => a.numeroCnj.localeCompare(b.numeroCnj)),
+    // GGVP-163 R3 (CA2): os fundamentos históricos do juízo, contados em código; nulo sem a base.
+    fundamentos: await fundamentosDoJuizo(banco, juizo),
   }
 }
 
@@ -162,6 +165,8 @@ async function peritoDoCaso(banco: Banco, casoId: string) {
 
 // ponytail: as 10 decisões mais novas do juízo; mais que isso, o pedido à IA cresce sem ganho para o resumo.
 const DECISOES_LIDAS = 10
+// GGVP-163 R3: até 40 fundamentos da base histórica do juízo vão junto, cada um com o processo de exemplo.
+const FUNDAMENTOS_LIDOS = 40
 
 /** As publicações de mérito com número CNJ, do juízo pedido (ou de todos), das mais novas às mais antigas. */
 async function decisoesDeMerito(banco: Banco, juizo?: string) {
@@ -179,12 +184,17 @@ async function decisoesDeMerito(banco: Banco, juizo?: string) {
   })
 }
 
-/** CA2: os juízos com decisão de mérito mais nova que a última leitura da IA (ou nunca lidos); a rodada lê de novo. */
+/**
+ * CA2: os juízos com decisão de mérito mais nova que a última leitura da IA (ou nunca lidos); a rodada lê de novo.
+ * GGVP-163 R3: o juízo com fundamentos históricos e sem entendimentos entra também.
+ */
 export async function juizosParaLer(banco: Banco) {
   const maisNova = new Map<string, Date>()
   for (const d of await decisoesDeMerito(banco)) if (!maisNova.has(d.juizo) || d.criadoEm > maisNova.get(d.juizo)!) maisNova.set(d.juizo, d.criadoEm)
   const lidoEm = new Map((await banco.select({ nome: tabelaDoJuizo.nome, em: tabelaDoJuizo.entendimentosEm }).from(tabelaDoJuizo)).map((j) => [j.nome, j.em]))
-  return [...maisNova].filter(([j, d]) => !lidoEm.get(j) || d > lidoEm.get(j)!).map(([j]) => j)
+  const paraLer = new Set([...maisNova].filter(([j, d]) => !lidoEm.get(j) || d > lidoEm.get(j)!).map(([j]) => j))
+  for (const j of await juizosComFundamentos(banco)) if (!lidoEm.get(j)) paraLer.add(j)
+  return [...paraLer]
 }
 
 /**
@@ -193,13 +203,22 @@ export async function juizosParaLer(banco: Banco) {
  */
 export async function entendimentosDoJuizo(banco: Banco, ia: Ia, juizo: string, agora: Date, como: ComoSugerir = {}) {
   const decisoes = (await decisoesDeMerito(banco, juizo)).slice(0, DECISOES_LIDAS)
-  if (!decisoes.length) return null
-  const conteudo = [`Juízo: ${juizo}`, ...decisoes.map((d) => `Processo ${d.numeroCnj}:\n${anonimizar(d.texto, d.cliente)}`)].join('\n\n')
-  const fontes: FonteDaIa[] = decisoes.map((d) => ({ tipo: 'publicacao', referencia: `processo:${d.numeroCnj}` }))
+  // GGVP-163 R3: os fundamentos da base histórica do mesmo juízo, já sem dado pessoal, com o processo como exemplo.
+  const historicos = (await textosDosFundamentos(banco, juizo, FUNDAMENTOS_LIDOS)).map((f) => ({ ...f, numeroCnj: f.processo.replace(/\D/g, '') }))
+  if (!decisoes.length && !historicos.length) return null
+  const conteudo = [
+    `Juízo: ${juizo}`,
+    ...decisoes.map((d) => `Processo ${d.numeroCnj}:\n${anonimizar(d.texto, d.cliente)}`),
+    ...historicos.map((h) => `Processo ${h.numeroCnj} (base histórica, ${h.tipo}):\n${anonimizar(h.texto, null)}`),
+  ].join('\n\n')
+  const fontes: FonteDaIa[] = [
+    ...decisoes.map((d) => ({ tipo: 'publicacao' as const, referencia: `processo:${d.numeroCnj}` })),
+    ...historicos.map((h) => ({ tipo: 'acervo' as const, referencia: `processo:${h.numeroCnj}` })),
+  ]
   const validar = (texto: string) => EntendimentosDoJuizo.safeParse(lerJson(texto)).success
   const s = await ia.sugerir('entendimentos_do_juizo', { casoId: null, quem: null, conteudo, fontes }, { ...como, validar })
   if (!s) return null
-  const lidos = new Set(decisoes.map((d) => d.numeroCnj))
+  const lidos = new Set([...decisoes.map((d) => d.numeroCnj), ...historicos.map((h) => h.numeroCnj)])
   const entendimentos = EntendimentosDoJuizo.parse(lerJson(s.texto))
     .entendimentos.map((e) => ({ texto: e.texto, processos: [...new Set(e.processos.map((p) => p.replace(/\D/g, '')))].filter((p) => lidos.has(p)) }))
     .filter((e) => e.processos.length)

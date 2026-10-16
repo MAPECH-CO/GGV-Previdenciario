@@ -29,4 +29,12 @@ describe('Jurimetria do perito (GGVP-152)', () => {
     expect(screen.getByText('LOAS Deficiente').nextElementSibling?.textContent).toMatch(/^50% · 1 de 2 laudos/)
     expect(screen.getByText('Pensão por Morte').nextElementSibling?.textContent).toMatch(/^100% · 1 de 1 laudo/)
   })
+
+  it('GGVP-163 R2 · o laudo histórico conta nos laudos e nos favoráveis, fica fora do tempo até o laudo, e o registro aparece', () => {
+    const historico: LaudoDoPerfil = { ...laudo('h', 'loas-deficiente', 'desfavoravel'), id: 'conhecimento:0000001-11.2024.4.03.6301', caso: '0000001-11.2024.4.03.6301', dias: 0, historico: true }
+    const perfil = perfilDoPerito({ ...peritosDeExemplo()[1], registro: '190895', laudos: [laudo('1', 'loas-deficiente', 'favoravel'), historico] })
+    expect(perfil.jurimetria).toEqual({ laudos: 2, favoraveis: 1, taxa: 50, diasAteOLaudo: 20 })
+    render(<JurimetriaPerito perfil={perfil} aoFechar={() => {}} />)
+    expect(screen.getByText(/registro 190895 · aparece em 2 laudos do acervo/)).toBeTruthy()
+  })
 })

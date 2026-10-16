@@ -32,6 +32,7 @@ import { LevarAoBanco } from './paginas/LevarAoBanco.tsx'
 import { ExplicarResultado } from './paginas/ExplicarResultado.tsx'
 import { DecidirRecurso } from './paginas/DecidirRecurso.tsx'
 import { Estudos } from './paginas/Estudos.tsx'
+import { BaseDoBeneficio } from './paginas/BaseDoBeneficio.tsx'
 import { Pericias } from './paginas/Pericias.tsx'
 import { PainelVigilia } from './paginas/PainelVigilia.tsx'
 import { Tentativas } from './paginas/Tentativas.tsx'
@@ -181,6 +182,9 @@ const TELAS_DE_CASO: { padrao: RegExp; tela: (id: string) => ReactNode }[] = [
   { padrao: /^\/vigilia$/, tela: () => <PainelVigilia /> },
   { padrao: /^\/peritos$/, tela: () => <Peritos /> },
   { padrao: /^\/estudos$/, tela: () => <Estudos /> },
+  // GGVP-163 R5: a base histórica por benefício (a síntese e as taxas da base do Lucas), só para quem tem `estudo.ver`.
+  { padrao: /^\/beneficios$/, tela: () => <BaseDoBeneficio /> },
+  { padrao: /^\/beneficios\/([^/]+)$/, tela: (id) => <BaseDoBeneficio beneficio={decodeURIComponent(id)} /> },
   { padrao: /^\/casos\/([0-9a-f-]{36})\/pericias$/, tela: (id) => <Pericias casoId={id} /> },
   { padrao: /^\/gestao\/tentativas$/, tela: () => <Tentativas /> },
   { padrao: /^\/gestao\/prazos$/, tela: () => <Prazos /> },
