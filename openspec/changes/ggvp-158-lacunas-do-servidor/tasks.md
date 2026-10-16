@@ -42,7 +42,9 @@
   Teste em `apps/web/src/paginas/PrestarContas.test.tsx`. Playwright: `apps/web/e2e/fechamento-financeiro.e2e.ts` marca as quatro. Verifica com `pnpm --filter @ggv/web exec vitest run src/paginas/PrestarContas.test.tsx` e `pnpm --filter @ggv/web exec playwright test e2e/fechamento-financeiro.e2e.ts`.
 
   Verificado em 16/10: antes, falhou (sem o texto do aviso); depois, `PrestarContas.test.tsx` e `PaginaDoCaso.test.tsx` 21/21; Playwright `fechamento-financeiro.e2e.ts` 2/2 (com o login).
-- [ ] 1.7 As perguntas em `docs/requisitos/duvidas-abertas.md`:
+- [x] 1.7 As perguntas em `docs/requisitos/duvidas-abertas.md`:
   - o CA1 e o prazo do CA10 da GGVP-92 (Lucas);
   - o scanner simulado fora dos testes (Mateus, com o Pedro).
+
+  Feito em 16/10: seção "Abertas da GGVP-158, lacunas do servidor (16/10)", com quem decide em cada linha.
 - [ ] 1.8 Rodar typecheck, lint, testes e Playwright; `openspec validate --all --strict`; colar a saída; perguntar "Agora ok?".

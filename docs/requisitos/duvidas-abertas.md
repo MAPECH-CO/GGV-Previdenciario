@@ -54,3 +54,13 @@ Atualizado em 12/10/2026 na GGVP-159, com as decisões fornecidas pelo Pedro. �
 | LGPD e fornecedores | Contratos com OpenAI e Mistral e condições do tratamento/transferência. A autorização funcional de usar saúde não encerra esta pendência. |
 | Região do banco | Região do Supabase a aprovar. Não verificada nem alterada nesta história. |
 | Treinamento | Data, participantes, responsável e aceite. O material em `docs/treinamento/por-perfil.md` não significa treinamento realizado. |
+
+## Abertas da GGVP-158, lacunas do servidor (16/10)
+
+Registradas pela change `ggvp-158-lacunas-do-servidor`, sem decidir. O código dela vai até onde a regra já existe.
+
+| Assunto | O que precisa de resposta | Quem decide |
+|---|---|---|
+| A IA monta a prestação (GGVP-92 CA1) | Os números já saem do código (CA4). O que a IA monta: o texto da prestação para o cliente, a origem de cada valor lida dos documentos, ou os dois? Com quais fontes: a carta de concessão, como hoje, ou a sentença e o comprovante, como diz o cartão (CA3)? | Lucas |
+| Dados bancários "alterados há pouco" (GGVP-92 CA10) | A mudança que espera a segunda confirmação já trava o OK da prestação. Depois de confirmada, por quantos dias ela ainda pede nova verificação antes do OK? E quem verifica de novo: a Sênior, na prestação, ou outra pessoa? | Lucas |
+| "Digitalizar (scanner simulado)" fora dos testes (GGVP-17 CA10) | A rota simulada só existe com `LEITURA_SIMULADA`, e o botão dá 404 na homologação. Duas saídas: a tela some com o botão fora dos testes, ou a homologação liga pastas de teste do Drive (tarefa 1.15 da `ggvp-158-fechamento`) e o papel entra pela rodada do scanner. Nas duas, o botão não chama a rota simulada fora dos testes; o que muda é se a tela diz que o lote chega pelo scanner do Drive. | Mateus (o Drive), com o Pedro (o botão) |
