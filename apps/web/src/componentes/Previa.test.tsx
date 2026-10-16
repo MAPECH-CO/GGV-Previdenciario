@@ -122,44 +122,52 @@ describe('Previa', () => {
   })
 })
 
-describe('Previa ao lado (o balão da tarefa, Pedro, 16/10)', () => {
-  const linha = { left: 100, right: 600, top: 300, bottom: 350, width: 500, height: 50, x: 100, y: 300, toJSON: () => ({}) }
+describe('o balão do "i" da tarefa (Pedro, 16/10)', () => {
+  const noFimDaLinha = (top: number) => ({ left: 1000, right: 1032, top, bottom: top + 32, width: 32, height: 32, x: 1000, y: top, toJSON: () => ({}) })
   beforeEach(() => {
-    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(320)
+    vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(380)
     vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(160)
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1280 })
   })
   afterEach(() => {
     vi.restoreAllMocks()
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1024 })
   })
 
-  function abrirAoLado(largura: number) {
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: largura })
+  function abrirNoI(top: number) {
     render(
-      <Previa lado="direita" rotulo="Maria · Cobrar documento" conteudo={conteudo}>
+      <Previa balao rotulo="Maria · Cobrar documento" conteudo={conteudo}>
         <button type="button">Maria</button>
       </Previa>,
     )
-    vi.spyOn(gatilho(), 'getBoundingClientRect').mockReturnValue(linha as DOMRect)
+    vi.spyOn(gatilho(), 'getBoundingClientRect').mockReturnValue(noFimDaLinha(top) as DOMRect)
     act(() => gatilho().focus())
     return screen.getByRole('tooltip')
   }
 
-  it('abre à direita da linha, centrado nela, e o contorno começa na ponta, que aponta para o meio da linha', () => {
-    const balao = abrirAoLado(1280)
-    expect([balao.style.left, balao.style.top]).toEqual(['614px', '245px'])
-    expect(balao.querySelector('path')?.getAttribute('d')).toMatch(/^M0 80 L8 73 /)
+  it('abre embaixo do "i", para a esquerda dele, e o contorno começa na ponta, que aponta para o "i"', () => {
+    const balao = abrirNoI(300)
+    expect([balao.style.left, balao.style.top]).toEqual(['664px', '344px'])
+    expect(balao.querySelector('path')?.getAttribute('d')).toMatch(/^M352 0 L345 8 /)
+    expect(balao.hasAttribute('data-acima')).toBe(false)
   })
 
-  it('sem espaço à direita da linha, o balão encosta na borda da tela, por cima do fim da linha', () => {
-    const balao = abrirAoLado(700)
-    expect([balao.style.left, balao.style.top]).toEqual(['372px', '245px'])
-    expect(balao.querySelector('path')).toBeTruthy()
+  it('na tarefa do fim da tela, sem espaço embaixo, abre em cima, com o desenho virado', () => {
+    const balao = abrirNoI(700)
+    expect(balao.style.top).toBe('528px')
+    expect(balao.hasAttribute('data-acima')).toBe(true)
   })
 
-  it('na tela mais estreita que o balão, vira o cartão de baixo, sem a ponta', () => {
-    const balao = abrirAoLado(300)
-    expect(balao.querySelector('svg')).toBeNull()
-    expect(balao.style.top).toBe('358px')
+  it('no toque, sem mouse, o clique abre; tocar fora fecha', () => {
+    aparelho(false)
+    render(
+      <Previa balao rotulo="Maria · Cobrar documento" conteudo={conteudo}>
+        <button type="button">Maria</button>
+      </Previa>,
+    )
+    fireEvent.click(gatilho())
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 })

@@ -37,15 +37,20 @@
   color: var(--cor-texto);
 }
 
-/* O balão da tarefa (Pedro, 16/10), ao lado da linha e com a ponta apontando para ela. O contorno se desenha a partir da
-   ponta: sobe pelo lado dela e dá a volta; depois o fundo enche e as linhas entram de cima para baixo. O caminho do
-   contorno é contornoDoBalao (Previa.tsx); a caixa não tem borda nem fundo, quem desenha é ele. */
-.largo {
-  width: 320px;
+/* O balão do "i" da tarefa (Pedro, 16/10), embaixo do "i" e com a ponta apontando para ele; sem espaço embaixo, em cima,
+   com o desenho virado. O contorno se desenha a partir da ponta e dá a volta; depois o fundo enche e as linhas entram de
+   cima para baixo. O caminho é contornoDoBalao (Previa.tsx); a caixa não tem borda nem fundo, quem desenha é ele. Maior
+   que a prévia comum, como a Central larga: texto um passo acima e mais respiro. */
+.largo,
+.balao {
+  width: 380px;
+  padding: 14px 16px;
+  --fonte-12: 0.8125rem;
+  --fonte-13: 0.875rem;
+  font-size: var(--fonte-14);
 }
 
 .balao {
-  width: 320px;
   border: 0;
   background: none;
   box-shadow: none;
@@ -54,11 +59,17 @@
 
 .contorno {
   position: absolute;
-  top: 0;
-  left: -8px;
+  top: -8px;
+  left: 0;
   overflow: visible;
   pointer-events: none;
   filter: drop-shadow(var(--sombra-balao));
+}
+
+.balao[data-acima] .contorno {
+  top: auto;
+  bottom: -8px;
+  transform: scaleY(-1);
 }
 
 .contorno path {
