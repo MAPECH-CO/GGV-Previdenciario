@@ -19,7 +19,7 @@ describe('GGVP-78 · o início de perfil sem Central', () => {
   it('desde as Centrais da Sênior e do Financeiro e o início do Sócio, só perfil novo cai aqui: o título, a busca, o chat e a fila', async () => {
     render(<CentralEmConstrucao rotulo="Perfil novo" />)
     expect(screen.getByRole('heading', { level: 1, name: 'Central · Perfil novo' })).toBeTruthy()
-    expect(screen.getByRole('searchbox', { name: 'Buscar processo, cliente ou tarefa' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Buscar nas suas tarefas' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Chat com a IA' })).toBeTruthy()
     expect(await screen.findByText('Nada na sua fila agora.')).toBeTruthy()
   })
@@ -29,7 +29,8 @@ describe('GGVP-135 · a Gestão no topo do líder do Atendimento (P14)', () => {
   it('o líder vê Prazos, Tentativas bloqueadas e Resultados, e Clientes sem Processos (GGVP-162); o Atendimento, não', async () => {
     entrarComo('atendimento-lider')
     const { unmount } = render(comSessao(<CentralAtendimento />))
-    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes', 'Tentativas bloqueadas', 'Prazos', 'Uso do cofre', 'Resultados', 'Configuração'])
+    expect(topo()).toEqual(['Início', 'Agenda', 'Clientes'])
+    expect(screen.getByRole('button', { name: 'Gestão' })).toBeTruthy()
     unmount()
     entrarComo('atendimento')
     render(comSessao(<CentralAtendimento />))

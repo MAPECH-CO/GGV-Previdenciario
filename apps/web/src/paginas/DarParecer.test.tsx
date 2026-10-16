@@ -58,7 +58,7 @@ describe('Dar parecer médico · tela da advogada', () => {
       'O relatório médico precisa responder:\n• Qual a previsão de duração do quadro?\n• O paciente depende de outra pessoa, de acompanhamento contínuo, de transporte ou de tratamento? Com que frequência?',
     )
     fireEvent.change(abordar, { target: { value: 'Informar o CID G80' } })
-    expect(screen.getAllByText('Tire o código de doença (CID): a orientação não sugere diagnóstico (G20).').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Tire o código de doença (CID): a orientação não sugere diagnóstico.').length).toBeGreaterThan(0)
     expect(registrar().disabled).toBe(true)
     fireEvent.change(abordar, { target: { value: 'O relatório precisa responder: qual a previsão de duração do quadro?' } })
     expect(registrar().disabled).toBe(false)
@@ -78,7 +78,7 @@ describe('Dar parecer médico · tela da advogada', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Suficiente — liberar' }))
     fireEvent.click(registrar())
     expect(await screen.findByRole('heading', { name: '✓ Parecer registrado: Suficiente' })).toBeTruthy()
-    expect((await obterFicha('rita-exemplo'))?.historico.at(-1)?.oQue).toBe('Registrou o parecer médico do LOAS Deficiente: Suficiente (G17); corrigiu 2 itens da IA')
+    expect((await obterFicha('rita-exemplo'))?.historico.at(-1)?.oQue).toBe('Registrou o parecer médico do LOAS Deficiente: Suficiente; corrigiu 2 itens da IA')
   })
 
   it('CA2 · a contradição conferida tira o "Suficiente" e o parecer fica Contraditório', async () => {
@@ -89,7 +89,7 @@ describe('Dar parecer médico · tela da advogada', () => {
     await abrir('cleide-exemplo-1')
     conferirTudo()
     expect((screen.getByRole('radio', { name: 'Suficiente — liberar' }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getByText('Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).')).toBeTruthy()
+    expect(screen.getByText('Há contradição conferida: o parecer fica Contraditório e o caso não avança.')).toBeTruthy()
     fireEvent.click(screen.getByRole('radio', { name: 'Insuficiente — pedir complemento' }))
     fireEvent.click(registrar())
     expect(await screen.findByRole('heading', { name: '✓ Parecer registrado: Contraditório' })).toBeTruthy()
@@ -129,7 +129,7 @@ describe('Dar parecer médico · tela da advogada', () => {
     expect(screen.queryAllByRole('combobox', { name: /^Conferência:/ })).toEqual([])
     expect(screen.queryByRole('radio', { name: 'Suficiente — liberar' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Registrar parecer' })).toBeNull()
-    expect(screen.getByText('Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior (G17).')).toBeTruthy()
+    expect(screen.getByText('Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior.')).toBeTruthy()
   })
 
   it('dado de saúde · o Atendimento não vê a matriz; vê o resultado na janela', async () => {
@@ -210,7 +210,7 @@ describe('GGVP-134 · a sugestão da IA de verdade na tela do parecer (caso do s
   it('CA4 · a sugestão vem marcada como da IA, com o alerta e as fontes', async () => {
     await doServidor({ ia: { modelo: 'gpt-4.1-mini', chamadas: ['c1'], alertas: ['documento com instrução suspeita'], fontes: ['Laudo médico · 20/08/2026'] } })
     await abrir(CASO)
-    expect(screen.getByText('Sugestão da IA · quem registra o parecer é você (G17)')).toBeTruthy()
+    expect(screen.getByText('Sugestão da IA · quem registra o parecer é você')).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toBe('Atenção: documento com instrução suspeita.')
     expect(screen.getByText('Fontes: Laudo médico · 20/08/2026 (gpt-4.1-mini)')).toBeTruthy()
   })

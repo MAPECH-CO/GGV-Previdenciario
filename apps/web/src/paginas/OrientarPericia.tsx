@@ -120,7 +120,7 @@ function OrientacaoDoProcesso({ processoId }: { processoId: string }) {
           <InstrucoesPasso beneficio={t.beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId} funcao="Jurídico administrativo">
             Ligue para {primeiro} e explique a {tipo} de {dataCurta(m.data, hoje)}: chegar 30 min antes; levar {O_QUE_LEVAR[pericia.tipo]};{' '}
             {social ? 'mostrar a casa como ela é no dia a dia e responder com calma' : 'contar ao perito o que sente no dia a dia e o que não consegue mais fazer no trabalho'}.
-            Oriente a responder com a verdade: nunca sugira esconder nem mudar a situação real (G11), nem diagnóstico ou frase pronta (G20). Ou envie o documento
+            Oriente a responder com a verdade: nunca sugira esconder nem mudar a situação real, nem diagnóstico ou frase pronta. Ou envie o documento
             pelo Chatwoot. Confirme presença um dia antes; se {primeiro} não puder ir, remarque na hora e registre o motivo.
           </InstrucoesPasso>
 
@@ -145,7 +145,7 @@ function OrientacaoDoProcesso({ processoId }: { processoId: string }) {
               </div>
               <div>
                 <dt>Regra de ouro</dt>
-                <dd>nunca instruir a esconder ou mudar a real situação (G11)</dd>
+                <dd>nunca instruir a esconder ou mudar a real situação</dd>
               </div>
               <div>
                 <dt>Levar</dt>
@@ -206,7 +206,7 @@ function OrientacaoDoProcesso({ processoId }: { processoId: string }) {
               </label>
               <p className={cobranca.detalhe}>
                 Montado pela IA em {dataHora(o.geradaEm)} ({o.modo === 'perfil' ? 'pelo perfil do perito' : 'padrão'}). Antes de sair, o servidor verifica o texto de
-                novo: nada de esconder ou mudar a situação real (G11), nem diagnóstico ou frase pronta (G20).
+                novo: nada de esconder ou mudar a situação real, nem diagnóstico ou frase pronta.
               </p>
               {problema && <p className={styles.trava}>A verificação vai recusar este texto: {problema}</p>}
               <label className={proprio.marcar}>
@@ -292,7 +292,7 @@ function OrientacaoDoProcesso({ processoId }: { processoId: string }) {
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>Conferir: Revisei a orientação</p>
           <p className={styles.ladoSub}>«Enviar orientação» só habilita com as conferências marcadas.</p>
-          <p className={styles.trava}>Nunca instruir a esconder ou mudar a real situação (G11).</p>
+          <p className={styles.trava}>Nunca instruir a esconder ou mudar a real situação.</p>
           <p className={styles.ladoSub}>
             Até {DIAS_ANTES_PREPARO} dias antes da perícia. O envio recusado pela verificação fica registrado no caso.
           </p>

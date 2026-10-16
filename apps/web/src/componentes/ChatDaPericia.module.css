@@ -53,7 +53,8 @@
 
 .opcao[aria-checked='true'] {
   border-color: var(--cor-acento);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
-  box-shadow: var(--sombra-acento);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-weight: 600;
+  box-shadow: none;
 }

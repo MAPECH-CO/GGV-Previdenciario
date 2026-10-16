@@ -124,7 +124,7 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
               Pergunte o nome e o motivo da visita. Se veio entregar documento, encaminhe à Documentação e ao scanner
              . Se é lead novo, crie o cliente com o mínimo (nome, CPF, telefone) e marque a entrevista. Se já é
               cliente, abra a ficha pelo nome e veja a tarefa aberta. Não dê opinião sobre benefício: quem define é a
-              advogada (G3).
+              advogada.
             </p>
             <div className={styles.atalhos}>
               {escolhido ? (
@@ -367,7 +367,7 @@ export function Balcao({ navegar = (url: string) => window.location.assign(url) 
             <li>• Buscar por nome, CPF ou telefone</li>
             <li>• Se «Outra etapa»: Setor responsável pela etapa* (Jurídico, Documentação · ADM, Financeiro)</li>
           </ul>
-          <h3 className={styles.ladoSecao}>Travas</h3>
+          <h3 className={styles.ladoSecao}>Regras</h3>
           <p className={styles.trava}>
             Só o CPF já existente abre o cadastro e nunca cria um segundo; telefone ou nome igual só avisa e deixa seguir.
           </p>

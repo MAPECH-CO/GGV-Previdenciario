@@ -48,7 +48,7 @@ test('CA7 a CA11 · da Central à conferência da Rita: divergência, quarentena
   await expect(page.getByRole('link', { name: 'Rita Exemplo · Conferir documento' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Antônio Exemplo · Conferir documento' })).toBeVisible()
   await page.goto('/clientes/rita-exemplo')
-  await expect(page.getByRole('heading', { level: 2, name: 'Rita de Cássia Exemplo' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Rita de Cássia Exemplo' })).toBeVisible()
 })
 
 test('CA1 · o papel que o scanner guardou no balcão chega à conferência, sem digitalizar de novo', async ({ page }) => {

@@ -197,13 +197,13 @@ function arquivosPeloChat(texto: string, anexos: { nome: string }[], casoId: str
   const doCaso = (sufixo: string, rotulo: string): LinkDoChat[] => (casoId ? [{ rotulo, href: `/casos/${casoId}${sufixo}` }] : [])
   const abrir = principal ? [principal] : []
   const destino = {
-    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo (G17).', links: abrir },
+    laudo: { texto: 'Para subir o laudo novo, abra o caso e envie pela pasta do cliente: o Jurídico confere o laudo.', links: abrir },
     'comprovante-inss': {
       texto: 'Para marcar a perícia com o comprovante do INSS, abra a perícia do caso: lá a IA lê a data, a hora e o local, e você confere antes de marcar.',
       links: doCaso('/pericia', 'Abrir a perícia'),
     },
     'comprovante-rpv': {
-      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da Sênior (G8).',
+      texto: 'Para lançar o comprovante do pagamento, abra a prestação de contas do caso: o aviso ao cliente só sai depois do OK da Sênior.',
       links: doCaso('/prestacao', 'Abrir a prestação de contas'),
     },
     documento: { texto: 'Para enviar o documento, abra o caso e suba pela pasta do cliente: a Documentação confere a leitura.', links: abrir },
@@ -346,7 +346,7 @@ function ferramentasDeLeitura(x: Ambiente): Tool[] {
     }),
     tool({
       name: 'explicar_portao',
-      description: 'Explica um portão de governança do escritório (G1 a G22).',
+      description: 'Explica um portão de governança do escritório.',
       parameters: z.object({ portao: z.string().regex(/^G\d{1,2}$/) }),
       execute: async ({ portao }) => {
         if (!PORTOES[portao]) return 'Portão desconhecido.'
@@ -415,7 +415,7 @@ async function pedirPecaPeloChat(x: Ambiente, peca: string) {
   if (!aberta) return falhou(x, MSG_PECA_ANTES_DO_DESPACHO)
   const cliente = await clienteDoCaso(x.banco, casoId)
   await x.evento('peca_pedida_pelo_chat', `caso:${casoId}`, { tarefa: aberta.id, peca, peloChat: true })
-  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, aberta.titulo)}» (${peca}) já está aberta, com a minuta da IA pronta para você conferir e assinar (G6).`
+  const texto = `✓ Feito: a tarefa «${tituloDaTarefa(cliente.nome, aberta.titulo)}» (${peca}) já está aberta, com a minuta da IA pronta para você conferir e assinar.`
   x.resultado = { texto, links: [{ rotulo: 'Abrir a petição', href: `/casos/${casoId}/peticao` }] }
   return texto
 }
@@ -443,7 +443,7 @@ function ferramentasDeAcao(x: Ambiente): Tool[] {
     lista.push(
       tool({
         name: 'pedir_peca',
-        description: 'Abre para a pessoa a tarefa "Pedir petição" do caso, com a minuta da IA pronta para ela conferir e assinar (G6). Pede a confirmação antes.',
+        description: 'Abre para a pessoa a tarefa "Pedir petição" do caso, com a minuta da IA pronta para ela conferir e assinar. Pede a confirmação antes.',
         parameters: z.object({ peca: z.string().min(3).max(80) }),
         needsApproval: true,
         execute: ({ peca }) => pedirPecaPeloChat(x, peca),
@@ -479,9 +479,9 @@ async function cartaoDaAprovacao(x: Ambiente, ferramenta: string, argumentos: Re
       passos: ['Abrir a tarefa «Pedir a petição» que o despacho da Sênior abriu, com a minuta da IA pronta', 'Registrar no histórico do caso: feito pelo chat'],
       conferir: ['A peça certa para o caso'],
       travas: [
-        'A IA não assina nem protocola: você confere e assina (G6)',
+        'A IA não assina nem protocola: você confere e assina',
         'Sem o despacho da Sênior, a peça não é pedida',
-        'Sem o parecer médico "Suficiente" confirmado, o pedido não sai (G17)',
+        'Sem o parecer médico "Suficiente" confirmado, o pedido não sai',
       ],
       rotuloConfirmar: 'Abrir a tarefa',
     }

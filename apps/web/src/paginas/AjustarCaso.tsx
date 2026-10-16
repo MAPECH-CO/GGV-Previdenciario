@@ -11,7 +11,7 @@ const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', { dateStyl
 
 /** Por que ainda não libera: G1 aqui; G17 vem do servidor, pela regra única do contrato (`travaDoParecer`). */
 function bloqueioDeLiberar(c: CasoParaLiberacao): string | null {
-  if (c.checklist.cadastrado && !c.checklist.completo) return `Checklist incompleto (G1): faltam ${c.checklist.faltam.join(', ')}.`
+  if (c.checklist.cadastrado && !c.checklist.completo) return `Checklist incompleto: faltam ${c.checklist.faltam.join(', ')}.`
   return c.travaDoParecer
 }
 
@@ -89,7 +89,7 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
       )}
 
       <section className={styles.cartao}>
-        <h2 className={styles.cartaoTitulo}>Checklist (G1)</h2>
+        <h2 className={styles.cartaoTitulo}>Checklist</h2>
         {!caso.checklist.cadastrado ? (
           <p className={styles.dica}>Kit do benefício não cadastrado: o checklist não foi conferido pelo portal.</p>
         ) : caso.checklist.completo ? (
@@ -100,7 +100,7 @@ export function AjustarCaso({ casoId }: { casoId: string }) {
       </section>
 
       <section className={styles.cartao}>
-        <h2 className={styles.cartaoTitulo}>Parecer médico (G17)</h2>
+        <h2 className={styles.cartaoTitulo}>Parecer médico</h2>
         {caso.travaDoParecer ? <p className={styles.erroCampo}>{caso.travaDoParecer}</p> : <span className={styles.selo}>Em ordem para liberar</span>}
       </section>
 

@@ -241,7 +241,7 @@ describe('GGVP-133 · transcrição de verdade da entrevista', () => {
     expect(analisar(r.ficha, lida, '2026-10-08').dados.semTrabalharDesde).toBeUndefined()
     const { dados } = analisar(r.ficha, r.gravacao, '2026-10-08')
     expect(requisitosDoBeneficio('incapacidade-temporaria', dados, '2026-10-08')).toContainEqual({
-      texto: 'Afastamento: 129 dias desde 06/2026; precisa de mais de 15 (calculado por código, G19)',
+      texto: 'Afastamento: 129 dias desde 06/2026; precisa de mais de 15 (calculado por código)',
       atende: true,
     })
   })

@@ -195,7 +195,7 @@ export function SegundaFicha({ fichaId, tablet = false }: Props) {
         {s.campos.map(campo)}
         {s.numero === 3 && (
           <>
-            <p className={proprio.texto}>A senha do Meu INSS é a mesma do gov.br: vai direto para o cofre, nunca para um campo da ficha (G9).</p>
+            <p className={proprio.texto}>A senha do Meu INSS é a mesma do gov.br: vai direto para o cofre, nunca para um campo da ficha.</p>
             <CampoCofre fichaId={ficha!.id} senhaGov={senhaGov} aoMudar={setSenhaGov} />
           </>
         )}

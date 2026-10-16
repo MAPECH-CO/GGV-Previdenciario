@@ -22,12 +22,12 @@ async function gravarAte(aos: number, online = true) {
 
 describe('Entrevistar com gravação · servidor de exemplo', () => {
   it('CA4 · só grava com o aviso registrado, com a hora (G10)', async () => {
-    await expect(iniciarGravacao(JOSEFA, {} as { avisei: true })).rejects.toThrow('antes de gravar (G10)')
+    await expect(iniciarGravacao(JOSEFA, {} as { avisei: true })).rejects.toThrow('antes de gravar')
     const g = await iniciarGravacao(JOSEFA, { avisei: true })
     expect(g).toMatchObject({ estado: 'gravando', avisoEm: AGORA.toISOString(), participantes: ['Dra. Paula', 'Josefa Exemplo'], canal: 'presencial' })
     expect(g.acoes.map((a) => a.acao)).toEqual(['avisou', 'gravou'])
     const { ficha } = (await obterEntrevista(JOSEFA))!
-    expect(ficha.historico.at(-1)?.oQue).toBe('Avisou o cliente às 14:32 que a conversa seria gravada (G10) e começou a gravar a entrevista')
+    expect(ficha.historico.at(-1)?.oQue).toBe('Avisou o cliente às 14:32 que a conversa seria gravada e começou a gravar a entrevista')
     // Clique duplo ou página recarregada: a mesma gravação.
     expect((await iniciarGravacao(JOSEFA, { avisei: true })).id).toBe(g.id)
   })
@@ -66,7 +66,7 @@ describe('Entrevistar com gravação · servidor de exemplo', () => {
     const pronta = await transcrever(g.id)
     expect(pronta.transcricao).toBe('pronta')
     expect(new Set(pronta.trechos.map((t) => t.papel))).toEqual(new Set(['advogada', 'cliente']))
-    expect(pronta.extraidas.find((e) => e.destino === 'cofre')?.valor).toBe('digitada no cofre: não consta na transcrição (G9)')
+    expect(pronta.extraidas.find((e) => e.destino === 'cofre')?.valor).toBe('digitada no cofre: não consta na transcrição')
     expect(JSON.stringify(ler())).not.toContain(SENHA_DE_TESTE)
     expect(sessionStorage.getItem(CHAVE)).not.toContain(SENHA_DE_TESTE)
   })
@@ -77,7 +77,7 @@ describe('Entrevistar com gravação · servidor de exemplo', () => {
     expect(pronta.trechos.map((t) => t.aos)).toEqual([0, 6, 14, 24])
     expect(pronta.extraidas.map((e) => e.id)).toEqual(['desde', 'vinculo', 'profissao'])
     expect(pronta.resumo).toBe(
-      'Josefa Exemplo: sem trabalhar desde 06/2026; último vínculo: auxiliar de limpeza · CLT · até 05/2026. Procura LOAS Idoso. O benefício é a advogada que define (G3).',
+      'Josefa Exemplo: sem trabalhar desde 06/2026; último vínculo: auxiliar de limpeza · CLT · até 05/2026. Procura LOAS Idoso. O benefício é a advogada que define.',
     )
     expect(pronta.documentos).toEqual(['RG', 'CPF', 'Comprovante de residência', 'CNIS'])
   })

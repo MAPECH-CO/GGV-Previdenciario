@@ -130,6 +130,6 @@ describe('Marcar a entrevista', () => {
     escolher('Data', /qui 08/)
     escolher('Horário', '09:00')
     expect(botaoMarcar().disabled).toBe(true)
-    expect(screen.getByText('Já são 2 remarcações: o caso sobe para a advogada sênior (G15).')).toBeTruthy()
+    expect(screen.getByText('Já são 2 remarcações: o caso sobe para a advogada sênior.')).toBeTruthy()
   })
 })

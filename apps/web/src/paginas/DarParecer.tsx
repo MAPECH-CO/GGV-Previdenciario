@@ -190,7 +190,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   </div>
                   <p className={styles.instrucoesTexto}>
                     A IA leu o laudo novo e comparou com o que está no processo: {comparacao?.resumo[0] ?? 'veja a comparação.'} Abra a análise e confirme se é melhor;
-                    o parecer de suficiência (G17) pode precisar ser refeito.
+                    o parecer de suficiência pode precisar ser refeito.
                   </p>
                   <div className={styles.atalhos}>
                     <a className={styles.atalho} href={`/casos/${processo.id}/laudo-novo`}>
@@ -232,7 +232,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
                     Benefício sem roteiro
                   </h2>
                   <p className={styles.aviso}>
-                    {beneficio} não tem roteiro de laudos cadastrado. A IA não tem régua para conferir: a conferência é manual (GGVP-93).
+                    {beneficio} não tem roteiro de laudos cadastrado. A IA não tem régua para conferir: a conferência é manual.
                   </p>
                   {registra && (
                     <label className={proprio.campo}>
@@ -295,7 +295,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   {analise.motivo && <p className={passo.dica}>{analise.motivo}</p>}
                   {analise.ia && (
                     <>
-                      <span className={`${passo.selo} ${passo.seloAlerta}`}>Sugestão da IA · quem registra o parecer é você (G17)</span>
+                      <span className={`${passo.selo} ${passo.seloAlerta}`}>Sugestão da IA · quem registra o parecer é você</span>
                       {analise.ia.alertas.map((a) => (
                         <p key={a} className={passo.erroCampo} role="alert">
                           Atenção: {a}.
@@ -310,7 +310,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   <ul className={proprio.itens} aria-label="Itens obrigatórios">
                     {obrigatorios.map(linhaDoItem)}
                   </ul>
-                  <h3 className={proprio.secao}>Contradições que bloqueiam (G18)</h3>
+                  <h3 className={proprio.secao}>Contradições que bloqueiam</h3>
                   <ul className={proprio.itens} aria-label="Contradições que bloqueiam">
                     {contradicoes.map(linhaDoItem)}
                   </ul>
@@ -360,10 +360,10 @@ export function DarParecer({ processoId }: { processoId: string }) {
                       </button>
                     ))}
                   </div>
-                  {comContradicao && <p className={proprio.erro}>Há contradição conferida: o parecer fica Contraditório e o caso não avança (G18).</p>}
+                  {comContradicao && <p className={proprio.erro}>Há contradição conferida: o parecer fica Contraditório e o caso não avança.</p>}
                   {final && final !== 'suficiente' && (
                     <label className={proprio.campo}>
-                      O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão, G20) *
+                      O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão) *
                       <textarea rows={6} maxLength={TEXTO_MAXIMO_DO_PARECER} value={textoAbordar} onChange={(e) => setAbordar(e.target.value)} />
                       <span className={proprio.detalhe}>Sugerido pela IA com as perguntas do roteiro para o que falta. Confira e ajuste antes de registrar.</span>
                       {g20 && <span className={proprio.erro}>{g20}</span>}
@@ -372,12 +372,12 @@ export function DarParecer({ processoId }: { processoId: string }) {
                 </section>
               ) : (
                 <p className={styles.aviso} role="status">
-                  Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior (G17).
+                  Só leitura: quem confere os itens e registra o parecer é a advogada ou a sênior.
                 </p>
               )}
 
               <p className={styles.aviso}>
-                Só a sênior dispensa, com justificativa; documento que contradiz o requisito bloqueia (G17/G18).
+                Só a sênior dispensa, com justificativa; documento que contradiz o requisito bloqueia.
                 {perfil?.id.startsWith('senior') && (
                   <>
                     {' '}
@@ -409,7 +409,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
                   Histórico do parecer
                 </h2>
                 {p.historico.length === 0 ? (
-                  <p className={proprio.detalhe}>Nenhum parecer registrado ainda: a sugestão da IA, sozinha, não vale (G17).</p>
+                  <p className={proprio.detalhe}>Nenhum parecer registrado ainda: a sugestão da IA, sozinha, não vale.</p>
                 ) : (
                   <ul className={proprio.lista} aria-label="Histórico do parecer">
                     {[...p.historico].reverse().map((h) => (
@@ -432,7 +432,7 @@ export function DarParecer({ processoId }: { processoId: string }) {
           <p className={styles.ladoSub}>O que este passo pede.</p>
           <h3 className={styles.ladoSecao}>Campos</h3>
           <p>
-            • Se «Insuficiente — pedir complemento»: O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão, G20)*
+            • Se «Insuficiente — pedir complemento»: O que o documento deve abordar (sem sugerir diagnóstico, CID, grau ou conclusão)*
           </p>
           <h3 className={styles.ladoSecao}>Travas</h3>
           <p className={styles.ladoSub}>«Registrar parecer» só habilita com cada item conferido, a decisão respondida e os campos com * preenchidos.</p>

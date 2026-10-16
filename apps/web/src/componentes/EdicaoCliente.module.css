@@ -65,6 +65,14 @@
   font-size: var(--fonte-11);
 }
 
+/* O link dentro da nota tem cara de link: na cor da nota, ele sumia. */
+.nota a {
+  color: var(--cor-acento);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Mudar telefone ou e-mail: a verificação do cliente e o contrato novo (GGVP-111, CA1). */
 .verificacao {
   display: flex;
@@ -87,4 +95,47 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* A leitura: rótulo pequeno e valor embaixo, em colunas que se ajustam à largura do cartão. */
+.leitura {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dados {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+}
+
+.dado,
+.dadoLargo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dadoLargo {
+  grid-column: 1 / -1;
+}
+
+.dado dt,
+.dadoLargo dt {
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+}
+
+.dado dd,
+.dadoLargo dd {
+  margin: 0;
+  font-size: var(--fonte-13);
+  overflow-wrap: anywhere;
+}
+
+.vazio {
+  color: var(--cor-texto-suave);
 }

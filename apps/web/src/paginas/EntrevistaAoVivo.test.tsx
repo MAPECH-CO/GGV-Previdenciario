@@ -39,14 +39,14 @@ async function comecar(simular?: string) {
 describe('Entrevista com gravação · tela', () => {
   it('CA1 e CA4 · "Gravar" lembra o aviso; só grava depois de "Avisei", com a hora do aviso', async () => {
     render(<EntrevistaAoVivo agendamentoId="josefa-entrevista" passo={PASSO} />)
-    await screen.findByText('Antes de gravar · avise o cliente (G10)')
+    await screen.findByText('Antes de gravar · avise o cliente')
     fireEvent.click(botao('Gravar'))
-    expect(screen.getByRole('heading', { name: 'Antes de gravar, avise o cliente (G10)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Antes de gravar, avise o cliente' })).toBeTruthy()
     expect(screen.getByText('“Josefa, esta conversa vai ser gravada e transcrita para preencher a sua ficha. Tudo bem?”')).toBeTruthy()
     expect(botao('Começar a gravar').disabled).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Avisei o cliente que a conversa será gravada' }))
     fireEvent.click(botao('Começar a gravar'))
-    expect((await screen.findByText(/● Gravando/)).textContent).toMatch(/● Gravando · 00:00:\d\d · aviso de gravação feito às 14:32 \(G10\)/)
+    expect((await screen.findByText(/● Gravando/)).textContent).toMatch(/● Gravando · 00:00:\d\d · aviso de gravação feito às 14:32/)
   })
 
   it('CA5 e CA11 · transcrição ao vivo, roteiro, Pausar e Retomar; ao encerrar, a transcrição, "Cadastrar lead" e "Definir o benefício"', async () => {

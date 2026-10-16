@@ -68,18 +68,18 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
   const textoParecer = !precisaParecer
     ? `Parecer médico: não se aplica a ${beneficio} — registro, você não marca`
     : parecer?.contradicoes?.length
-      ? 'Parecer médico (G18): a IA achou contradição num documento que o Jurídico ainda não conferiu — registro, você não marca'
+      ? 'Parecer médico: a IA achou contradição num documento que o Jurídico ainda não conferiu — registro, você não marca'
       : parecer?.situacao === 'dispensado'
-      ? `Parecer médico dispensado por duas sêniores (G17) · ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''} — registro, você não marca`
+      ? `Parecer médico dispensado por duas sêniores · ${parecer.quem}${parecer.data ? `, ${dataCurta(parecer.data, hoje)}` : ''} — registro, você não marca`
       : parecerOk
-        ? `Parecer médico Suficiente (G17)${confirmado} — registro, você não marca`
+        ? `Parecer médico Suficiente${confirmado} — registro, você não marca`
         : parecer?.situacao === 'contraditorio'
-          ? `Parecer médico Contraditório (G18)${confirmado}: o caso não avança — registro do Jurídico, você não marca`
+          ? `Parecer médico Contraditório${confirmado}: o caso não avança — registro do Jurídico, você não marca`
           : parecer?.situacao === 'insuficiente'
-            ? `Parecer médico Insuficiente (G17)${confirmado}: falta o complemento do médico — registro do Jurídico, você não marca`
+            ? `Parecer médico Insuficiente${confirmado}: falta o complemento do médico — registro do Jurídico, você não marca`
             : parecer?.situacao === 'pendente'
-              ? 'Parecer médico (G17): a IA analisou, falta a conferência do Jurídico — registro, você não marca'
-              : 'Parecer médico (G17): ainda não está Suficiente — registro do Jurídico, você não marca'
+              ? 'Parecer médico: a IA analisou, falta a conferência do Jurídico — registro, você não marca'
+              : 'Parecer médico: ainda não está Suficiente — registro do Jurídico, você não marca'
 
   async function liberar() {
     if (travado.current || trava) return
@@ -116,7 +116,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
 
           <InstrucoesPasso beneficio={beneficio} de={ficha.nome} fichaId={ficha.id} processoId={processoId}>
             Antes de liberar o caso de {ficha.nome.split(' ')[0]} ao Jurídico, confira o kit do {beneficio}: {juntar(checklist.itens.map((i) => i.nome))}.
-            {precisaParecer && ' O parecer médico precisa estar "Suficiente", confirmado por pessoa (G17).'} Abra cada documento antes de liberar.
+            {precisaParecer && ' O parecer médico precisa estar "Suficiente", confirmado por pessoa.'} Abra cada documento antes de liberar.
           </InstrucoesPasso>
 
           {liberacao ? (
@@ -159,7 +159,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
                 </div>
               </section>
               <p className={styles.aviso}>
-                O parecer Suficiente vem do registro do G17 (quem confirmou e quando). «Liberar ao Jurídico» só habilita com as duas conferências suas marcadas.
+                O parecer Suficiente vem do registro de quem confirmou e quando. «Liberar ao Jurídico» só habilita com as duas conferências suas marcadas.
               </p>
             </>
           ) : (
@@ -263,7 +263,7 @@ export function LiberarCaso({ processoId, perfil: doTeste }: { processoId: strin
           <h3 className={styles.ladoSecao}>Como segue</h3>
           <p>
             Quem libera o caso é a Documentação (resposta do Lucas, 28/09). Depois, a sênior confere antes do INSS: nada é protocolado sem o OK dela
-            (G2).
+           .
           </p>
         </aside>
       </main>

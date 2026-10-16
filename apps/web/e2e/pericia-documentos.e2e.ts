@@ -81,7 +81,7 @@ test('CA1, CA3, CA7 · a perícia médica da Maria pede documento novo; a cobran
   const sugerido = await abordar.inputValue()
   await abordar.fill('Escreva que a paciente tem CID M54.5')
   await expect(page.getByRole('button', { name: 'Salvar o pedido ao médico' })).toBeDisabled()
-  await expect(page.getByText(/\(G20\)/).first()).toBeVisible()
+  await expect(page.getByText(/Tire o código de doença \(CID\)/).first()).toBeVisible()
   await abordar.fill(sugerido)
   await page.getByRole('button', { name: 'Salvar o pedido ao médico' }).click()
   await expect(page.getByRole('status')).toHaveText('Pedido ao médico salvo: ele vai junto na mensagem de cobrança.')

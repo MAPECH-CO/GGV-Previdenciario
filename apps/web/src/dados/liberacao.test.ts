@@ -45,7 +45,7 @@ describe('Liberar o caso ao Jurídico · servidor de exemplo', () => {
         codigo: 'D1.24',
         acao: 'Liberar ao Jurídico',
         cliente: { id: 'sebastiao-exemplo', nome: 'Sebastião Exemplo' },
-        detalhe: 'Auxílio Acidentário · parecer Suficiente (G17) · conferir a documentação',
+        detalhe: 'Auxílio Acidentário · parecer Suficiente · conferir a documentação',
         prazo: 'na fila há 2 dias',
         urgente: true,
         href: '/casos/sebastiao-exemplo-1/liberar',
@@ -63,7 +63,7 @@ describe('Liberar o caso ao Jurídico · servidor de exemplo', () => {
   it('CA1, CA6 e CA7 · completo, com o parecer Suficiente e as duas conferências: vai à fila da sênior e fica no histórico', async () => {
     expect((await completarRita()).completo).toBe(true)
     // Sem o parecer da advogada, a análise da IA sozinha não libera (G17, GGVP-20).
-    await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('ainda não foi confirmado por pessoa do Jurídico (G17)')
+    await expect(liberarAoJuridico('rita-exemplo-1', tudoConferido)).rejects.toThrow('ainda não foi confirmado por pessoa do Jurídico')
     await parecerSuficiente('rita-exemplo-1')
     expect(tarefasDeLiberar().map((t) => [t.cliente?.nome, t.prazo])).toEqual([
       ['Rita Exemplo', 'na fila desde hoje'],

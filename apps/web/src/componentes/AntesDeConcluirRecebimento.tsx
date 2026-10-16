@@ -24,7 +24,7 @@ export function AntesDeConcluirRecebimento({ forma, conferirPapel }: Props) {
           <span className="so-leitor">{resposta === null ? 'Sem resposta ainda.' : `Resposta: ${opcoes[resposta]}.`}</span>
         </p>
       </div>
-      <h3 className={styles.ladoSecao}>Travas</h3>
+      <h3 className={styles.ladoSecao}>Regras</h3>
       <ul className={styles.ladoLista}>
         <li>• Conferir: Conferi o tipo de cada documento</li>
         {conferirPapel && <li>• Conferir o papel antes de devolver o original (CONFERIR O PAPEL)</li>}

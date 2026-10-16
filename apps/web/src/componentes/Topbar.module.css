@@ -45,6 +45,22 @@
   flex: 1;
 }
 
+/* A busca única: ao lado da marca no computador, numa linha própria no celular. */
+.busca {
+  flex: 0 1 560px;
+  min-width: 220px;
+  margin-left: 28px;
+}
+
+.busca:empty,
+.buscaCelular:empty {
+  display: none;
+}
+
+.buscaCelular {
+  padding: 0 12px 10px;
+}
+
 .acao {
   display: inline-flex;
   align-items: center;
@@ -107,9 +123,66 @@
   color: var(--cor-texto);
 }
 
-.item[aria-current='page'] {
+.item[aria-current='page'],
+.item[data-atual] {
   background: var(--cor-acento-suave);
   color: var(--cor-acento);
+}
+
+button.item {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+/* A Gestão: um botão e, embaixo dele, a lista das telas de quem gere. */
+.gestao {
+  position: relative;
+}
+
+.abrir {
+  flex: none;
+  margin-left: -2px;
+  font-size: 0.95em;
+  transition: rotate 150ms var(--curva);
+}
+
+.item[aria-expanded='true'] .abrir {
+  rotate: 180deg;
+}
+
+.menuGestao {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 240px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--cor-linha);
+  border-radius: var(--raio-14);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-3);
+  list-style: none;
+  transform-origin: top left;
+  animation: surgir 160ms var(--curva);
+}
+
+.menuGestao .menuItem:hover {
+  background: var(--cor-fundo);
+}
+
+.menuGestao .menuItem[aria-current='page'] {
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-weight: 600;
+}
+
+.menuGestao .icone {
+  color: var(--cor-texto-suave);
 }
 
 .item:focus-visible {
@@ -463,6 +536,13 @@
   font-size: var(--fonte-18);
 }
 
+.folhaTitulo {
+  margin: 4px 16px 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-12);
+  font-weight: 600;
+}
+
 .folhaLista {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -591,5 +671,3 @@
   white-space: nowrap;
 }
 
-.busca { padding: 0 24px 12px; }
-@media (max-width: 640px) { .busca { padding: 0 12px 10px; } }

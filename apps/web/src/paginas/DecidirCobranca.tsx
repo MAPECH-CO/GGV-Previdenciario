@@ -77,7 +77,7 @@ export function DecidirCobranca({ processoId }: { processoId: string }) {
               <strong>{ficha.nome}</strong> · Decidir cobrança
             </h1>
             <p className={styles.subtitulo}>
-              {beneficio} · {semResposta === 1 ? '1 tentativa' : `${semResposta} tentativas`} sem resposta · limite (G15)
+              {beneficio} · {semResposta === 1 ? '1 tentativa' : `${semResposta} tentativas`} sem resposta · passou do limite
             </p>
           </div>
 

@@ -80,10 +80,10 @@
 .beneficio {
   padding: 4px 10px;
   border-radius: var(--raio-6);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
+  background: var(--cor-beneficio-suave);
+  color: var(--cor-beneficio);
   font-size: var(--fonte-13);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .instrucoesDe {
@@ -291,9 +291,8 @@
 
 .opcao[aria-checked='true'] {
   border-color: var(--cor-acento);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
-  box-shadow: var(--sombra-acento);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
 }
 
 .setor {
@@ -331,12 +330,11 @@
   cursor: not-allowed;
 }
 
-.chip[aria-checked='true'],
-.chip[data-ativa='true'] {
+.chip[aria-checked='true'] {
   border-color: var(--cor-acento);
-  background: var(--cor-acento);
-  color: var(--cor-superficie);
-  box-shadow: var(--sombra-acento);
+  background: var(--cor-acento-suave);
+  color: var(--cor-acento);
+  font-weight: 600;
 }
 
 .aviso,
@@ -442,6 +440,36 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Decisão só de conferência: texto com marcador, sem cara de botão. O botão de verdade segue com .chip. */
+.ladoOpcoes > span.chip {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--cor-texto-suave);
+  font-size: var(--fonte-13);
+  font-weight: 400;
+  box-shadow: none;
+  cursor: default;
+}
+
+.ladoOpcoes > span.chip::before {
+  content: '○';
+  margin-right: 6px;
+  color: var(--cor-texto-suave);
+}
+
+.ladoOpcoes > span.chip[data-ativa='true'] {
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.ladoOpcoes > span.chip[data-ativa='true']::before {
+  content: '✓';
+  color: var(--cor-ok);
 }
 
 /* Link com cara de botão: a mesma camada de passar e apertar dos botões (base.css). */

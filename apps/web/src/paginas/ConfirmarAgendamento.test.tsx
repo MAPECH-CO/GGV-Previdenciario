@@ -31,7 +31,7 @@ describe('Confirmar agendamento · tela do passo', () => {
     expect(contato.getByRole('button', { name: 'Ligar' })).toBeTruthy()
     expect(contato.getByRole('button', { name: 'Chatwoot' })).toBeTruthy()
     expect(screen.getByText(/peça que traga RG e CPF de todos da casa/)).toBeTruthy()
-    expect(screen.getByText('Tentativa 1 de 2 · a próxima em 3 dias · sem resposta na segunda, sobe para a sênior (G15)')).toBeTruthy()
+    expect(screen.getByText('Tentativa 1 de 2 · a próxima em 3 dias · sem resposta na segunda, sobe para a sênior')).toBeTruthy()
     expect(botao('Confirmar entrevista').disabled).toBe(true)
     expect(screen.getByText('Ligue ou mande a mensagem pelo Chatwoot.')).toBeTruthy()
     expect(opcao('Sim, a doutora prepara a conversa').disabled).toBe(true)
@@ -87,7 +87,7 @@ describe('Confirmar agendamento · tela do passo', () => {
   it('CA6 · antes dos 3 dias, "Sem resposta" espera e "Confirmou" continua valendo', async () => {
     await registrarConfirmacao('josefa-entrevista', { resultado: 'sem-resposta', canal: 'ligacao' })
     await abrir()
-    expect(screen.getByText('Tentativa 2 de 2 a partir de 08/10 · sem resposta na segunda, sobe para a sênior (G15)')).toBeTruthy()
+    expect(screen.getByText('Tentativa 2 de 2 a partir de 08/10 · sem resposta na segunda, sobe para a sênior')).toBeTruthy()
     expect(opcao('Sem resposta').disabled).toBe(true)
     expect(opcao('Confirmou a entrevista').disabled).toBe(false)
   })

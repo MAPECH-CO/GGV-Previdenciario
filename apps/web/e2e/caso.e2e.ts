@@ -46,7 +46,7 @@ test('CA1 a CA6, CA8 a CA12 · a advogada percorre o caso do Antônio numa linha
 test('CA7, CA13 · o Jurídico administrativo identifica o perito do Pedro em um clique; o caso aparece pelo NB', async ({ page }) => {
   await entrarPelaApi(page, 'juridico@exemplo.ggv')
   await page.goto('/casos/pedro-exemplo-1')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('456.123.789-6')
+  await expect(page.locator('main')).toContainText('456.123.789-6')
   await page.getByRole('group', { name: 'Identificar o perito' }).getByRole('button', { name: /Sra\. L\. Assis/ }).click()
   await expect(page.getByText(/Perito identificado: Sra\. L\. Assis/)).toBeVisible()
 })
@@ -72,7 +72,8 @@ test('caso do servidor · a página do processo lê o banco: a advogada vê o la
   const tarefas: { casoId: string; cliente: { nome: string } }[] = await (await page.request.get('/api/tarefas')).json()
   const casoId = tarefas.find((t) => t.cliente.nome === 'Maria Souza (exemplo)')!.casoId
   await page.goto(`/casos/${casoId}`)
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('sem NB nem protocolo ainda')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Maria Souza (exemplo)')
+  await expect(page.getByText('Sem número ainda', { exact: true })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Etapas do processo' }).locator('[aria-current="step"]')).toContainText('INSS')
   const tarefasDoCaso = page.getByRole('heading', { name: 'Tarefas em andamento' }).locator('..')
   // A decisão da perícia (D2.03) tem tela própria; /casos/:id/pericia é a página da perícia.
@@ -80,7 +81,7 @@ test('caso do servidor · a página do processo lê o banco: a advogada vê o la
   await expect(tarefasDoCaso).toContainText('Jurídico administrativo')
   const dados = page.getByRole('heading', { name: 'Dados do processo' }).locator('..')
   await expect(dados).toContainText('Maria Souza (exemplo)')
-  await expect(dados).toContainText('senha no cofre (G9)')
+  await expect(dados).toContainText('senha no cofre')
   await expect(dados).toContainText('Saúde (Jurídico)')
   await page.getByRole('button', { name: 'Abrir Laudo médico (exemplo).pdf' }).click()
   await expect(page.getByRole('dialog').getByRole('link', { name: 'Abrir o arquivo' })).toHaveAttribute('href', new RegExp(`^/api/casos/${casoId}/documentos/`))

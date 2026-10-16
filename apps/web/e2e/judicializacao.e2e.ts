@@ -48,7 +48,7 @@ test('GGVP-74, GGVP-34 e GGVP-37 · a advogada lê a exigência, o prazo é cont
   const doJuizo = await (await page.request.get(`/api/casos/${casoId}/juizo`)).json()
   expect([doJuizo.vara, doJuizo.juiz]).toEqual(['1ª Vara-Gabinete do JEF de São Paulo (exemplo)', 'Dra. Helena Prates (exemplo)'])
   await expect(page.getByText(/Prazo: de \d\d\/\d\d\/\d{4} até/)).toBeVisible()
-  await expect(page.getByText(/pelo lado seguro \(G12\)/)).toBeVisible()
+  await expect(page.getByText(/pelo lado seguro/)).toBeVisible()
 
   await page.getByRole('link', { name: '← Publicações do processo' }).click()
   await page.getByRole('listitem').filter({ hasText: 'Autos conclusos' }).getByRole('link', { name: 'Ler' }).click()
@@ -112,7 +112,7 @@ test('GGVP-79, GGVP-83 e GGVP-87 · a advogada distribui; Documentação e Atend
   await page.getByRole('button', { name: 'Anexar versão' }).click()
   await expect(page.getByRole('status')).toContainText('Versão 1 anexada')
   await expect(page.getByRole('button', { name: 'Manifestar e protocolar' })).toBeDisabled()
-  await page.getByLabel('Aprovei a versão da manifestação (G6)').check()
+  await page.getByLabel('Aprovei a versão da manifestação').check()
   await page.getByRole('button', { name: 'Aprovar a versão 1' }).click()
   await page.getByLabel('Comprovante do protocolo').setInputFiles(PDF('comprovante.pdf'))
   await page.getByRole('button', { name: 'Manifestar e protocolar' }).click()
@@ -198,7 +198,7 @@ test('GGVP-63, GGVP-67 e GGVP-71 · a advogada pede a petição, edita, compara,
 
   await page.getByLabel('Li a petição na íntegra').check()
   await page.getByLabel('Fundamentos, pedidos e valores conferem com o caso').check()
-  await page.getByLabel('Nada contradiz o requisito do benefício (G18)').check()
+  await page.getByLabel('Nada contradiz o requisito do benefício').check()
   await page.getByRole('button', { name: 'Aprovar e enviar ao protocolo' }).click()
   await expect(page.getByRole('status')).toHaveText('Versão 2 aprovada. O pacote foi para o protocolo.')
 

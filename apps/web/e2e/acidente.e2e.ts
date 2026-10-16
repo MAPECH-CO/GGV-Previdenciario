@@ -81,7 +81,7 @@ test('CA3 · chegam a ficha do pronto-socorro, o prontuário e o exame da época
 
   await page.goto('/casos/sebastiao-exemplo-1/liberar')
   await page.getByRole('checkbox', { name: /Checklist do Auxílio Acidentário/ }).check()
-  await expect(page.getByRole('checkbox', { name: /Parecer médico Suficiente \(G17\)/ })).toBeChecked()
+  await expect(page.getByRole('checkbox', { name: /Parecer médico Suficiente/ })).toBeChecked()
   await page.getByRole('checkbox', { name: 'Assinaturas e datas preenchidas — confira e marque' }).check()
   await page.getByRole('button', { name: 'Liberar ao Jurídico' }).click()
   await expect(page.getByRole('heading', { name: /✓ Liberado ao Jurídico às/ })).toBeVisible()
@@ -97,8 +97,8 @@ test('CA4 · o laudo de lesão não consolidada trava a liberação (G18) e suge
     ['laudo lesao nao consolidada.pdf', 'laudo'],
   ])
   await page.goto('/casos/sebastiao-exemplo-1/liberar')
-  await expect(page.getByRole('checkbox', { name: /Parecer médico \(G18\): a IA achou contradição/ })).not.toBeChecked()
-  await expect(page.getByText(/lesão ainda não consolidada\)\. O caso fica parado até o Jurídico conferir o parecer \(G18\)\. Sugestão: trocar para Auxílio por Incapacidade Temporária/)).toBeVisible()
+  await expect(page.getByRole('checkbox', { name: /Parecer médico: a IA achou contradição/ })).not.toBeChecked()
+  await expect(page.getByText(/lesão ainda não consolidada\)\. O caso fica parado até o Jurídico conferir o parecer\. Sugestão: trocar para Auxílio por Incapacidade Temporária/)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Liberar ao Jurídico' })).toBeDisabled()
 })
 

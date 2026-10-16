@@ -46,7 +46,7 @@ export function CamposNovoCliente({ valores, erros, aoMudar, aoSair }: Props) {
         <Campo {...ligar('cidadeUf')} rotulo="Cidade / UF" maxLength={80} />
       </div>
       <EscolhaBeneficio valor={valores.beneficioInteresse} aoMudar={(id) => aoMudar('beneficioInteresse', id)} />
-      <p className={styles.nota}>A IA sugere o benefício depois da conversa; quem decide é a advogada (G3).</p>
+      <p className={styles.nota}>A IA sugere o benefício depois da conversa; quem decide é a advogada.</p>
       <div className={styles.linha}>
         <Campo {...ligar('observacao')} rotulo="Observação" maxLength={1000} largo />
       </div>

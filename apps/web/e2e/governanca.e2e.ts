@@ -13,7 +13,8 @@ test('GGVP-109 · a ação fora do perfil, chamada direto pela API, é recusada 
 
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
-  await page.getByRole('link', { name: 'Tentativas bloqueadas' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('button', { name: 'Gestão' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Tentativas bloqueadas' }).click()
   await expect(page.getByRole('heading', { name: 'Tentativas bloqueadas' })).toBeVisible()
   await expect(page.getByRole('list', { name: 'Tentativas bloqueadas' }).getByRole('listitem').first()).toContainText(
     `Ana (exemplo) (Atendimento) · ${doCaso.cliente!.nome} · Ação fora do perfil (peticao.pedir)`,
@@ -54,8 +55,8 @@ test('GGVP-103 · o Jurídico administrativo guarda a senha do gov.br pelo cofre
 
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
-  // Exato: depois das 20h, a Central da Sênior também tem o alerta "Uso do cofre fora do padrão".
-  await page.getByRole('link', { name: 'Uso do cofre', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('button', { name: 'Gestão' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Uso do cofre' }).click()
   await expect(page.getByRole('list', { name: 'Uso do cofre por pessoa' })).toContainText('Igor (exemplo) · leituras 1 · cadastros e trocas 1 · recusas 0')
   await expect(page.locator('body')).not.toContainText('gov-lucia-e2e')
 })
@@ -63,7 +64,8 @@ test('GGVP-103 · o Jurídico administrativo guarda a senha do gov.br pelo cofre
 test('GGVP-104 · a Sênior muda um parâmetro e publica o kit de um benefício; a mudança fica no histórico da configuração', async ({ page }) => {
   await entrarPelaApi(page, 'senior@exemplo.ggv')
   await page.goto('/')
-  await page.getByRole('link', { name: 'Configuração' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('button', { name: 'Gestão' }).click()
+  await page.getByRole('navigation', { name: 'Principal' }).getByRole('link', { name: 'Configuração' }).click()
   await expect(page.getByRole('heading', { name: 'Configuração do escritório' })).toBeVisible()
   // A regra de contato ainda não é consumida pelo servidor; a tela deve deixar isso explícito.
   await expect(page.getByLabel('Cliente sumido: dias para as tentativas de contato (de 1 a 60)')).toBeDisabled()

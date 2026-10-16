@@ -21,7 +21,7 @@ export const tipoDeDocumentoValido = (tipo: string | null) => tipo === null || T
 export const MSG_SEM_EXIGENCIA = 'Este caso não tem exigência do INSS aberta.'
 export const MSG_JA_DECIDIDA = 'Esta exigência já foi decidida.'
 export const MSG_SEM_CARD = 'Esta exigência não tem card da Documentação aberto.'
-export const MSG_G21 = 'Só responde com documento anexado em todos os itens (G21).'
+export const MSG_G21 = 'Só responde com documento anexado em todos os itens.'
 export const MSG_COMPROVANTE_RESPOSTA = 'Anexe o comprovante da resposta no portal (PDF ou imagem, até 25 MB).'
 export const MSG_PROVA = 'Anexe o documento do item (PDF ou imagem, até 25 MB).'
 export const MSG_SEM_ENTREGA = 'A Documentação ainda não entregou as provas ao Jurídico.'
